@@ -2,12 +2,25 @@
 This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup.
 
 ![State Machine](images/state_machine_diagram.png)
+# Requirements
+Motion lights have the following requirements (R) that I discussed in detail [on my blog](https://www.danielha.tk/2018/05/17/appdaemon-motion-lights.html).
+
+1. turn on when motion is detected
+2. turn off when no motion is detected after some timeout
+3. Do not interfere with manually activated lights (tricky and less than obvious)
+
+That last one can be separated into the following two requirements:
+
+3.1 A light that is already on should not be affected by time outs.
+3.2 A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
+
+This AppDaemon app is by far the most elegant solution I have found for this problem.
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
 
 *Basic Configuration**
-MotionLight needs a `binary_sensor` to monitor as well as an entity to control.
+`MotionLight` needs a `binary_sensor` to monitor as well as an entity to control.
 
 ```yaml
 motion_light:
