@@ -76,7 +76,7 @@ motion_light:
 
 **MQTT Topic**
 
-Supplying the top-level `topic` parameter allows the MOtionLight to react to MQTT messages. This is used to cancel any pending motion timeouts when the entity is controlled through some other means, for example another automation (refer to state diagram). This mechanism is yet to be implemented and tested.
+Supplying the top-level `topic` parameter allows the MotionLight to react to MQTT messages. This is used to cancel any pending motion timeouts when the entity is controlled through some other means, for example another automation (refer to state diagram `CONTROL_COMMAND` event). This mechanism is yet to be implemented and tested.
 
 ```yaml
 motion_light:
