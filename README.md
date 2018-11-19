@@ -61,6 +61,7 @@ motion_light:
 
 
 **Calling custom scripts**
+
 If you wish to use custom scripts rather than a `light` entity. This is the case when the `entity_on` entity does not support a `turn_off` service call. You can define `entity_on` and `entity_off`. MotionLight will call the `turn_on` service on both.
 
 ```yaml
@@ -73,3 +74,15 @@ motion_light:
   
 ```
 
+**MQTT Topic**
+
+Supplying the top-level `topic` parameter allows the MOtionLight to react to MQTT messages. This is used to cancel any pending motion timeouts when the entity is controlled through some other means, for example another automation (refer to state diagram). This mechanism is yet to be implemented and tested.
+
+```yaml
+motion_light:
+  module: motion_lights
+  class: MotionLights
+  sensor: binary_sensor.living_room_motion # required
+  entity_on: light.table_lamp
+  topic: "cmnd/table_lamp/POWER"
+```
