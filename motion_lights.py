@@ -21,8 +21,9 @@ PACKAGES = ['paho.mqtt.client']
 # topic: required to detect if entity is modified during the timeout period. **Should use entity state instead (last modified value)
 # off_state: default "off", overwrite off state if required
 # on_state: default "on", overwrite on state if required 
-#
-# Version:          v0.2.0
+# override: input_boolean to enable/disable this motion light
+
+# Version:          v0.3.0
 # Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 
@@ -41,6 +42,7 @@ class MotionLights(hass.Hass):
     delay_night = None
     lastDelay = None
     night_mode = None;
+    overrideSwitch = None;
 
     # Default states
     OFF_STATE = "off"
@@ -88,6 +90,9 @@ class MotionLights(hass.Hass):
         if "off_state" in self.args:
             self.OFF_STATE = self.args["off_state"]
 
+        if "override_switch" in self.args:
+            self.overrideSwitch = self.args["override_switch"]
+
         # Monitor topic for commands sent to entity. Used to cancel timer if entity is controlled within timeout period.
         if "topic" in self.args:
             self.log("Topic: " + self.args["topic"])
@@ -117,7 +122,15 @@ class MotionLights(hass.Hass):
         """
             Sensor callback: Called when the supplied sensor/s change state.
         """
+
         if new == self.ON_STATE:
+            
+            overrideSwitchState = self.get_state(self.overrideSwitch);
+            if overrideSwitchState == "off":
+                self.log("MotionLight disabled by override switch " + self.overrideSwitch);
+                return;
+                
+
             self.log("Motion Sensor {} triggered".format(entity))
             # Use activeEntity state if it exists
             entityState = self.get_state(self.theEntity) # "entity" is guaranteed to be the active entity

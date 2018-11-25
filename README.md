@@ -50,7 +50,10 @@ motion_light:
   sensor: binary_sensor.living_room_motion
   entity_on: light.tv_led                   # LED strip supports `brightness`
   brightness: 80                            # Go to 80% brightness
+  override_switch: input_boolean.my_toggle  # Toggle switch to disable motion light altogether. 
 ```
+
+**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your MotionLights based on automations!
 
 ## Night Mode
 Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval at night as people are typically asleep and the light may only need to stay on for a minute. Adjusting a custom night time brightness is useful as well.
