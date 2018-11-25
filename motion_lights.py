@@ -10,7 +10,8 @@ PACKAGES = ['paho.mqtt.client']
 # Args:
 #
 # sensor: binary sensor to use as trigger
-# entity_on : entity to turn on when detecting motion, can be a light, script, scene or anything else that can be turned on.
+# entity_on : entity to turn on when detecting motion, can be a script, scene or anything else that can be turned on. Must specify entity containing state
+# entity: entity used to observe state. This is required because sometimes `entity_on` does not have state (e.g. scene, script). Can be used as a replacement for entity_on
 # entity_off : entity to activate after time out. If you want to activate a script, scene. If blank, entity_on will be switched off. Hence not required if entity_on can be switched on and switched off.
 # delay: amount of time after turning on to turn off again. If not specified defaults to 3 minutes.
 # night_start_time: After this time (e.g. 11pm, motionlight will use delay_night timeout period)
@@ -18,7 +19,10 @@ PACKAGES = ['paho.mqtt.client']
 # delay_night: delay in seconds used after going to bed
 # brightness: brightness percentage to use at nightime (only specify this for entities that support brightness.)
 # topic: required to detect if entity is modified during the timeout period. **Should use entity state instead (last modified value)
+# off_state: default "off", overwrite off state if required
+# on_state: default "on", overwrite on state if required 
 #
+# Documentation: https://github.com/danobot/appdaemon-motion-lights
 
 
 class MotionLights(hass.Hass):
@@ -31,11 +35,17 @@ class MotionLights(hass.Hass):
     brightness = None
     topic = None
     theEntity = None
+    entityOn = None
+    entityOff = None
     delay_night = None
     lastDelay = None
     night_mode = None;
-    # night_start_time = None
-    # night_end_time = None
+
+    # Default states
+    OFF_STATE = "off"
+    ON_STATE = "on"
+
+
     def initialize(self):
 
         self.timer = None
@@ -44,6 +54,12 @@ class MotionLights(hass.Hass):
             self.theEntity = self.args["entity"]
         else:
             self.theEntity = self.args["entity_on"]
+
+        if "entity_on" in self.args:
+            self.entityOn = self.args["entity_on"]
+
+        if "entity_off" in self.args:
+            self.entityOff = self.args["entity_off"]
 
         if "delay" in self.args:
             self.delay = self.args["delay"]
@@ -65,6 +81,11 @@ class MotionLights(hass.Hass):
             if not "end_time" in self.night_mode:
                 self.log("Night mode requires a end_time parameter !")
             
+        if "on_state" in self.args:
+            self.ON_STATE = self.args["on_state"]
+
+        if "off_state" in self.args:
+            self.OFF_STATE = self.args["off_state"]
 
         # Monitor topic for commands sent to entity. Used to cancel timer if entity is controlled within timeout period.
         if "topic" in self.args:
@@ -95,17 +116,20 @@ class MotionLights(hass.Hass):
         """
             Sensor callback: Called when the supplied sensor/s change state.
         """
-        if new == "on":
+        if new == self.ON_STATE:
             self.log("Motion Sensor {} triggered".format(entity))
             # Use activeEntity state if it exists
             entityState = self.get_state(self.theEntity) # "entity" is guaranteed to be the active entity
 
             self.log("Current state of {} is {}".format(self.theEntity, entityState), level="INFO")
 
-            if entityState == "off":
-                if "entity_on" in self.args:
-                    self.turn_on_entity()
-                    self.start_timer()
+            if entityState == self.OFF_STATE:
+                if self.entityOn:
+                    self.turn_on_entity(self.entityOn)
+                else: 
+                    self.turn_on_entity(self.theEntity)
+                self.start_timer()
+
             else:
                 if self.isOn:
                     self.log("New motion detected. Resetting timer.")
@@ -123,27 +147,27 @@ class MotionLights(hass.Hass):
             if self.stay:
                 self.log("Light stays on after motion detection.")
             else:
-                if "entity_off" in self.args: # check if an "off" script is supplied
-                    self.turn_on(self.args["entity_off"])
-                    self.log("Off: Activating {} ".format(self.args["entity_off"]))
+                if self.entityOff is not None: # check if an "off" script is supplied
+                    self.turn_on(self.entityOff)
+                    self.log("Off: Activating {} ".format(self.entityOff))
                 else: # if not, then turn off entity_on
-                    self.log("Off: Turning {} off".format(self.args["entity_on"]))
+                    self.log("Off: Turning {} off".format(self.entityOn))
                     self.turn_off(self.theEntity)
                 self.isOn = False
         else:
             self.log("A timer expired but the light was not switched on by appdaemon. This should not happen, ever.")
    
-    def turn_on_entity(self):
-        self.log("Turning {} on".format(self.args["entity_on"]))
+    def turn_on_entity(self, entity):
+        self.log("Turning {} on".format(entity))
         if self.is_night_mode() and 'brightness' in self.night_mode:
             self.log("Night time brightness ({}%) overwrites default ({}%)".format(self.night_mode['brightness'], self.brightness), level="INFO")
-            self.turn_on(self.args["entity_on"], brightness = self.night_mode['brightness'])
+            self.turn_on(entity, brightness = self.night_mode['brightness'])
         elif self.brightness:
             self.log("Using default brightness ({})".format(self.brightness), level="INFO")
-            self.turn_on(self.args["entity_on"], brightness = self.brightness)
+            self.turn_on(entity, brightness = self.brightness)
         else:
             self.log("No brightness specified", level="INFO")
-            self.turn_on(self.args["entity_on"])
+            self.turn_on(entity)
         self.isOn = True # means that the light was turned on by AppDaemon (used in light_off)
         
     def start_timer(self):
