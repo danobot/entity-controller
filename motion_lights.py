@@ -22,7 +22,8 @@ PACKAGES = ['paho.mqtt.client']
 # off_state: default "off", overwrite off state if required
 # on_state: default "on", overwrite on state if required 
 #
-# Documentation: https://github.com/danobot/appdaemon-motion-lights
+# Version:          v0.2.0
+# Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 
 class MotionLights(hass.Hass):
