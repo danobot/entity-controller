@@ -1,3 +1,4 @@
 v0.1.0      First formal Release
 v0.2.0      Added customizable state strings, fixes defect
 v0.3.0      Add override switch functionality
+v0.4.0      Add entities and state_entities configuration (experimental)

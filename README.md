@@ -19,7 +19,7 @@ This AppDaemon app is by far the most elegant solution I have found for this pro
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
 
-*Basic Configuration**
+**Basic Configuration**
 `MotionLight` needs a `binary_sensor` to monitor as well as an entity to control.
 
 ```yaml
@@ -75,7 +75,41 @@ motion_light:
 
 ## Advanced Configuration
 
+### State Entities
+It is possible to separate control entities and state entities. You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if the Boolean OR combination of all `state_entities` evaluates to `False` (all state entities are off).
 
+The use case here is that I do not want the `MotionLight` to turn on when I am watching TV.
+```yaml
+mtn_lounge:
+  module: motion_lights
+  class: MotionLights
+  # entity: light.tv_led
+  sensors:
+    - binary_sensor.living_room_motion
+    - binary_sensor.hallway_motion
+  state_entities:
+    - light.living_room_floor_lamp
+    - binary_sensor.tv_on
+  entities:
+    - light.tv_led
+    - light.living_room_floor_lamp
+  delay: 300
+```
+
+Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your MotionLight might never turn off unless you intervene. (This is because the MotionLight does not turn off the light.) Use this advanced feature at your own risk.
+
+You cannot use `entity`, `entity_on` or `entities` at the same time. Only one must be defined. If more than one is defined, the first one in the following list will be applied:
+1. `entity_on`
+2. `entity`
+3. `entities`
+
+For state entities, a similar logic applies. only one of `entity`, `entity_on` or `state_entities` will be used to determine state of MotionLight and they are chosen in the following order:
+1. `state_entities`
+2. `entities`
+3. `entity`
+4. `entity_on`
+
+These parameters are advanced and should be used with caution.
 **Calling custom scripts**
 
 You may use custom scripts to control a `light` entity with more precision. This is the case when the `entity_on` entity does not support a `turn_off` service call or use want to pass custom service parameters to the service call. You can define `entity_on` and `entity_off`. The `MotionLight` will call the `turn_on` service on both and observe the state using `entity`.
