@@ -137,3 +137,14 @@ motion_light:
   entity_on: light.table_lamp
   topic: "cmnd/table_lamp/POWER"
 ```
+
+# Automatic updates
+Use the `custom_updater` component to track updates.
+
+```yaml
+custom_updater:
+  track:
+    - components
+  component_urls:
+    - https://raw.githubusercontent.com/danobot/appdaemon-motion-lights/master/tracker.json
+```

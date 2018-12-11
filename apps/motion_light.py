@@ -170,11 +170,13 @@ class MotionLight(hass.Hass):
 
         if new == self.ON_STATE:
             self.log(LOG_BREAK);
-            overrideSwitchState = self.get_state(self.overrideSwitch);
-            if overrideSwitchState == "off":
-                self.log("MotionLight disabled by override switch " + self.overrideSwitch);
-                self.log(LOG_BREAK);
-                return;
+
+            if self.overrideSwitch:
+                overrideSwitchState = self.get_state(self.overrideSwitch);
+                if overrideSwitchState == "off":
+                    self.log("MotionLight disabled by override switch " + self.overrideSwitch);
+                    self.log(LOG_BREAK);
+                    return;
                 
 
             self.log("Sensor {} triggered".format(entity));
