@@ -30,7 +30,7 @@ PACKAGES = ['paho.mqtt.client']
 VERSION = '0.4.0'
 
 LOG_BREAK = "-----------------------------------------------------------------------------------------";
-class MotionLights(hass.Hass):
+class MotionLight(hass.Hass):
     
     timer = None
     isOn = False
