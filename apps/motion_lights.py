@@ -27,6 +27,8 @@ PACKAGES = ['paho.mqtt.client']
 # Version:          v0.4.0
 # Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
+VERSION = '0.4.0'
+
 LOG_BREAK = "-----------------------------------------------------------------------------------------";
 class MotionLights(hass.Hass):
     
