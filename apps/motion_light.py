@@ -47,6 +47,7 @@ class MotionLight(hass.Hass):
     night_mode = None;
     overrideSwitch = None;
     stateEntities = None;
+    entities = None;
     # Default states
     OFF_STATE = "off"
     ON_STATE = "on"
@@ -249,7 +250,9 @@ class MotionLight(hass.Hass):
         self.isOn = True # means that the light was turned on by AppDaemon (used in light_off)
         
     def start_timer(self):
-        self.cancel_timer(self.timer) # cancel previous timer
+        if self.timer:
+            self.cancel_timer(self.timer) # cancel previous timer
+            
         if self.is_night_mode() and 'delay' in self.night_mode:
             self.log("Starting timer for {} seconds: night time delay ({} sec) overwrites default ({} sec)".format(self.night_mode['delay'],self.night_mode['delay'], self.delay), level="INFO")
             self.timer = self.run_in(self.light_off, self.night_mode['delay'])
