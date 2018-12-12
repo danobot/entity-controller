@@ -7,7 +7,7 @@ from transitions import Machine
 class SimpleFSM(hass.Hass):
 
     
-    STATES = ['idle', 'disabled', 'checking', 'active']
+    STATES = ['idle', 'disabled', 'checking', 'active', 'checkOverride']
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
@@ -22,8 +22,9 @@ class SimpleFSM(hass.Hass):
         self.config_other();
 
         self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle')
-        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions=['is_overridden'])
+        self.machine.add_transition(trigger='sensor_on', source='idle', dest='checkOverride')
+        self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
+        self.machine.add_transition(trigger='timer_expires', source='active', dest='idle')
 
 
         
@@ -38,9 +39,7 @@ class SimpleFSM(hass.Hass):
             self.sensor_off()
     
 
-    def active_entry(self):
-        _start_timer();
-        _turn_on
+
     def _start_timer(self):
         return False;
     
@@ -69,8 +68,41 @@ class SimpleFSM(hass.Hass):
             return self.get_state(self.overrideSwitch);
 
 
+    # =====================================================
+    # S T A T E   M A C H I N E   C A L L B A C K S
+    # =====================================================
+    def timer_expire(self):
+        self.timer_expires();
+    def on_enter_active(self):
+        # _start_timer();
+        # turn on entities
+        self.log("Entering active state. Starting timer and turning on entities.")
+        self.timer_handle = self.run_in(self.timer_expires, 2)
+        for e in self.controlEntities:
+            self.turn_on(e)
+        
+    
+    # def timer_expire(self):
+    def on_exit_active(self):
+        self.log("Turning off entities, cancelling timer");
+        if self.timer_handle:
+            self.cancel_timer(self.timer) # cancel previous timer
+        for e in self.controlEntities:
+            self.turn_off(e)
 
+    def on_enter_checkOverride(self):
+        if self.is_overridden():
+            self.to_disabled();
+        else:
+            self.to_checking();
 
+        self.log(self.state)
+
+    def on_enter_checking(self):
+        if self.is_state_entities_off():
+            self.to_active();
+        else:
+            self.to_idle();
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
