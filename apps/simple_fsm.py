@@ -23,14 +23,21 @@ class SimpleFSM(hass.Hass):
         self.config_other();
 
         self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle')
-        self.machine.add_transition(trigger='SENSOR_ON', source='idle', dest='disabled')
+        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions=['is_overridden'])
 
-        # Register sensor callbacks
 
         
     # =====================================================
     # S T A T E   M A C H I N E   A C T I O N S
     # =====================================================
+
+    def sensor_state_change(self, entity, attribute, old, new, kwargs):
+        if new == self.SENSOR_ON_STATE:
+            self.machine.sensor_on()
+        if new == self.SENSOR_OFF_STATE:
+            self.machine.sensor_off()
+    
+
     def active_entry(self):
         _start_timer();
         _turn_on
@@ -61,7 +68,6 @@ class SimpleFSM(hass.Hass):
 
 
 
-
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
@@ -77,8 +83,8 @@ class SimpleFSM(hass.Hass):
             self.stateEntities = self.controlEntities
         elif "entities" in self.args: 
             self.controlEntities.append( self.args['entities'])
-        else:
-            self.controlEntities.append(self.args["entity_on"] );
+        # else:
+        #     self.controlEntities.append(self.args["entity_on"] );
 
         self.log("Control Entities: " + str(self.controlEntities));
 
@@ -92,16 +98,16 @@ class SimpleFSM(hass.Hass):
         self.log("State Entities: " + str(self.stateEntities));
 
     def config_sensor_entities(self):
-        self.sensors = [];
-        self.sensors.append(self.args.get("sensor", []))
-        self.sensors.append(self.args.get("sensors", []))
+        self.sensorEntities = [];
+        self.sensorEntities.append(self.args.get("sensor", []))
+        self.sensorEntities.append(self.args.get("sensors", []))
 
-        if self.sensors.count == 0:
+        if self.sensorEntities.count == 0:
             self.log("No sensor specified, doing nothing")
 
-        for sensor in self.sensors:
-            self.log("Registering sensor/s: " + sensor)
-            self.listen_state(self.motion, sensor)
+        for sensor in self.sensorEntities:
+            self.log("Registering sensor: " + str(sensor))
+            self.listen_state(self.sensor_state_change, sensor)
     
         self.log("Sensor Entities: " + str(self.sensorEntities));
 
