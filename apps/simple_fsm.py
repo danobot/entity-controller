@@ -22,8 +22,18 @@ class SimpleFSM(hass.Hass):
         self.config_other();
 
         self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle')
-        self.machine.add_transition(trigger='sensor_on', source='idle', dest='checkOverride')
+        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions='is_overridden')
+        self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
+        self.machine.add_transition(trigger='sensor_off', source='idle', dest=None, unless=['is_overridden'])
+
+        self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
+        self.machine.add_transition(trigger='sensor_off', source='disabled', dest=None)
+
+        self.machine.add_transition(trigger='sensor_on', source=['idle', 'disabled'], dest='active',unless=['is_state_entities_off'])
+
+
         self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
+        # self.machine.add_transition(trigger='sensor_on', source='active', dest='=')
         self.machine.add_transition(trigger='timer_expires', source='active', dest='idle')
 
 
@@ -62,15 +72,22 @@ class SimpleFSM(hass.Hass):
         return self._state_entity_state();
 
     def is_overridden(self):
+        self.log("is_overridden" + self.overrideSwitch)
         if self.overrideSwitch is None:
+            self.log("is_overridden: false")
             return False;
         else:
-            return self.get_state(self.overrideSwitch);
-
+            self.log("is_overridden: " + self.get_state(self.overrideSwitch))
+            return self.get_state(self.overrideSwitch) == self.OVERRIDE_ON_STATE;
+    
 
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
+    def on_enter_idle(self):
+        self.log("Entering idle")
+    def on_exit_idle(self):
+        self.log("Exiting idle")
     def timer_expire(self):
         self.timer_expires();
     def on_enter_active(self):
@@ -80,7 +97,10 @@ class SimpleFSM(hass.Hass):
         self.timer_handle = self.run_in(self.timer_expires, 2)
         for e in self.controlEntities:
             self.turn_on(e)
-        
+    def on_enter_disabled(self):
+        self.log("We are now disabled")
+    def on_exit_disabled(self):
+        self.log("Leaving disabled")
     
     # def timer_expire(self):
     def on_exit_active(self):
@@ -99,6 +119,7 @@ class SimpleFSM(hass.Hass):
         self.log(self.state)
 
     def on_enter_checking(self):
+        self.log("Checking state entities")
         if self.is_state_entities_off():
             self.to_active();
         else:
@@ -160,6 +181,8 @@ class SimpleFSM(hass.Hass):
         self.CONTROL_OFF_STATE = self.args.get("control_state_off", "off");
         self.SENSOR_ON_STATE = self.args.get("sensor_state_on", "on");
         self.SENSOR_OFF_STATE = self.args.get("sensor_state_off", "off");
+        self.OVERRIDE_ON_STATE = self.args.get("override_state_on", "on");
+        self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off");
 
     def config_other(self):
         if "entity_off" in self.args:
