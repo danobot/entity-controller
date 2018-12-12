@@ -6,4 +6,5 @@ RUN pip install -r /tmp/requirements.txt
 WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
-CMD [ "pytest" ]
+
+CMD [ "ptw", "--ext=.py,.yaml", "--","-sv" ]

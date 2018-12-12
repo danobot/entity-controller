@@ -5,3 +5,4 @@ services:
     build: .
     volumes:
       - .:/app
+    # command: [ "pytest-watch", "--ext=.py,.yaml", "--","-s","--tb=line" ]

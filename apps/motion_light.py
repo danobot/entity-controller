@@ -51,6 +51,7 @@ class MotionLight(hass.Hass):
     # Default states
     OFF_STATE = "off"
     ON_STATE = "on"
+    SENSOR_ON_STATE = "on"
 
 
     def initialize(self):
@@ -169,7 +170,7 @@ class MotionLight(hass.Hass):
             Sensor callback: Called when the supplied sensor/s change state.
         """
 
-        if new == self.ON_STATE:
+        if new == self.SENSOR_ON_STATE:
             self.log(LOG_BREAK);
 
             if self.overrideSwitch:
@@ -229,6 +230,7 @@ class MotionLight(hass.Hass):
                         self.turn_off(e);
                         self.log("Turning off {}".format(e));
                 else:
+                    self.turn_off(self.theEntity)
                     self.log("No entities supplied that could be turned off.")
                 
                 self.isOn = False
