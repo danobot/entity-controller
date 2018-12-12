@@ -17,9 +17,28 @@ def ml(given_that):
     return ml
 
 
-    
-def test_basic(given_that, ml, assert_that, time_travel):
-    given_that.passed_arg('entity').is_set_to(TEST_LIGHT)
+@pytest.mark.parametrize("entity,entity_value", [
+    ('entity', TEST_LIGHT),
+    ('entity_on', TEST_LIGHT),
+    ('entities', [TEST_LIGHT, TEST_LIGHT])
+])    
+@pytest.mark.parametrize("state_entity_value", [
+    (TEST_SENSOR),
+    ( [TEST_SENSOR, TEST_SENSOR]),
+    (None)
+])    
+
+@pytest.mark.parametrize("sensor,sensor_value", [
+    ('sensor',TEST_SENSOR),
+    ( 'sensors',[TEST_SENSOR, TEST_SENSOR]),
+    (None, None)
+]) 
+def test_basic(given_that, ml, assert_that, time_travel,entity,entity_value,state_entity_value,sensor,sensor_value):
+    given_that.passed_arg(entity).is_set_to(entity_value)
+    given_that.passed_arg('state_entites').is_set_to(state_entity_value)
+    given_that.passed_arg(sensor).is_set_to(sensor_value)
+    # given_that.passed_arg('brightness').is_set_to(brightness)
+
     ml.initialize()
     given_that.mock_functions_are_cleared()
     given_that.state_of(TEST_LIGHT).is_set_to('off') 
@@ -46,11 +65,19 @@ def test_basic(given_that, ml, assert_that, time_travel):
     # After DELAY seconds
     time_travel.assert_current_time(DELAY+DELAY/2).seconds()
 
-    assert_that('light.test_light').was.turned_off() # light should be turned off
+    assert_that(TEST_LIGHT).was.turned_off() # light should be turned off
 
 
 
 
+
+# Helper Functions
 def motion(ml):
     ml.motion('binary_sensor.test_sensor', None, 'off', 'on', None)
     ml.motion('binary_sensor.test_sensor', None, 'on', 'off', None)
+
+def motion_with_delay(ml, delay): # For motion sensors that stay on for some duration
+    ml.motion('binary_sensor.test_sensor', None, 'off', 'on', None)
+
+    time_travel.fast_forward(delay).seconds()
+    ml.motion('binary_sensor.test_sensor', None, 'on', 'off', None)    
