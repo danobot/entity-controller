@@ -14,7 +14,6 @@ class SimpleFSM(hass.Hass):
     delay = 180 # default delay = 3 minutes
 
     def initialize(self):
-    
         self.timer = None
         self.config_control_entities();
         self.config_state_entities();
@@ -23,6 +22,7 @@ class SimpleFSM(hass.Hass):
         self.config_other();
 
         self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle')
+        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions=['is_overridden'])
         self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions=['is_overridden'])
 
 
@@ -33,9 +33,9 @@ class SimpleFSM(hass.Hass):
 
     def sensor_state_change(self, entity, attribute, old, new, kwargs):
         if new == self.SENSOR_ON_STATE:
-            self.machine.sensor_on()
+            self.sensor_on()
         if new == self.SENSOR_OFF_STATE:
-            self.machine.sensor_off()
+            self.sensor_off()
     
 
     def active_entry(self):
@@ -63,7 +63,10 @@ class SimpleFSM(hass.Hass):
         return self._state_entity_state();
 
     def is_overridden(self):
-        return True;
+        if self.overrideSwitch is None:
+            return False;
+        else:
+            return self.get_state(self.overrideSwitch);
 
 
 
@@ -99,17 +102,26 @@ class SimpleFSM(hass.Hass):
 
     def config_sensor_entities(self):
         self.sensorEntities = [];
-        self.sensorEntities.append(self.args.get("sensor", []))
-        self.sensorEntities.append(self.args.get("sensors", []))
+        temp = self.args.get("sensor", None)
+        if temp is not None:
+            self.sensorEntities.append(temp)
+            
+        temp = self.args.get("sensors", None)
+        if temp is not None:
+            self.sensorEntities.extend(temp)
+
+
+            
+        
 
         if self.sensorEntities.count == 0:
             self.log("No sensor specified, doing nothing")
 
+        self.log("Sensor Entities: " + str(self.sensorEntities));
         for sensor in self.sensorEntities:
             self.log("Registering sensor: " + str(sensor))
             self.listen_state(self.sensor_state_change, sensor)
     
-        self.log("Sensor Entities: " + str(self.sensorEntities));
 
     def config_static_strings(self):
         self.CONTROL_ON_STATE = self.args.get("control_state_on", "on");
