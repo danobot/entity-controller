@@ -16,8 +16,8 @@ class SimpleFSM(hass.Hass):
 
     def initialize(self):
         self.timer = None
-        self.config_control_entities();
         self.config_state_entities();
+        self.config_control_entities();
         self.config_sensor_entities();
         self.config_static_strings();
         self.config_other();
@@ -48,7 +48,7 @@ class SimpleFSM(hass.Hass):
 
     def draw(self):
         self.log("Updating graph")
-        code = self.get_graph().draw('/conf/temp/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
+        code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
         self.log("Updated graph: " + str(code))
 
     # =====================================================
@@ -76,9 +76,9 @@ class SimpleFSM(hass.Hass):
     # S T A T E   M A C H I N E   C O N D I T I O N S
     # =====================================================
     def _state_entity_state(self):
+        state = True;
         for e in self.stateEntities:
-            state = True;
-            s = self.get_state(e);
+            s = self.get_state('light.test_light');
             state = state or s == self.ON_STATE;
             self.log(" * State of {} is {} and cumulative state is {}".format(e, s, state));
         return state;
@@ -90,7 +90,7 @@ class SimpleFSM(hass.Hass):
         return self._state_entity_state();
 
     def is_overridden(self):
-        self.log("is_overridden" + self.overrideSwitch)
+        self.log("is_overridden" + str(self.overrideSwitch));
         if self.overrideSwitch is None:
             self.log("is_overridden: false")
             return False;
@@ -160,12 +160,18 @@ class SimpleFSM(hass.Hass):
 
         if "entity" in self.args: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
             self.controlEntities.append( self.args["entity"]);
-            self.stateEntities = self.controlEntities
+
         elif "entities" in self.args: 
-            self.controlEntities.append( self.args['entities'])
+            self.controlEntities.extend( self.args['entities'])
         # else:
         #     self.controlEntities.append(self.args["entity_on"] );
+        elif "entity_on" in self.args: 
+            self.controlEntities.append( [self.args["entity_on"] ]);
 
+        # IF no state entities are defined, use control entites as state
+        if self.stateEntities is  None:
+            self.stateEntities = [];
+            self.stateEntities.extend(self.controlEntities);
         self.log("Control Entities: " + str(self.controlEntities));
 
     def config_state_entities(self):
