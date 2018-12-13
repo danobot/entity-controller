@@ -1,4 +1,4 @@
 pytest
 appdaemontestframework
 pytest-watch
-transitions
+transitions[diagrams]

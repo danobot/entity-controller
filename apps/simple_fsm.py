@@ -1,13 +1,14 @@
 import appdaemon.plugins.hass.hassapi as hass
 from transitions import Machine
+from transitions.extensions import HierarchicalGraphMachine as Machine
+import logging
 
-
-
+logging.getLogger('transitions').setLevel(logging.INFO)
 # App to turn lights on when motion detected then off again after a delay
 class SimpleFSM(hass.Hass):
 
     
-    STATES = ['idle', 'disabled', 'checking', 'active', 'checkOverride']
+    STATES = ['idle', 'disabled', 'checking', 'active']
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
@@ -20,16 +21,17 @@ class SimpleFSM(hass.Hass):
         self.config_sensor_entities();
         self.config_static_strings();
         self.config_other();
+        self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle', title=str(__name__)+" State Diagram",show_conditions=True,show_auto_transitions =True)
 
-        self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle')
+        self.log("Drawing graph");
         self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions='is_overridden')
-        self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
+        # self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
         self.machine.add_transition(trigger='sensor_off', source='idle', dest=None, unless=['is_overridden'])
 
-        self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
+        # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
         self.machine.add_transition(trigger='sensor_off', source='disabled', dest=None)
 
-        self.machine.add_transition(trigger='sensor_on', source=['idle', 'disabled'], dest='active',unless=['is_state_entities_off'])
+        self.machine.add_transition('sensor_on', ['idle', 'disabled'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
 
 
         self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
@@ -37,7 +39,10 @@ class SimpleFSM(hass.Hass):
         self.machine.add_transition(trigger='timer_expires', source='active', dest='idle')
 
 
-        
+    def draw(self):
+        self.log("Updating graph")
+        self.get_graph().draw('/conf/temp/fsm_diagram_'+str(__name__)+'.png', prog='dot')
+
     # =====================================================
     # S T A T E   M A C H I N E   A C T I O N S
     # =====================================================
@@ -63,10 +68,15 @@ class SimpleFSM(hass.Hass):
     # S T A T E   M A C H I N E   C O N D I T I O N S
     # =====================================================
     def _state_entity_state(self):
-        return False;
+        for e in self.stateEntities:
+            state = True;
+            s = self.get_state(e);
+            state = state or s == self.ON_STATE;
+            self.log(" * State of {} is {} and cumulative state is {}".format(e, s, state));
+        return state;
     
     def is_state_entities_off(self):
-        return self._state_entity_state() == False;
+        return self._state_entity_state() == True;
 
     def is_state_entities_on(self):
         return self._state_entity_state();
@@ -86,6 +96,8 @@ class SimpleFSM(hass.Hass):
     # =====================================================
     def on_enter_idle(self):
         self.log("Entering idle")
+        self.draw();
+
     def on_exit_idle(self):
         self.log("Exiting idle")
     def timer_expire(self):
@@ -97,33 +109,37 @@ class SimpleFSM(hass.Hass):
         self.timer_handle = self.run_in(self.timer_expires, 2)
         for e in self.controlEntities:
             self.turn_on(e)
-    def on_enter_disabled(self):
-        self.log("We are now disabled")
-    def on_exit_disabled(self):
-        self.log("Leaving disabled")
-    
-    # def timer_expire(self):
+        self.draw();
+        
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer");
         if self.timer_handle:
             self.cancel_timer(self.timer) # cancel previous timer
         for e in self.controlEntities:
             self.turn_off(e)
+    def on_enter_disabled(self):
+        self.log("We are now disabled")
+        self.draw();
 
-    def on_enter_checkOverride(self):
-        if self.is_overridden():
-            self.to_disabled();
-        else:
-            self.to_checking();
+    def on_exit_disabled(self):
+        self.log("Leaving disabled")
+    
+    # def timer_expire(self):
 
-        self.log(self.state)
+    # def on_enter_checkOverride(self):
+    #     if self.is_overridden():
+    #         self.to_disabled();
+    #     else:
+    #         self.to_checking();
 
-    def on_enter_checking(self):
-        self.log("Checking state entities")
-        if self.is_state_entities_off():
-            self.to_active();
-        else:
-            self.to_idle();
+    #     self.log(self.state)
+
+    # def on_enter_checking(self):
+    #     self.log("Checking state entities")
+    #     if self.is_state_entities_off():
+    #         self.to_active();
+    #     else:
+    #         self.to_idle();
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
