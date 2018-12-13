@@ -3,17 +3,17 @@ from transitions import Machine
 from transitions.extensions import HierarchicalGraphMachine as Machine
 import logging
 from threading import Timer
-
+import time
 # App to turn lights on when motion detected then off again after a delay
 class SimpleFSM(hass.Hass):
     
     
     logger = logging.getLogger(__name__)
-    STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
+    STATES = ['idle', 'disabled', {'name': 'active', 'children': [{'name': 'timer','children': ['normal', 'night']},'stay_on'], 'initial': False}]
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
-    delay = 180 # default delay = 3 minutes
+    night_mode = None;
     def custom_log(self, **kwargs):
         self.logger.info(kwargs);
     def initialize(self):
@@ -23,6 +23,7 @@ class SimpleFSM(hass.Hass):
         self.config_control_entities();
         self.config_sensor_entities();
         self.config_static_strings();
+        self.config_night_mode();
         self.config_other();
         self.machine = Machine(model=self, 
             states=SimpleFSM.STATES, 
@@ -47,12 +48,16 @@ class SimpleFSM(hass.Hass):
         self.machine.add_transition(trigger='enter', source='active', dest='active_timer', unless='will_stay_on')
         self.machine.add_transition(trigger='enter', source='active', dest='active_stay_on', conditions='will_stay_on')
 
+        self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_normal', unless=['is_night'])
+        self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_night', conditions=['is_night'])
+
         # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
         self.machine.add_transition(trigger='sensor_on', source='active_timer', dest=None, after='_reset_timer')
         self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle')
 
 
     def draw(self):
+        time.sleep(1)
         self.log("Updating graph in state: " + self.state)
         code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
         self.log("Updated graph: " + str(code))
@@ -65,17 +70,21 @@ class SimpleFSM(hass.Hass):
         if new == self.SENSOR_ON_STATE:
             self.sensor_on()
         if new == self.SENSOR_OFF_STATE:
-            self.sensor_off()
+            if self.args.get("sensor_type_duration"):
+                self.sensor_off()
+            else:
+                self.sensor_off_fake()
     
 
 
     def _start_timer(self):
-        self.timer_handle = Timer(3,self.timer_expire);
+        self.timer_handle = Timer(self.delay,self.timer_expire);
         self.timer_handle.start();
     
 
     def _reset_timer(self):
-        self.timer_handle.cancel();
+        if self.timer_handle:
+            self.timer_handle.cancel();
         self._start_timer();
         return True;
 
@@ -111,6 +120,11 @@ class SimpleFSM(hass.Hass):
     def will_stay_on(self):
         return self.args.get('stay', False);
 
+    def is_night(self):
+        if self.night_mode is None:
+            return False;
+        else:     
+            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time']);
 
 
 
@@ -139,7 +153,11 @@ class SimpleFSM(hass.Hass):
         self._start_timer();
         for e in self.controlEntities:
             self.turn_on(e)
-        
+    
+    def on_enter_active_timer(self):
+        self.enter();
+
+
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer");
         self.timer_handle.cancel() # cancel previous timer
@@ -235,16 +253,22 @@ class SimpleFSM(hass.Hass):
         self.SENSOR_OFF_STATE = self.args.get("sensor_state_off", "off");
         self.OVERRIDE_ON_STATE = self.args.get("override_state_on", "on");
         self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off");
+    def config_night_mode(self):
+        if "night_mode" in self.args:
+            self.night_mode = self.args["night_mode"]
+            if not "start_time" in self.night_mode:
+                self.log("Night mode requires a start_time parameter !")
 
+            
+            if not "end_time" in self.night_mode:
+                self.log("Night mode requires a end_time parameter !")
     def config_other(self):
         if "entity_off" in self.args:
             self.entityOff = self.args.get("entity_off", None)
 
-        if "delay" in self.args:
-            self.delay = self.args["delay"]
+        self.delay = self.args.get("delay", 180);
 
-        if "stay" in self.args:
-            self.stay = self.args["stay"]
+        self.stay = self.args.get("stay", False)
 
         if "brightness" in self.args:
             self.brightness = self.args["brightness"]
