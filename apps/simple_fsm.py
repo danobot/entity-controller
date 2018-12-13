@@ -2,20 +2,23 @@ import appdaemon.plugins.hass.hassapi as hass
 from transitions import Machine
 from transitions.extensions import HierarchicalGraphMachine as Machine
 import logging
+from threading import Timer
 
-logging.getLogger('transitions').setLevel(logging.INFO)
 # App to turn lights on when motion detected then off again after a delay
 class SimpleFSM(hass.Hass):
-
     
-    STATES = ['idle', 'disabled', 'active']
+    
+    logger = logging.getLogger(__name__)
+    STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
     delay = 180 # default delay = 3 minutes
-
+    def custom_log(self, **kwargs):
+        self.logger.info(kwargs);
     def initialize(self):
         self.timer = None
+        self.listen_log(self.custom_log)
         self.config_state_entities();
         self.config_control_entities();
         self.config_sensor_entities();
@@ -26,7 +29,7 @@ class SimpleFSM(hass.Hass):
             initial='idle', 
             title=str(__name__)+" State Diagram",
             show_conditions=True,
-            show_auto_transitions =True,
+            # show_auto_transitions = True,
             after_state_change=self.draw
         )
 
@@ -36,18 +39,21 @@ class SimpleFSM(hass.Hass):
         self.machine.add_transition(trigger='sensor_off', source='idle', dest=None)
 
         # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off', source='disabled', dest=None)
+        self.machine.add_transition(trigger='sensor_off', source='disabled', dest='idle')
 
         self.machine.add_transition('sensor_on', ['idle', 'disabled'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
+        self.machine.add_transition('sensor_on', ['idle', 'disabled'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
 
+        self.machine.add_transition(trigger='enter', source='active', dest='active_timer', unless='will_stay_on')
+        self.machine.add_transition(trigger='enter', source='active', dest='active_stay_on', conditions='will_stay_on')
 
-        self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
-        # self.machine.add_transition(trigger='sensor_on', source='active', dest='=')
-        self.machine.add_transition(trigger='timer_expires', source='active', dest='idle')
+        # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
+        self.machine.add_transition(trigger='sensor_on', source='active_timer', dest=None, after='_reset_timer')
+        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle')
 
 
     def draw(self):
-        self.log("Updating graph")
+        self.log("Updating graph in state: " + self.state)
         code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
         self.log("Updated graph: " + str(code))
 
@@ -64,9 +70,13 @@ class SimpleFSM(hass.Hass):
 
 
     def _start_timer(self):
-        return False;
+        self.timer_handle = Timer(3,self.timer_expire);
+        self.timer_handle.start();
     
+
     def _reset_timer(self):
+        self.timer_handle.cancel();
+        self._start_timer();
         return True;
 
     
@@ -98,6 +108,11 @@ class SimpleFSM(hass.Hass):
             self.log("is_overridden: " + self.get_state(self.overrideSwitch))
             return self.get_state(self.overrideSwitch) == self.OVERRIDE_ON_STATE;
     
+    def will_stay_on(self):
+        return self.args.get('stay', False);
+
+
+
 
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
@@ -108,21 +123,28 @@ class SimpleFSM(hass.Hass):
 
     def on_exit_idle(self):
         self.log("Exiting idle")
+
     def timer_expire(self):
         self.timer_expires();
     def on_enter_active(self):
+        self.enter();
         # self.draw();
         # _start_timer();
         # turn on entities
+        # if will_stay_on():
+        #     self.to_active_stay_on();
+        # else:
+        #     self.to_active_timer();
         self.log("Entering active state. Starting timer and turning on entities.")
-        self.timer_handle = self.run_in(self.timer_expires, 2)
+        self._start_timer();
         for e in self.controlEntities:
             self.turn_on(e)
         
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer");
-        if self.timer_handle:
-            self.cancel_timer(self.timer) # cancel previous timer
+        self.timer_handle.cancel() # cancel previous timer
+        # if self.timer_handle:
+
         for e in self.controlEntities:
             self.turn_off(e)
     def on_enter_disabled(self):
@@ -177,7 +199,7 @@ class SimpleFSM(hass.Hass):
     def config_state_entities(self):
     
 
-        if "state_entities" in self.args: # will control all enti OR the states of all entities and use the result.
+        if "state_entities" in self.args and self.args['state_entities'] is not None: # will control all enti OR the states of all entities and use the result.
             self.stateEntities = [];
             self.stateEntities = self.args['state_entities']
 
