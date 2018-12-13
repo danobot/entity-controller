@@ -8,7 +8,7 @@ logging.getLogger('transitions').setLevel(logging.INFO)
 class SimpleFSM(hass.Hass):
 
     
-    STATES = ['idle', 'disabled', 'checking', 'active']
+    STATES = ['idle', 'disabled', 'active']
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
@@ -21,12 +21,19 @@ class SimpleFSM(hass.Hass):
         self.config_sensor_entities();
         self.config_static_strings();
         self.config_other();
-        self.machine = Machine(model=self, states=SimpleFSM.STATES, initial='idle', title=str(__name__)+" State Diagram",show_conditions=True,show_auto_transitions =True)
+        self.machine = Machine(model=self, 
+            states=SimpleFSM.STATES, 
+            initial='idle', 
+            title=str(__name__)+" State Diagram",
+            show_conditions=True,
+            show_auto_transitions =True,
+            after_state_change=self.draw
+        )
 
         self.log("Drawing graph");
         self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions='is_overridden')
         # self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off', source='idle', dest=None, unless=['is_overridden'])
+        self.machine.add_transition(trigger='sensor_off', source='idle', dest=None)
 
         # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
         self.machine.add_transition(trigger='sensor_off', source='disabled', dest=None)
@@ -41,7 +48,8 @@ class SimpleFSM(hass.Hass):
 
     def draw(self):
         self.log("Updating graph")
-        self.get_graph().draw('/conf/temp/fsm_diagram_'+str(__name__)+'.png', prog='dot')
+        code = self.get_graph().draw('/conf/temp/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
+        self.log("Updated graph: " + str(code))
 
     # =====================================================
     # S T A T E   M A C H I N E   A C T I O N S
@@ -96,20 +104,20 @@ class SimpleFSM(hass.Hass):
     # =====================================================
     def on_enter_idle(self):
         self.log("Entering idle")
-        self.draw();
+        # self.draw();
 
     def on_exit_idle(self):
         self.log("Exiting idle")
     def timer_expire(self):
         self.timer_expires();
     def on_enter_active(self):
+        # self.draw();
         # _start_timer();
         # turn on entities
         self.log("Entering active state. Starting timer and turning on entities.")
         self.timer_handle = self.run_in(self.timer_expires, 2)
         for e in self.controlEntities:
             self.turn_on(e)
-        self.draw();
         
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer");
@@ -118,8 +126,8 @@ class SimpleFSM(hass.Hass):
         for e in self.controlEntities:
             self.turn_off(e)
     def on_enter_disabled(self):
+        # self.draw();
         self.log("We are now disabled")
-        self.draw();
 
     def on_exit_disabled(self):
         self.log("Leaving disabled")
