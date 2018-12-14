@@ -5,10 +5,11 @@ import logging
 from threading import Timer
 import time
 
+VERSION = '1.0.0'
 SENSOR_TYPE_DURATION = 1;
 SENSOR_TYPE_EVENT = 2;
 # App to turn lights on when motion detected then off again after a delay
-class SimpleFSM(hass.Hass):
+class LightingSM(hass.Hass):
     
     
     logger = logging.getLogger(__name__)
