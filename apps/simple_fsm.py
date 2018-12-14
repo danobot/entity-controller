@@ -108,7 +108,7 @@ class SimpleFSM(hass.Hass):
     def _state_entity_state(self):
         state = True;
         for e in self.stateEntities:
-            s = self.get_state('light.test_light');
+            s = self.get_state(e);
             state = state or s == self.ON_STATE;
             self.log(" * State of {} is {} and cumulative state is {}".format(e, s, state));
         return state;
