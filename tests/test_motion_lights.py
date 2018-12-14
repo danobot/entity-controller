@@ -191,8 +191,8 @@ def test_entity_on_off(given_that, ml, assert_that, time_travel,entity_on, entit
 
 # Helper Functions
 def motion(ml):
-    ml.motion('binary_sensor.test_sensor', None, 'off', 'on', None)
-    ml.motion('binary_sensor.test_sensor', None, 'on', 'off', None)
+    ml.sensor_state_change('binary_sensor.test_sensor', None, 'off', 'on', None)
+    # ml.motion('binary_sensor.test_sensor', None, 'on', 'off', None)
 
 def motion_with_delay(ml, delay): # For motion sensors that stay on for some duration
     ml.motion('binary_sensor.test_sensor', None, 'off', 'on', None)

@@ -5,10 +5,10 @@ from apps.simple_fsm import SimpleFSM
 # Important:
 # For this example to work, do not forget to copy the `conftest.py` file.
 # See README.md for more info
-CONTROL_ENTITY = 'light.CONTROL_ENTITY';
-SENSOR_ENTITY = 'binary_sensor.SENSOR_ENTITY';
+CONTROL_ENTITY = 'light.test_light';
+SENSOR_ENTITY = 'binary_sensor.test_sensor';
 
-STATE_ENTITY = 'binary_sensor.test_bs'
+STATE_ENTITY = 'binary_sensor.test_state_entity'
 
 IMAGE_PATH = '.';
 DELAY = 120;
@@ -17,6 +17,7 @@ DELAY = 120;
 def ml(given_that):
     ml = SimpleFSM(None, None, None, None, None, None, None, None)
     given_that.time_is(0)
+    given_that.passed_arg('image_path').is_set_to(IMAGE_PATH)
     
     return ml
 
@@ -34,7 +35,7 @@ def ml(given_that):
 def test_demo(given_that, ml, assert_that, time_travel,state_entity_value,state_entity_state):
     # given_that.passed_arg(entity).is_set_to(entity_value)
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
-    given_that.passed_arg('image_path').is_set_to(IMAGE_PATH)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
     given_that.passed_arg('state_entites').is_set_to(state_entity_value)
 
     given_that.passed_arg('delay').is_set_to(0.001)
@@ -55,6 +56,28 @@ def test_demo(given_that, ml, assert_that, time_travel,state_entity_value,state_
     assert_that(CONTROL_ENTITY).was.turned_on()
     # ml.timer_expire();
     # time.sleep(2)
+    assert_that(CONTROL_ENTITY).was.turned_off()
+
+def test_duration_sensor(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('delay').is_set_to(0.1  )
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('sensor_type_duration').is_set_to('true')
+
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+    time.sleep(0.1)
+
+
+    time_travel.assert_current_time(0).seconds()
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+
+    assert_that(CONTROL_ENTITY).was.turned_on()
+    # ml.timer_expire();
+    time.sleep(2)
+    given_that.mock_functions_are_cleared(clear_mock_states=True)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
     assert_that(CONTROL_ENTITY).was.turned_off()
 
 

@@ -41,37 +41,43 @@ class SimpleFSM(hass.Hass):
             finalize_event=self.draw
         )
 
-        self.log("Drawing graph");
-        self.machine.add_transition(trigger='sensor_on', source='idle', dest='disabled', conditions='is_overridden')
+        # self.log("Drawing graph");
+        self.machine.add_transition(trigger='disable', source='*', dest='disabled')
+
+        # Disabled
+        self.machine.add_transition(trigger='enable',       source='disabled',          dest='idle')
+        self.machine.add_transition(trigger='sensor_on',    source='disabled',          dest=None)
+        
         # self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off', source='idle', dest=None)
+        self.machine.add_transition(trigger='sensor_off',   source='idle',              dest=None)
 
         # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off', source='disabled', dest='idle')
+        self.machine.add_transition(trigger='sensor_off',   source='disabled',          dest='idle')
 
-        self.machine.add_transition('sensor_on', ['idle', 'disabled'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
-        self.machine.add_transition('sensor_on', ['idle', 'disabled'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
+        self.machine.add_transition('sensor_on', ['idle'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
+        self.machine.add_transition('sensor_on', ['idle'], 'active',conditions=['is_state_entities_off']) # , unless=[ 'is_overridden']
 
-        self.machine.add_transition(trigger='enter', source='active', dest='active_timer', unless='will_stay_on')
-        self.machine.add_transition(trigger='enter', source='active', dest='active_stay_on', conditions='will_stay_on')
+        self.machine.add_transition(trigger='enter',        source='active',            dest='active_timer',            unless='will_stay_on')
+        self.machine.add_transition(trigger='enter',        source='active',            dest='active_stay_on',          conditions='will_stay_on')
 
         # Active Timer
-        self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_normal', unless=['is_night'])
-        self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_night', conditions=['is_night'])
-        self.machine.add_transition(trigger='sensor_on', source='active_timer', dest=None, after='_reset_timer')
+        self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_normal',     unless=['is_night'])
+        self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_night',      conditions=['is_night'])
+        self.machine.add_transition(trigger='sensor_on',    source='active_timer',      dest=None,                      after='_reset_timer')
 
         # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
         
         # Active Timer Normal
-        self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle')
-        self.machine.add_transition(trigger='sensor_off',   source='active_timer_normal', dest=None)
+        self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', unless=['is_event_sensor'])
+        self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest=None)
+        self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest='idle', unless=['is_event_sensor'])
         # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
 
 
     def draw(self):
         self.log("Updating graph in state: " + self.state)
         code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
-        self.log("Updated graph: " + str(code))
+        # self.log("Updated graph")
 
     # =====================================================
     # S T A T E   M A C H I N E   A C T I O N S
@@ -86,7 +92,11 @@ class SimpleFSM(hass.Hass):
               
             #     self.sensor_off_fake()
     
-
+    def override_state_change(self, entity, attribute, old, new, kwargs):
+        if new == self.OVERRIDE_ON_STATE:
+            self.disable()
+        if new == self.OVERRIDE_OFF_STATE:
+            self.enable()
 
     def _start_timer(self):
         self.timer_handle = Timer(self.delay,self.timer_expire);
@@ -119,14 +129,14 @@ class SimpleFSM(hass.Hass):
     def is_state_entities_on(self):
         return self._state_entity_state();
 
-    def is_overridden(self):
-        self.log("is_overridden" + str(self.overrideSwitch));
-        if self.overrideSwitch is None:
-            self.log("is_overridden: false")
-            return False;
-        else:
-            self.log("is_overridden: " + self.get_state(self.overrideSwitch))
-            return self.get_state(self.overrideSwitch) == self.OVERRIDE_ON_STATE;
+    # def is_overridden(self):
+    #     self.log("is_overridden" + str(self.overrideSwitch));
+    #     if self.overrideSwitch is None:
+    #         self.log("is_overridden: false")
+    #         return False;
+    #     else:
+    #         self.log("is_overridden: " + self.get_state(self.overrideSwitch))
+    #         return self.get_state(self.overrideSwitch) == self.OVERRIDE_ON_STATE;
     
     def will_stay_on(self):
         return self.args.get('stay', False);
@@ -288,6 +298,8 @@ class SimpleFSM(hass.Hass):
             self.brightness = self.args["brightness"]
 
         self.overrideSwitch = self.args.get("override_switch", None)
+        if self.overrideSwitch is not None:
+            self.listen_state(self.override_state_change, self.overrideSwitch)
         if self.args.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION;
         else:
