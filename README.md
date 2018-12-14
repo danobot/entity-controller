@@ -138,6 +138,20 @@ motion_light:
   topic: "cmnd/table_lamp/POWER"
 ```
 
+# About Lighting SM 
+
+`LightingSM` is a complete rewrite of the application, using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
+
+![Lighting SM State Diagram](images/lighting_sm.png)
+You can trial the beta version by including `tracker-lsm.json` on the `develop` branch and changing the app declarations to:
+```yaml
+  module: lighting_sm
+  class: LightingSM
+```
+
+It is not 100% compatible with the current configuration (no feature parity yet).
+
+
 # Automatic updates
 Use the `custom_updater` component to track updates.
 
