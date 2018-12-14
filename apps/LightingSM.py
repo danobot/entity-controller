@@ -258,10 +258,9 @@ class LightingSM(hass.Hass):
 
         if "entities" in self.args: 
             self.controlEntities.extend( self.args['entities'])
-        # else:
-        #     self.controlEntities.append(self.args["entity_on"] );
+
         if "entity_on" in self.args: 
-            self.controlEntities.append( [self.args["entity_on"] ]);
+            self.controlEntities.append( self.args["entity_on"] );
 
         # IF no state entities are defined, use control entites as state
         if self.stateEntities is  None:
