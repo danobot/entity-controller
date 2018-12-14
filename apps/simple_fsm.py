@@ -4,6 +4,9 @@ from transitions.extensions import HierarchicalGraphMachine as Machine
 import logging
 from threading import Timer
 import time
+
+SENSOR_TYPE_DURATION = 1;
+SENSOR_TYPE_EVENT = 2;
 # App to turn lights on when motion detected then off again after a delay
 class SimpleFSM(hass.Hass):
     
@@ -13,12 +16,16 @@ class SimpleFSM(hass.Hass):
     stateEntities = None;
     controlEntities = None;
     sensorEntities = None;
+    timer_handle = None;
+    sensor_type = None;
     night_mode = None;
     def custom_log(self, **kwargs):
         self.logger.info(kwargs);
+
+
     def initialize(self):
-        self.timer = None
-        self.listen_log(self.custom_log)
+        # self.set_app_pin(True);
+        # self.listen_log(self.custom_log)
         self.config_state_entities();
         self.config_control_entities();
         self.config_sensor_entities();
@@ -31,7 +38,7 @@ class SimpleFSM(hass.Hass):
             title=str(__name__)+" State Diagram",
             show_conditions=True,
             # show_auto_transitions = True,
-            after_state_change=self.draw
+            finalize_event=self.draw
         )
 
         self.log("Drawing graph");
@@ -48,16 +55,20 @@ class SimpleFSM(hass.Hass):
         self.machine.add_transition(trigger='enter', source='active', dest='active_timer', unless='will_stay_on')
         self.machine.add_transition(trigger='enter', source='active', dest='active_stay_on', conditions='will_stay_on')
 
+        # Active Timer
         self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_normal', unless=['is_night'])
         self.machine.add_transition(trigger='enter', source='active_timer', dest='active_timer_night', conditions=['is_night'])
+        self.machine.add_transition(trigger='sensor_on', source='active_timer', dest=None, after='_reset_timer')
 
         # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
-        self.machine.add_transition(trigger='sensor_on', source='active_timer', dest=None, after='_reset_timer')
-        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle')
+        
+        # Active Timer Normal
+        self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle')
+        self.machine.add_transition(trigger='sensor_off',   source='active_timer_normal', dest=None)
+        # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
 
 
     def draw(self):
-        time.sleep(1)
         self.log("Updating graph in state: " + self.state)
         code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
         self.log("Updated graph: " + str(code))
@@ -70,10 +81,10 @@ class SimpleFSM(hass.Hass):
         if new == self.SENSOR_ON_STATE:
             self.sensor_on()
         if new == self.SENSOR_OFF_STATE:
-            if self.args.get("sensor_type_duration"):
-                self.sensor_off()
-            else:
-                self.sensor_off_fake()
+            if self.sensor_type == SENSOR_TYPE_EVENT:
+                self.sensor_off();
+              
+            #     self.sensor_off_fake()
     
 
 
@@ -126,6 +137,8 @@ class SimpleFSM(hass.Hass):
         else:     
             return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time']);
 
+    def is_event_sensor(self):
+        return self.sensor_type == SENSOR_TYPE_EVENT;
 
 
     # =====================================================
@@ -164,6 +177,7 @@ class SimpleFSM(hass.Hass):
         # if self.timer_handle:
 
         for e in self.controlEntities:
+            self.log("Turning off {}".format(e))
             self.turn_off(e)
     def on_enter_disabled(self):
         # self.draw();
@@ -274,3 +288,8 @@ class SimpleFSM(hass.Hass):
             self.brightness = self.args["brightness"]
 
         self.overrideSwitch = self.args.get("override_switch", None)
+        if self.args.get("sensor_type_duration"):
+            self.sensor_type = SENSOR_TYPE_DURATION;
+        else:
+            self.sensor_type = SENSOR_TYPE_EVENT;
+
