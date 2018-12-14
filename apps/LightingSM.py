@@ -34,7 +34,7 @@ class LightingSM(hass.Hass):
         self.config_night_mode();
         self.config_other();
         self.machine = Machine(model=self, 
-            states=SimpleFSM.STATES, 
+            states=LightingSM.STATES, 
             initial='idle', 
             title=str(__name__)+" State Diagram",
             show_conditions=True,
@@ -77,7 +77,7 @@ class LightingSM(hass.Hass):
 
     def draw(self):
         self.log("Updating graph in state: " + self.state)
-        code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(__name__)+'.png', prog='dot', format='png')
+        code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(self.name)+'.png', prog='dot', format='png')
         # self.log("Updated graph")
 
     # =====================================================

@@ -1,6 +1,6 @@
 import pytest
 import time
-from apps.simple_fsm import SimpleFSM
+from apps.LightingSM import LightingSM
 
 # Important:
 # For this example to work, do not forget to copy the `conftest.py` file.
