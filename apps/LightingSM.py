@@ -73,6 +73,7 @@ class LightingSM(hass.Hass):
         self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest=None, conditions=['is_event_sensor'])
         self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest='idle', conditions=['is_duration_sensor','is_timer_expired'])
         # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
+        # self.machine.add_transition(trigger='control',    source='active', dest='idle', before='_cancel_timer')
 
         # duration sensor: we want to turn off if:
             # * timer expires. sensor is off
@@ -89,6 +90,7 @@ class LightingSM(hass.Hass):
     # =====================================================
 
     def sensor_state_change(self, entity, attribute, old, new, kwargs):
+        self.log("Sensor state change")
         if new == self.SENSOR_ON_STATE:
             self.sensor_on()
         if new == self.SENSOR_OFF_STATE:
@@ -102,21 +104,29 @@ class LightingSM(hass.Hass):
             self.disable()
         if new == self.OVERRIDE_OFF_STATE:
             self.enable()
+    def control_state_change(self, entity, attribute, old, new, kwargs):
+        # if new == self.CONTROL_ON_STATE:
+        self.log(self.is_active_timer_normal())
+        if self.is_active_timer_normal():
+            self.control()
+        # if new == self.CONTROL_OFF_STATE:
+            # self.enable()
 
     def _start_timer(self):
         self.timer_handle = Timer(self.delay,self.timer_expire);
         self.timer_handle.start();
     
+    def _cancel_timer(self):
+        if self.timer_handle.is_alive():
+            self.timer_handle.cancel();
 
     def _reset_timer(self):
-        self.log("Restting timer")
-        if self.timer_handle:
-            self.timer_handle.cancel();
+        self.log("Resetting timer")
+        self._cancel_timer();
         self._start_timer();
-        self.log(str(self.timer_handle))
+        # self.log(str(self.timer_handle))
         return True;
 
-    
        
 
     # =====================================================
@@ -262,6 +272,12 @@ class LightingSM(hass.Hass):
         if "entity_on" in self.args: 
             self.controlEntities.append( self.args["entity_on"] );
 
+
+        #for control in self.controlEntities:
+        #   self.log("Registering control: " + str(control))
+        #   self.listen_state(self.control_state_change, control)
+
+
         # IF no state entities are defined, use control entites as state
         if self.stateEntities is  None:
             self.stateEntities = [];
@@ -275,9 +291,10 @@ class LightingSM(hass.Hass):
         if "state_entities" in self.args and self.args['state_entities'] is not None: # will control all enti OR the states of all entities and use the result.
             self.log("config defined")
             self.stateEntities = [];
-            self.stateEntities = self.args['state_entities']
+            self.stateEntities.extend(self.args.get('state_entities',[]));
 
         self.log("State Entities: " + str(self.stateEntities));
+
 
     def config_sensor_entities(self):
         self.sensorEntities = [];
@@ -290,6 +307,14 @@ class LightingSM(hass.Hass):
             self.sensorEntities.extend(temp)
 
 
+        # self.sensorEntities = [];
+        # temp = self.args.get("sensor", [])
+        # self.sensorEntities.extend(temp)
+            
+        # temp = self.args.get("sensors", [])
+        # self.sensorEntities.extend(temp)
+
+
             
         
 
@@ -297,9 +322,11 @@ class LightingSM(hass.Hass):
             self.log("No sensor specified, doing nothing")
 
         self.log("Sensor Entities: " + str(self.sensorEntities));
+
         for sensor in self.sensorEntities:
             self.log("Registering sensor: " + str(sensor))
             self.listen_state(self.sensor_state_change, sensor)
+
     
 
     def config_static_strings(self):
