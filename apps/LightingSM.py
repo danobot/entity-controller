@@ -20,6 +20,8 @@ class LightingSM(hass.Hass):
     timer_handle = None;
     sensor_type = None;
     night_mode = None;
+    backoff = False;
+    backoff_count = 0;
     def custom_log(self, **kwargs):
         self.logger.info(kwargs);
 
@@ -113,16 +115,30 @@ class LightingSM(hass.Hass):
             # self.enable()
 
     def _start_timer(self):
-        self.timer_handle = Timer(self.delay,self.timer_expire);
+        if self.backoff_count == 0:
+            delay = self.delay;
+        else:
+            delay = self.delay*self.backoff_factor
+                # delay = 10
+            if delay > self.backoff_max:
+                delay = self.backoff_max
+        # 0 - 10
+        # 1 - 20
+
+        self.timer_handle = Timer(delay,self.timer_expire);
+        self.log("Delay: " + str(delay));
         self.timer_handle.start();
     
     def _cancel_timer(self):
+        self.backoff_count = 0;
         if self.timer_handle.is_alive():
             self.timer_handle.cancel();
 
     def _reset_timer(self):
         self.log("Resetting timer")
         self._cancel_timer();
+        if self.backoff:      
+            self.backoff_count = self.backoff_count + 1;
         self._start_timer();
         # self.log(str(self.timer_handle))
         return True;
@@ -352,6 +368,12 @@ class LightingSM(hass.Hass):
             self.entityOff = self.args.get("entity_off", None)
 
         self.delay = self.args.get("delay", 180);
+        
+        backoff = self.args.get('backoff', None)
+        if backoff:
+            self.log("setting up backoff. Using delay as initial backoff value.")
+            self.backoff_factor = self.args.get('backoff_factor', 1)
+            self.backoff_max = self.args.get('backoff_max', 300)
 
         self.stay = self.args.get("stay", False)
 
