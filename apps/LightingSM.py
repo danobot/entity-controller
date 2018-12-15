@@ -115,30 +115,32 @@ class LightingSM(hass.Hass):
             # self.enable()
 
     def _start_timer(self):
+        self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.delay, self.backoff_factor))
         if self.backoff_count == 0:
-            delay = self.delay;
+            self.previous_delay = self.delay;
         else:
-            delay = self.delay*self.backoff_factor
+            self.previous_delay = self.previous_delay*self.backoff_factor
                 # delay = 10
-            if delay > self.backoff_max:
-                delay = self.backoff_max
+            if self.previous_delay > self.backoff_max:
+                self.log("Max backoff reached. Will not increase further.")
+                self.previous_delay = self.backoff_max
         # 0 - 10
         # 1 - 20
 
-        self.timer_handle = Timer(delay,self.timer_expire);
-        self.log("Delay: " + str(delay));
+        self.timer_handle = Timer(self.previous_delay, self.timer_expire);
+        self.log("Delay: " + str(self.previous_delay));
         self.timer_handle.start();
     
     def _cancel_timer(self):
-        self.backoff_count = 0;
         if self.timer_handle.is_alive():
             self.timer_handle.cancel();
 
     def _reset_timer(self):
-        self.log("Resetting timer")
+        self.log("Resetting timer" + str(self.backoff))
         self._cancel_timer();
-        if self.backoff:      
-            self.backoff_count = self.backoff_count + 1;
+        if self.backoff:
+            self.log("inc backoff");   
+            self.backoff_count += 1;
         self._start_timer();
         # self.log(str(self.timer_handle))
         return True;
@@ -221,6 +223,8 @@ class LightingSM(hass.Hass):
 
     def on_enter_active(self):
         self.enter();
+        self.backoff_count = 0;
+
         # self.draw();
         # _start_timer();
         # turn on entities
@@ -369,8 +373,8 @@ class LightingSM(hass.Hass):
 
         self.delay = self.args.get("delay", 180);
         
-        backoff = self.args.get('backoff', None)
-        if backoff:
+        self.backoff = self.args.get('backoff', False)
+        if self.backoff:
             self.log("setting up backoff. Using delay as initial backoff value.")
             self.backoff_factor = self.args.get('backoff_factor', 1)
             self.backoff_max = self.args.get('backoff_max', 300)
