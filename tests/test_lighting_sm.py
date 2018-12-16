@@ -136,6 +136,33 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     # should NOT turn off because sensor is still on
     assert ml.state == "active_timer_normal"
     assert_that(CONTROL_ENTITY).was_not.turned_off()
+    
+def test_basic_disable(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    OVERRIDE_SWITCH='binary_sensor.override'
+    given_that.passed_arg('override_switch').is_set_to(OVERRIDE_SWITCH)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(OVERRIDE_SWITCH).is_set_to('off')
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+    assert ml.state == "idle"
+    # statechange of override switch should transition to disabled
+    ml.override_state_change(OVERRIDE_SWITCH, None, 'off', 'on', None)
+    assert ml.state == "disabled"
+    motion(ml)
+    assert ml.state == "disabled"
+
+    assert_that(CONTROL_ENTITY).was_not.turned_on()
+
+    assert ml.state == "disabled"
+    assert_that(CONTROL_ENTITY).was_not.turned_off()
+    ml.override_state_change(OVERRIDE_SWITCH, None, 'on', 'off', None)
+    assert ml.state == "idle"
+    
+
 # Helper Functions
 def motion(ml):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)

@@ -58,8 +58,7 @@ class LightingSM(hass.Hass):
         self.machine.add_transition('sensor_on',            'idle',                     'active',                       conditions=['is_state_entities_off'])
 
         # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off',   source='disabled',          dest='idle')
-
+        self.machine.add_transition(trigger='sensor_off',   source='disabled',          dest=None)
 
         self.machine.add_transition(trigger='enter',        source='active',            dest='active_timer',            unless='will_stay_on')
         self.machine.add_transition(trigger='enter',        source='active',            dest='active_stay_on',          conditions='will_stay_on')
@@ -87,13 +86,14 @@ class LightingSM(hass.Hass):
             # * sensor turns off and timer has expired
         # do not turn off if
             # * sensor is on and timer expires
+    
     def draw(self):
         self.log("Updating graph in state: " + self.state)
         code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(self.name)+'.png', prog='dot', format='png')
         # self.log("Updated graph")
 
     # =====================================================
-    # S T A T E   M A C H I N E   A C T I O N S
+    # S T A T E   C H A N G E   C A L L B A C K S
     # =====================================================
 
     def sensor_state_change(self, entity, attribute, old, new, kwargs):
@@ -104,20 +104,19 @@ class LightingSM(hass.Hass):
             if self.sensor_type == SENSOR_TYPE_EVENT:
                 self.sensor_off();
               
-            #     self.sensor_off_fake()
-    
     def override_state_change(self, entity, attribute, old, new, kwargs):
+        self.logger.info("DIsabling fds")
         if new == self.OVERRIDE_ON_STATE:
+            self.logger.info("DIsabling")
             self.disable()
         if new == self.OVERRIDE_OFF_STATE:
             self.enable()
+
+
     def control_state_change(self, entity, attribute, old, new, kwargs):
-        # if new == self.CONTROL_ON_STATE:
         self.log(self.is_active_timer_normal())
         if self.is_active_timer_normal():
             self.control()
-        # if new == self.CONTROL_OFF_STATE:
-            # self.enable()
 
     def _start_timer(self):
         if self.backoff_count == 0:
@@ -129,12 +128,10 @@ class LightingSM(hass.Hass):
             if self.previous_delay > self.backoff_max:
                 self.log("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
-        # 0 - 10
-        # 1 - 20
 
-        self.timer_handle = Timer(self.previous_delay, self.timer_expire);
-        self.log("Delay: " + str(self.previous_delay));
-        self.timer_handle.start();
+        self.timer_handle = Timer(self.previous_delay, self.timer_expire)
+        self.log("Delay: " + str(self.previous_delay))
+        self.timer_handle.start()
     
     def _cancel_timer(self):
         if self.timer_handle.is_alive():
@@ -195,32 +192,31 @@ class LightingSM(hass.Hass):
 
     def is_night(self):
         if self.night_mode is None:
-            return False;
-        else:     
-            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time']);
+            return False
+        else:
+            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
 
     def is_event_sensor(self):
-        return self.sensor_type == SENSOR_TYPE_EVENT;
+        return self.sensor_type == SENSOR_TYPE_EVENT
 
     def is_duration_sensor(self):
-        return self.sensor_type == SENSOR_TYPE_DURATION;
+        return self.sensor_type == SENSOR_TYPE_DURATION
 
     def is_timer_expired(self):
 
-        expired = self.timer_handle.is_alive() == False;
+        expired = self.timer_handle.is_alive() == False
         self.log("is timer expired? " + expired)
-        return expired;
+        return expired
     
     def timer_expire(self):
-        self.log("Timer expired");
+        self.log("Timer expired")
         if self.is_duration_sensor():
             self.logger.info("timer expired and its duration")
             if self.is_sensor_off():
                 self.logger.info("sensor is off")
-                self.timer_expires();
-
+                self.timer_expires()
         else:    
-            self.timer_expires();
+            self.timer_expires()
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
@@ -235,32 +231,28 @@ class LightingSM(hass.Hass):
 
     def on_enter_active(self):
         self.enter();
-        self.backoff_count = 0;
+        self.backoff_count = 0
 
-        # self.draw();
-        # _start_timer();
-        # turn on entities
-        # if will_stay_on():
-        #     self.to_active_stay_on();
-        # else:
-        #     self.to_active_timer();
         self.log("Entering active state. Starting timer and turning on entities.")
         self._start_timer();
         for e in self.controlEntities:
             self.turn_on(e)
     
     def on_enter_active_timer(self):
-        self.enter();
+        self.enter()
 
+    # def on_exit_active_timer(self):
+    #     self.exit();
 
     def on_exit_active(self):
-        self.log("Turning off entities, cancelling timer");
+        self.log("Turning off entities, cancelling timer")
         self.timer_handle.cancel() # cancel previous timer
-        # if self.timer_handle:
+
 
         for e in self.controlEntities:
             self.log("Turning off {}".format(e))
             self.turn_off(e)
+
     def on_enter_disabled(self):
         # self.draw();
         self.log("We are now disabled")
@@ -401,7 +393,9 @@ class LightingSM(hass.Hass):
 
         self.overrideSwitch = self.args.get("override_switch", None)
         if self.overrideSwitch is not None:
+            self.logger.info("Setting override callback")
             self.listen_state(self.override_state_change, self.overrideSwitch)
+            
         if self.args.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION;
         else:
