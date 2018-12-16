@@ -308,7 +308,7 @@ class LightingSM(hass.Hass):
     def config_state_entities(self):
     
         self.log("Setting up state entities")
-        if "state_entities" in self.args and self.args['state_entities'] is not None: # will control all enti OR the states of all entities and use the result.
+        if self.args.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
             self.log("config defined")
             self.stateEntities = [];
             self.stateEntities.extend(self.args.get('state_entities',[]));

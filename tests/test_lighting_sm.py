@@ -197,6 +197,52 @@ def test_control_multiple(given_that, ml, assert_that, time_travel):
 
     assert ml.state == "idle"
 
+def test_state_multiple_off(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('state_entities').is_set_to(STATE_ENTITIES)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(STATE_ENTITY).is_set_to('off')
+    given_that.state_of(STATE_ENTITY2).is_set_to('off')
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+   
+    assert ml.state == "idle"
+
+    motion(ml)
+    assert ml.state == "active_timer_normal"
+    assert_that(CONTROL_ENTITY).was.turned_on()
+    ml.timer_expire()
+    assert ml.state == "idle"
+    assert_that(CONTROL_ENTITY).was.turned_off()
+   
+
+def test_state_multiple_on(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('state_entities').is_set_to(STATE_ENTITIES)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(STATE_ENTITY).is_set_to('on')
+    given_that.state_of(STATE_ENTITY2).is_set_to('off')
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+   
+    assert ml.state == "idle"
+
+    motion(ml)
+    
+    # should not turn on.
+
+    assert ml.state == "idle"
+
+    # should not activate
+    motion(ml)
+    assert_that(CONTROL_ENTITY).was_not.turned_on()
+    assert ml.state == "idle"
+
    
 # Helper Functions
 def motion(ml):
