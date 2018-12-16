@@ -3,6 +3,7 @@ version: '3.3'
 services:
   test:
     build: .
+    container_name: testing
     volumes:
       - .:/app
     # command: [ "pytest-watch", "--ext=.py,.yaml", "--","-s","--tb=line" ]

@@ -10,4 +10,4 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
 
-CMD [ "ptw", "--ext=.py,.yaml", "--","-sv" ]
+CMD [ "ptw","--","-sv" ]
