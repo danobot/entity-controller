@@ -22,7 +22,9 @@ class LightingSM(hass.Hass):
     night_mode = None;
     backoff = False;
     backoff_count = 0;
+    
     def custom_log(self, **kwargs):
+        self.logger.error("Callback")
         self.logger.info(kwargs);
 
 
@@ -43,7 +45,7 @@ class LightingSM(hass.Hass):
             # show_auto_transitions = True,
             finalize_event=self.draw
         )
-
+        self.logger.info("Hello")
         # self.log("Drawing graph");
         self.machine.add_transition(trigger='disable', source='*', dest='disabled')
 
@@ -156,13 +158,20 @@ class LightingSM(hass.Hass):
         self.log("Checking sensors: {}".format(str(self.sensorEntities)))
         for e in self.sensorEntities:
             self.log("Sensor check")
+            self.logger.info("SEnsor check")
             s = self.get_state(e);
-            if s == self.SENSOR_ON_STATE:
+            self.logger.info(s)
+            if s == self.SENSOR_OFF_STATE:
+                self.logger.info("The sensor is foudn to be on!")
                 state = True;
                 break;
         self.log(state)
         return True;
 
+
+    def is_sensor_on(self):
+        return self.is_sensor_off() == False;
+        
     def _state_entity_state(self):
         state = False;
         for e in self.stateEntities:
@@ -217,9 +226,17 @@ class LightingSM(hass.Hass):
     def on_exit_idle(self):
         self.log("Exiting idle")
 
+
     def timer_expire(self):
         self.log("Timer expired");
-        self.timer_expires();
+        if self.is_duration_sensor():
+            self.logger.info("timer expired and its duration")
+            if self.is_sensor_off():
+                self.logger.info("sensor is off")
+                self.timer_expires();
+
+        else:    
+            self.timer_expires();
 
     def on_enter_active(self):
         self.enter();

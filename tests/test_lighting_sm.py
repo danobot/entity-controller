@@ -51,7 +51,7 @@ def test_basic_config(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY).was.turned_off()
 
 
-def test_basic_duration(given_that, ml, assert_that, time_travel):
+def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
     given_that.passed_arg('sensor_type_duration').is_set_to(True)
@@ -79,30 +79,33 @@ def test_basic_duration(given_that, ml, assert_that, time_travel):
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
 
-# def test_duration_sensor(given_that, ml, assert_that, time_travel):
-#     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
-#     given_that.passed_arg('delay').is_set_to(0.1  )
-#     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
-#     given_that.passed_arg('sensor_type_duration').is_set_to('true')
-
-#     given_that.state_of(CONTROL_ENTITY).is_set_to('off')
-#     ml.initialize()
-#     given_that.mock_functions_are_cleared()
-#     time.sleep(0.1)
 
 
-#     time_travel.assert_current_time(0).seconds()
-#     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('sensor_type_duration').is_set_to(True)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
 
-#     assert_that(CONTROL_ENTITY).was.turned_on()
-#     # ml.timer_expire();
-#     time.sleep(2)
-#     given_that.mock_functions_are_cleared(clear_mock_states=True)
-#     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
-#     assert_that(CONTROL_ENTITY).was.turned_off()
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
 
+    assert ml.state == "idle"
 
-    # Helper Functions
+    given_that.state_of(SENSOR_ENTITY).is_set_to('on')
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+
+    assert ml.state == "active_timer_normal"
+    assert_that(CONTROL_ENTITY).was.turned_on()
+
+    # no sensor off command is received
+
+    given_that.state_of(SENSOR_ENTITY).is_set_to('on')
+    ml.timer_expire()
+    # should NOT turn off because sensor is still on
+    assert ml.state == "active_timer_normal"
+    assert_that(CONTROL_ENTITY).was_not.turned_off()
+# Helper Functions
 def motion(ml):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
