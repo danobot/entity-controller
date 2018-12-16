@@ -115,10 +115,10 @@ class LightingSM(hass.Hass):
             # self.enable()
 
     def _start_timer(self):
-        self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.delay, self.backoff_factor))
         if self.backoff_count == 0:
             self.previous_delay = self.delay;
         else:
+            self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.delay, self.backoff_factor))
             self.previous_delay = self.previous_delay*self.backoff_factor
                 # delay = 10
             if self.previous_delay > self.backoff_max:
@@ -359,14 +359,17 @@ class LightingSM(hass.Hass):
         self.STATE_ON_STATE = self.args.get("state_state_on", "on");
         self.STATE_OFF_STATE = self.args.get("state_state_off", "off");
     def config_night_mode(self):
+
+        # should be implemented by passing nightmore paramters to active_timer state (resuse active_timer state)
+
         if "night_mode" in self.args:
             self.night_mode = self.args["night_mode"]
             if not "start_time" in self.night_mode:
                 self.log("Night mode requires a start_time parameter !")
 
-            
             if not "end_time" in self.night_mode:
                 self.log("Night mode requires a end_time parameter !")
+            
     def config_other(self):
         if "entity_off" in self.args:
             self.entityOff = self.args.get("entity_off", None)
