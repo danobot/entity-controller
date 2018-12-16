@@ -166,7 +166,7 @@ class LightingSM(hass.Hass):
                 state = True;
                 break;
         self.log(state)
-        return True;
+        return state;
 
 
     def is_sensor_on(self):
@@ -186,15 +186,6 @@ class LightingSM(hass.Hass):
 
     def is_state_entities_on(self):
         return self._state_entity_state();
-
-    # def is_overridden(self):
-    #     self.log("is_overridden" + str(self.overrideSwitch));
-    #     if self.overrideSwitch is None:
-    #         self.log("is_overridden: false")
-    #         return False;
-    #     else:
-    #         self.log("is_overridden: " + self.get_state(self.overrideSwitch))
-    #         return self.get_state(self.overrideSwitch) == self.OVERRIDE_ON_STATE;
     
     def will_stay_on(self):
         return self.args.get('stay', False);
@@ -216,6 +207,17 @@ class LightingSM(hass.Hass):
         expired = self.timer_handle.is_alive() == False;
         self.log("is timer expired? " + expired)
         return expired;
+    
+    def timer_expire(self):
+        self.log("Timer expired");
+        if self.is_duration_sensor():
+            self.logger.info("timer expired and its duration")
+            if self.is_sensor_off():
+                self.logger.info("sensor is off")
+                self.timer_expires();
+
+        else:    
+            self.timer_expires();
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
@@ -227,16 +229,6 @@ class LightingSM(hass.Hass):
         self.log("Exiting idle")
 
 
-    def timer_expire(self):
-        self.log("Timer expired");
-        if self.is_duration_sensor():
-            self.logger.info("timer expired and its duration")
-            if self.is_sensor_off():
-                self.logger.info("sensor is off")
-                self.timer_expires();
-
-        else:    
-            self.timer_expires();
 
     def on_enter_active(self):
         self.enter();

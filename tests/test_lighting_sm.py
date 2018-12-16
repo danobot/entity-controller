@@ -22,7 +22,6 @@ def ml(given_that):
     ml.name = 'fds'
     return ml
 
-
 # @pytest.mark.parametrize("entity,entity_value", [
 #     ('entity', CONTROL_ENTITY),
 #     # ('entities', [CONTROL_ENTITY, CONTROL_ENTITY]),
@@ -78,7 +77,6 @@ def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     # should turn off because sensor is off
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
-
 
 
 def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
