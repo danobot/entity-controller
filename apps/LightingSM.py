@@ -74,8 +74,11 @@ class LightingSM(hass.Hass):
         # Active Timer Normal
         self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
         self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_duration_sensor', 'is_sensor_off'])
+        self.machine.add_transition(trigger='timer_expires', source='active_stay_on', dest=None)
         self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest=None, conditions=['is_event_sensor'])
         self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest='idle', conditions=['is_duration_sensor','is_timer_expired'])
+        self.machine.add_transition(trigger='sensor_off',    source='active_stay_on', dest=None)
+		
         # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
         # self.machine.add_transition(trigger='control',    source='active', dest='idle', before='_cancel_timer')
 

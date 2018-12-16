@@ -61,10 +61,27 @@ def test_basic_config_sad(given_that, ml, assert_that, time_travel):
 
     motion(ml)
     
-	assert ml.state == "idle"
-    
+    assert ml.state == "idle"
+
     assert_that(CONTROL_ENTITY).was_not.turned_on()
 
+def test_basic_config_stay(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('stay').is_set_to(True)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+    assert ml.state == "idle"
+
+    motion(ml)
+    assert ml.state == "active_stay_on"
+    assert_that(CONTROL_ENTITY).was.turned_on()
+    ml.timer_expire()
+    assert ml.state == "active_stay_on"
+    assert_that(CONTROL_ENTITY).was_not.turned_off()
 
 def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
