@@ -186,7 +186,18 @@ def test_control_multiple(given_that, ml, assert_that, time_travel):
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
     assert_that(CONTROL_ENTITY2).was.turned_off()
-    
+
+    # one control entitiy is on
+    given_that.state_of(CONTROL_ENTITY2).is_set_to('on')
+    given_that.mock_functions_are_cleared()
+    assert ml.state == "idle"
+
+    # should not activate
+    motion(ml)
+
+    assert ml.state == "idle"
+
+   
 # Helper Functions
 def motion(ml):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)

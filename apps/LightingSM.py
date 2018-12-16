@@ -102,7 +102,7 @@ class LightingSM(hass.Hass):
             self.sensor_on()
         if new == self.SENSOR_OFF_STATE:
             if self.sensor_type == SENSOR_TYPE_EVENT:
-                self.sensor_off();
+                self.sensor_off()
               
     def override_state_change(self, entity, attribute, old, new, kwargs):
         self.logger.info("DIsabling fds")
@@ -120,7 +120,7 @@ class LightingSM(hass.Hass):
 
     def _start_timer(self):
         if self.backoff_count == 0:
-            self.previous_delay = self.delay;
+            self.previous_delay = self.delay
         else:
             self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.delay, self.backoff_factor))
             self.previous_delay = self.previous_delay*self.backoff_factor
@@ -152,43 +152,39 @@ class LightingSM(hass.Hass):
     # =====================================================
     # S T A T E   M A C H I N E   C O N D I T I O N S
     # =====================================================
-    def is_sensor_off(self):
-        self.log("is sensor off?")
-        state = False;
-        self.log("Checking sensors: {}".format(str(self.sensorEntities)))
+    
+    def _sensor_entity_state(self):
         for e in self.sensorEntities:
-            self.log("Sensor check")
-            self.logger.info("SEnsor check")
-            s = self.get_state(e);
+            s = self.get_state(e)
             self.logger.info(s)
-            if s == self.SENSOR_OFF_STATE:
-                self.logger.info("The sensor is foudn to be on!")
-                state = True;
-                break;
-        self.log(state)
-        return state;
+            self.log(" * State of {} is {}".format(e, s))
+            if s == self.SENSOR_ON_STATE:
+                return True
+        return False
 
+    def is_sensor_off(self):
+        return self._sensor_entity_state() == False
 
     def is_sensor_on(self):
-        return self.is_sensor_off() == False;
+        return self._sensor_entity_state()
         
     def _state_entity_state(self):
-        state = False;
         for e in self.stateEntities:
-            s = self.get_state(e);
-            self.log(" * State of {} is {}".format(e, s));
+            s = self.get_state(e)
+            self.logger.info(s)
+            self.log(" * State of {} is {}".format(e, s))
             if s == self.STATE_ON_STATE:
                 return True
-        return False;
+        return False
     
     def is_state_entities_off(self):
-        return self._state_entity_state() == False;
+        return self._state_entity_state() == False
 
     def is_state_entities_on(self):
-        return self._state_entity_state();
+        return self._state_entity_state()
     
     def will_stay_on(self):
-        return self.args.get('stay', False);
+        return self.args.get('stay', False)
 
     def is_night(self):
         if self.night_mode is None:
