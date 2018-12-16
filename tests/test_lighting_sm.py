@@ -6,9 +6,12 @@ from apps.LightingSM import LightingSM
 # For this example to work, do not forget to copy the `conftest.py` file.
 # See README.md for more info
 CONTROL_ENTITY = 'light.test_light';
+CONTROL_ENTITY2 = 'light.test_light2';
 SENSOR_ENTITY = 'binary_sensor.test_sensor';
-
+CONTROL_ENTITIES = [CONTROL_ENTITY, CONTROL_ENTITY2]
 STATE_ENTITY = 'binary_sensor.test_state_entity'
+STATE_ENTITY2 = 'binary_sensor.test_state_entity2'
+STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 
 IMAGE_PATH = '.';
 DELAY = 120;
@@ -162,7 +165,28 @@ def test_basic_disable(given_that, ml, assert_that, time_travel):
     ml.override_state_change(OVERRIDE_SWITCH, None, 'on', 'off', None)
     assert ml.state == "idle"
     
+   
+def test_control_multiple(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(CONTROL_ENTITY2).is_set_to('off')
 
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+   
+    assert ml.state == "idle"
+
+    motion(ml)
+    assert ml.state == "active_timer_normal"
+    assert_that(CONTROL_ENTITY).was.turned_on()
+    assert_that(CONTROL_ENTITY2).was.turned_on()
+    ml.timer_expire()
+    assert ml.state == "idle"
+    assert_that(CONTROL_ENTITY).was.turned_off()
+    assert_that(CONTROL_ENTITY2).was.turned_off()
+    
 # Helper Functions
 def motion(ml):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
