@@ -1,5 +1,6 @@
 import pytest
-import time
+import time as thetime
+from datetime import time
 from apps.LightingSM import LightingSM
 
 # Important:
@@ -296,7 +297,7 @@ def test_complex(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY).was.turned_on()
     assert_that(CONTROL_ENTITY2).was.turned_on()
     # ml.timer_expire()
-    time.sleep(2)
+    thetime.sleep(2)
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
     assert_that(CONTROL_ENTITY2).was.turned_off()
@@ -317,7 +318,7 @@ def test_complex(given_that, ml, assert_that, time_travel):
 
     assert_that(CONTROL_ENTITY).was_not.turned_off()
     assert_that(CONTROL_ENTITY2).was_not.turned_off()
-    time.sleep(2)
+    thetime.sleep(2)
     # ml.timer_expire()
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
@@ -376,7 +377,62 @@ def test_entity_on_off(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY).was_not.turned_off()
     assert_that(CONTROL_ENTITY2).was_not.turned_off()
     assert_that(SCRIPT).was.turned_on()
+
+def night_mode(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    night = {}
+    night['brightness']=20
+    night['start_time'] ='20:00:00'
+    night['end_time'] = '20:00:00'
+    given_that.passed_arg('night_mode').is_set_to(night)
+    given_that.time_is(time(hour=19))
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+    motion(ml)
+    assert_that(CONTROL_ENTITY).was.turned_on_with(brightness=100)
+
+    given_that.time_is(time(hour=19))
+    given_that.mock_functions_are_cleared()
+    motion(ml)
+
+    assert_that(CONTROL_ENTITY).was.turned_on_with(brightness=20)
+
+
+    given_that.passed_arg('entity').is_set_to('light.alfred')
+    given_that.passed_arg('entity_on').is_set_to('light.dennis')
+    given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)
     
+    given_that.passed_arg('sensor').is_set_to('sensor.jordan')
+    given_that.passed_arg('sensors').is_set_to(SENSOR_ENTITIES)
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+    ml.controlEntities.index('light.dennis') 
+    ml.controlEntities.index('light.alfred') 
+    ml.controlEntities.index(CONTROL_ENTITY) 
+    ml.controlEntities.index(CONTROL_ENTITY2) 
+    ml.stateEntities.index('light.dennis') 
+    ml.stateEntities.index('light.alfred') 
+    ml.stateEntities.index(CONTROL_ENTITY) 
+    ml.stateEntities.index(CONTROL_ENTITY2) 
+    ml.sensorEntities.index('sensor.jordan') 
+    ml.sensorEntities.index(SENSOR_ENTITY) 
+    ml.sensorEntities.index(SENSOR_ENTITY2) 
+
+def test_parameters_state(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)
+    given_that.passed_arg('state_entities').is_set_to(STATE_ENTITIES)
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+    ml.controlEntities.index(CONTROL_ENTITY) 
+    ml.controlEntities.index(CONTROL_ENTITY2)
+    ml.stateEntities.index(STATE_ENTITY) 
+    ml.stateEntities.index(STATE_ENTITY2) 
+
 # Helper Functions
 def motion(ml):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
