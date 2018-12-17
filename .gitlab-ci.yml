@@ -26,8 +26,9 @@ before_script:
 build:
   stage: build
   script:
-    - docker build -t test_ml .
-    - docker run -v .:/app test_ml
+    - docker build -t registry.danielha.tk/HA/appdaemon-motion-lights/test_container .
+    - docker push registry.danielha.tk/HA/appdaemon-motion-lights/test_container
+    - docker run -v .:/app registry.danielha.tk/HA/appdaemon-motion-lights/test_container
 
 test:
   script:
