@@ -32,5 +32,3 @@ build:
 test:
   script:
     - echo "hi"
-test:
-  script:
