@@ -27,10 +27,10 @@ build:
   stage: build
   script:
     - docker build -t test_ml .
+    - docker run -v .:/app test_ml
 
 test:
   script:
     - echo "hi"
 test:
   script:
-    - docker run -v .:/app test_ml
