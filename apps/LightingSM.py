@@ -6,37 +6,38 @@ from threading import Timer
 import time
 
 VERSION = '0.5.0'
-SENSOR_TYPE_DURATION = 1;
-SENSOR_TYPE_EVENT = 2;
+SENSOR_TYPE_DURATION = 1
+SENSOR_TYPE_EVENT = 2
 # App to turn lights on when motion detected then off again after a delay
 class LightingSM(hass.Hass):
     
     
     logger = logging.getLogger(__name__)
     STATES = ['idle', 'disabled', {'name': 'active', 'children': [{'name': 'timer','children': ['normal', 'night']},'stay_on'], 'initial': False}]
-    stateEntities = None;
-    controlEntities = None;
-    sensorEntities = None;
-    timer_handle = None;
-    sensor_type = None;
-    night_mode = None;
-    backoff = False;
-    backoff_count = 0;
-    
+    stateEntities = None
+    controlEntities = None
+    sensorEntities = None
+    offEntities = None
+    timer_handle = None
+    sensor_type = None
+    night_mode = None
+    backoff = False
+    backoff_count = 0
     def custom_log(self, **kwargs):
         self.logger.error("Callback")
-        self.logger.info(kwargs);
+        self.logger.info(kwargs)
 
 
     def initialize(self):
         # self.set_app_pin(True);
         # self.listen_log(self.custom_log)
-        self.config_state_entities();
-        self.config_control_entities();
-        self.config_sensor_entities();
-        self.config_static_strings();
-        self.config_night_mode();
-        self.config_other();
+        self.config_static_strings()
+        self.config_state_entities()
+        self.config_control_entities()
+        self.config_sensor_entities()
+        self.config_off_entities()
+        self.config_night_mode()
+        self.config_other()
         self.machine = Machine(model=self, 
             states=LightingSM.STATES, 
             initial='idle', 
@@ -46,7 +47,7 @@ class LightingSM(hass.Hass):
             finalize_event=self.draw
         )
         self.logger.info("Hello")
-        # self.log("Drawing graph");
+        # self.log("Drawing graph")
         self.machine.add_transition(trigger='disable', source='*', dest='disabled')
 
         # Disabled
@@ -88,9 +89,10 @@ class LightingSM(hass.Hass):
             # * sensor is on and timer expires
     
     def draw(self):
-        self.log("Updating graph in state: " + self.state)
-        code = self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(self.name)+'.png', prog='dot', format='png')
-        # self.log("Updated graph")
+        if self.do_draw:
+            self.log("Updating graph in state: " + self.state)
+            self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(self.name)+'.png', prog='dot', format='png')
+            # self.log("Updated graph")
 
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
@@ -135,14 +137,14 @@ class LightingSM(hass.Hass):
     
     def _cancel_timer(self):
         if self.timer_handle.is_alive():
-            self.timer_handle.cancel();
+            self.timer_handle.cancel()
 
     def _reset_timer(self):
         self.log("Resetting timer" + str(self.backoff))
-        self._cancel_timer();
+        self._cancel_timer()
         if self.backoff:
-            self.log("inc backoff");   
-            self.backoff_count += 1;
+            self.log("inc backoff")
+            self.backoff_count += 1
         self._start_timer();
         # self.log(str(self.timer_handle))
         return True;
@@ -230,48 +232,32 @@ class LightingSM(hass.Hass):
         self.backoff_count = 0
 
         self.log("Entering active state. Starting timer and turning on entities.")
-        self._start_timer();
+        self._start_timer()
+
         for e in self.controlEntities:
             self.turn_on(e)
     
     def on_enter_active_timer(self):
         self.enter()
 
-    # def on_exit_active_timer(self):
-    #     self.exit();
-
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer")
-        self.timer_handle.cancel() # cancel previous timer
+        self._cancel_timer() # cancel previous timer
 
 
-        for e in self.controlEntities:
-            self.log("Turning off {}".format(e))
-            self.turn_off(e)
+        if self.offEntities is not None:
+            self.logger.info("using oFF entitesi")
+            for e in self.offEntities:
+                self.logger.info("Turning on {}".format(e))
+                
+                self.log("Turning on {}".format(e))
+                self.turn_on(e)
+        else:
+            for e in self.controlEntities:
+                self.log("Turning off {}".format(e))
+                self.turn_off(e)
 
-    def on_enter_disabled(self):
-        # self.draw();
-        self.log("We are now disabled")
-
-    def on_exit_disabled(self):
-        self.log("Leaving disabled")
     
-    # def timer_expire(self):
-
-    # def on_enter_checkOverride(self):
-    #     if self.is_overridden():
-    #         self.to_disabled();
-    #     else:
-    #         self.to_checking();
-
-    #     self.log(self.state)
-
-    # def on_enter_checking(self):
-    #     self.log("Checking state entities")
-    #     if self.is_state_entities_off():
-    #         self.to_active();
-    #     else:
-    #         self.to_idle();
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
@@ -315,9 +301,21 @@ class LightingSM(hass.Hass):
 
         self.log("State Entities: " + str(self.stateEntities));
 
+    def config_off_entities(self):
+    
+        self.log("Setting up off entities")
+        temp = self.args.get("entity_off", None)
+        if temp is not None:
+            self.offEntities = []
+            if type(temp) == str:
+                self.offEntities.append(temp)
+            else:
+                self.offEntities.extend(temp)
+            self.logger.info('entities: ' + str(self.offEntities))
+
 
     def config_sensor_entities(self):
-        self.sensorEntities = [];
+        self.sensorEntities = []
         temp = self.args.get("sensor", None)
         if temp is not None:
             self.sensorEntities.append(temp)
@@ -341,7 +339,7 @@ class LightingSM(hass.Hass):
         if self.sensorEntities.count == 0:
             self.log("No sensor specified, doing nothing")
 
-        self.log("Sensor Entities: " + str(self.sensorEntities));
+        self.log("Sensor Entities: " + str(self.sensorEntities))
 
         for sensor in self.sensorEntities:
             self.log("Registering sensor: " + str(sensor))
@@ -375,7 +373,7 @@ class LightingSM(hass.Hass):
             self.entityOff = self.args.get("entity_off", None)
 
         self.delay = self.args.get("delay", 180);
-        
+        self.do_draw = self.args.get("draw", False)
         self.backoff = self.args.get('backoff', False)
         if self.backoff:
             self.log("setting up backoff. Using delay as initial backoff value.")
