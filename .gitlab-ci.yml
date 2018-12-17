@@ -1,3 +1,5 @@
+image: test_ml
+
 test:
   script:
-    - docker run --rm -v ${PWD}/:/app: test_ml
+    - echo "hi"
