@@ -145,9 +145,9 @@ class LightingSM(hass.Hass):
         if self.backoff:
             self.log("inc backoff")
             self.backoff_count += 1
-        self._start_timer();
+        self._start_timer()
         # self.log(str(self.timer_handle))
-        return True;
+        return True
 
        
 
@@ -267,16 +267,16 @@ class LightingSM(hass.Hass):
     def config_control_entities(self):
     
         self.log("Setting up control entities")
-        self.controlEntities = [];
+        self.controlEntities = []
 
         if "entity" in self.args: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
-            self.controlEntities.append( self.args["entity"]);
+            self.controlEntities.append( self.args["entity"])
 
         if "entities" in self.args: 
             self.controlEntities.extend( self.args['entities'])
 
         if "entity_on" in self.args: 
-            self.controlEntities.append( self.args["entity_on"] );
+            self.controlEntities.append( self.args["entity_on"] )
 
 
         #for control in self.controlEntities:
@@ -286,20 +286,20 @@ class LightingSM(hass.Hass):
 
         # IF no state entities are defined, use control entites as state
         if self.stateEntities is  None:
-            self.stateEntities = [];
-            self.stateEntities.extend(self.controlEntities);
-            self.log("Added Control Entities as state entities: " + str(self.stateEntities));
-        self.log("Control Entities: " + str(self.controlEntities));
+            self.stateEntities = []
+            self.stateEntities.extend(self.controlEntities)
+            self.log("Added Control Entities as state entities: " + str(self.stateEntities))
+        self.log("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self):
     
         self.log("Setting up state entities")
         if self.args.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
             self.log("config defined")
-            self.stateEntities = [];
-            self.stateEntities.extend(self.args.get('state_entities',[]));
+            self.stateEntities = []
+            self.stateEntities.extend(self.args.get('state_entities',[]))
 
-        self.log("State Entities: " + str(self.stateEntities));
+        self.log("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self):
     
@@ -391,7 +391,7 @@ class LightingSM(hass.Hass):
             self.listen_state(self.override_state_change, self.overrideSwitch)
             
         if self.args.get("sensor_type_duration"):
-            self.sensor_type = SENSOR_TYPE_DURATION;
+            self.sensor_type = SENSOR_TYPE_DURATION
         else:
-            self.sensor_type = SENSOR_TYPE_EVENT;
+            self.sensor_type = SENSOR_TYPE_EVENT
 
