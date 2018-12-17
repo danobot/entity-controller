@@ -143,6 +143,13 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     # should NOT turn off because sensor is still on
     assert ml.state == "active_timer_normal"
     assert_that(CONTROL_ENTITY).was_not.turned_off()
+
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
+    
+    # should now turn off because sensor is off
+    assert_that(CONTROL_ENTITY).was.turned_off()
+
+    
     
 def test_basic_disable(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
