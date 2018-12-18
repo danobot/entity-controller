@@ -420,6 +420,9 @@ def test_night_mode(given_that, ml, assert_that, time_travel):
     assert ml.lightParams['delay'] == 1
 
     assert_that(CONTROL_ENTITY).was.turned_on(brightness=20)
+
+
+def night_mode(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to('light.alfred')
     given_that.passed_arg('entity_on').is_set_to('light.dennis')
     given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)
