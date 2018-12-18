@@ -113,10 +113,13 @@ def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     assert ml.state == "active_timer"
 
     given_that.state_of(SENSOR_ENTITY).is_set_to('off')
+    given_that.mock_functions_are_cleared(clear_mock_states=True)
+
     ml.timer_expire()
     # should turn off because sensor is off
     assert ml.state == "idle"
     assert_that(CONTROL_ENTITY).was.turned_off()
+
 
 
 def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
@@ -422,7 +425,7 @@ def test_night_mode(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY).was.turned_on(brightness=20)
 
 
-def night_mode(given_that, ml, assert_that, time_travel):
+def test_parameters_entity(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to('light.alfred')
     given_that.passed_arg('entity_on').is_set_to('light.dennis')
     given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)

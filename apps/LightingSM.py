@@ -52,37 +52,33 @@ class LightingSM(hass.Hass):
             finalize_event=self.draw
         )
         self.logger.info("Hello")
-        # self.log("Drawing graph")
-        self.machine.add_transition(trigger='disable', source='*', dest='disabled')
+        self.machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
 
-        # Disabled
-        self.machine.add_transition(trigger='enable',       source='disabled',          dest='idle')
-        self.machine.add_transition(trigger='sensor_on',    source='disabled',          dest=None)
+        # Idle
+        self.machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
+        self.machine.add_transition(trigger='sensor_on',            source='idle',              dest='active',          conditions=['is_state_entities_off'])
+        # Disabled      
+        self.machine.add_transition(trigger='enable',               source='disabled',          dest='idle')
+        self.machine.add_transition(trigger='sensor_on',            source='disabled',          dest=None)
         
-        # self.machine.add_transition(trigger='sensor_on', source='idle', dest='checking', unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off',   source='idle',              dest=None)
-        self.machine.add_transition('sensor_on',            'idle',                     'active',                       conditions=['is_state_entities_off'])
 
-        # self.machine.add_transition(trigger='sensor_on', source='disabled', dest='checking',unless=['is_overridden'])
-        self.machine.add_transition(trigger='sensor_off',   source='disabled',          dest=None)
+        self.machine.add_transition(trigger='sensor_off',           source='disabled',          dest=None)
 
-        self.machine.add_transition(trigger='enter',        source='active',            dest='active_timer',            unless='will_stay_on')
-        self.machine.add_transition(trigger='enter',        source='active',            dest='active_stay_on',          conditions='will_stay_on')
+        self.machine.add_transition(trigger='enter',                source='active',            dest='active_timer',    unless='will_stay_on')
+        self.machine.add_transition(trigger='enter',                source='active',            dest='active_stay_on',  conditions='will_stay_on')
 
         # Active Timer
-        # self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_normal',     unless=['is_night'])
-        # self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_night',      conditions=['is_night'])
-        self.machine.add_transition(trigger='sensor_on',    source='active_timer',      dest=None,                      after='_reset_timer')
+        self.machine.add_transition(trigger='sensor_on',            source='active_timer',      dest=None,              after='_reset_timer')
+        self.machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
+        self.machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
+        self.machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
+        self.machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
 
         # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
+        self.machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
+        self.machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
         
         # Active Timer Normal
-        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle', conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle', conditions=['is_duration_sensor', 'is_sensor_off'])
-        self.machine.add_transition(trigger='timer_expires', source='active_stay_on', dest=None)
-        self.machine.add_transition(trigger='sensor_off',    source='active_timer', dest=None, conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='sensor_off',    source='active_timer', dest='idle', conditions=['is_duration_sensor','is_timer_expired'])
-        self.machine.add_transition(trigger='sensor_off',    source='active_stay_on', dest=None)
 		
         # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
         # self.machine.add_transition(trigger='control',    source='active', dest='idle', before='_cancel_timer')
@@ -110,7 +106,8 @@ class LightingSM(hass.Hass):
         if new == self.SENSOR_OFF_STATE:
             if self.sensor_type == SENSOR_TYPE_EVENT:
                 self.sensor_off()
-              
+            else:
+                self.sensor_off_duration()
     def override_state_change(self, entity, attribute, old, new, kwargs):
         self.logger.info("DIsabling fds")
         if new == self.OVERRIDE_ON_STATE:
@@ -164,7 +161,7 @@ class LightingSM(hass.Hass):
         for e in self.sensorEntities:
             s = self.get_state(e)
             self.logger.info(s)
-            self.log(" * State of {} is {}".format(e, s))
+            self.logger.info(" * State of {} is {}".format(e, s))
             if s == self.SENSOR_ON_STATE:
                 return True
         return False
@@ -212,7 +209,7 @@ class LightingSM(hass.Hass):
     def is_timer_expired(self):
 
         expired = self.timer_handle.is_alive() == False
-        self.log("is timer expired? " + expired)
+        self.logger.info("is timer expired? " + str(expired))
         return expired
     
     def timer_expire(self):
