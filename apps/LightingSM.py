@@ -163,7 +163,9 @@ class LightingSM(hass.Hass):
             self.logger.info(s)
             self.logger.info(" * State of {} is {}".format(e, s))
             if s == self.SENSOR_ON_STATE:
+                self.logger.debug("Sensor entities are ON. [{}]".format(e))
                 return True
+        self.logger.debug("Sensor entities are OFF.")
         return False
 
     def is_sensor_off(self):
@@ -178,7 +180,9 @@ class LightingSM(hass.Hass):
             self.logger.info(s)
             self.log(" * State of {} is {}".format(e, s))
             if s == self.STATE_ON_STATE:
+                self.logger.debug("State entities are ON. [{}]".format(e))
                 return True
+        self.logger.debug("State entities are OFF.")
         return False
     
     def is_state_entities_off(self):
@@ -191,14 +195,16 @@ class LightingSM(hass.Hass):
         return self.args.get('stay', False)
 
     def is_night(self):
-        self.logger.info("night mode; " +str(self.night_mode))
         if self.night_mode is None:
+            self.logger.debug("(night mode disabled): " + str(self.night_mode))
             return False
         else:
+            self.logger.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             # start=  self.parse_time(self.night_mode['start_time'])
             # end=  self.parse_time(self.night_mode['end_time'])
             #return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
             return True
+
 
     def is_event_sensor(self):
         return self.sensor_type == SENSOR_TYPE_EVENT
@@ -209,15 +215,15 @@ class LightingSM(hass.Hass):
     def is_timer_expired(self):
 
         expired = self.timer_handle.is_alive() == False
-        self.logger.info("is timer expired? " + str(expired))
+        self.logger.debug("is_timer_expired -> " + str(expired))
         return expired
     
     def timer_expire(self):
-        self.log("Timer expired")
+        # self.log("Timer expired")
         if self.is_duration_sensor():
-            self.logger.info("timer expired and its duration")
+            self.logger.debug("It's a DURATION sensor")
             if self.is_sensor_off():
-                self.logger.info("sensor is off")
+                self.logger.debug("Sensor entities are OFF.")
                 self.timer_expires()
         else:    
             self.timer_expires()
@@ -236,31 +242,26 @@ class LightingSM(hass.Hass):
 
 
     def on_enter_active(self):
-        self.enter()
+        # self.enter()
         self.backoff_count = 0
         if self.is_night():
-            self.logger.info("nigth mode")
+            self.logger.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
             self.lightParams = self.light_params_night
         else:
-            self.logger.info("day mode")
+            self.logger.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
 
-        self.log("Entering active state. Starting timer and turning on entities.")
         self._start_timer()
 
         for e in self.controlEntities:
-            self.logger.info("light params before turning on: " + str(self.lightParams))
-            self.logger.info("brightness value" + str(self.lightParams.get('brightness')))
+            # self.logger.debug("light params before turning on: " + str(self.lightParams))
+            # self.logger.debug("brightness value" + str(self.lightParams.get('brightness')))
             if self.lightParams.get('brightness') is not None:
-                self.logger.info("brightness")
+                self.logger.debug("Turning on {} with service parameters {}".format(e, self.lightParams))
                 self.turn_on(e, brightness=self.lightParams.get('brightness'))
             else:
-                self.logger.info("not brightness")
+                self.logger.debug("Turning on {} (no parameters passed to service call)".format(e))
                 self.turn_on(e)
-
-    # def on_enter_active_timer(self):
-
-
 
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer")
