@@ -15,7 +15,7 @@ class LightingSM(hass.Hass):
     
     
     logger = logging.getLogger(__name__)
-    STATES = ['idle', 'disabled', {'name': 'active', 'children': [{'name': 'timer','children': ['normal', 'night']},'stay_on'], 'initial': False}]
+    STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
     stateEntities = None
     controlEntities = None
     sensorEntities = None

@@ -25,7 +25,7 @@ def ml(given_that):
     given_that.time_is(0)
     given_that.passed_arg('image_path').is_set_to(IMAGE_PATH)
     given_that.passed_arg('name').is_set_to('test')
-    given_that.passed_arg('draw').is_set_to(False)
+    given_that.passed_arg('draw').is_set_to(True)
     ml.name = 'fds'
     return ml
 
@@ -113,7 +113,7 @@ def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     assert ml.state == "active_timer"
 
     given_that.state_of(SENSOR_ENTITY).is_set_to('off')
-    given_that.mock_functions_are_cleared(clear_mock_states=True)
+    given_that.mock_functions_are_cleared()
 
     ml.timer_expire()
     # should turn off because sensor is off
@@ -125,6 +125,7 @@ def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
 def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('delay').is_set_to(0.01)
     given_that.passed_arg('sensor_type_duration').is_set_to(True)
     given_that.state_of(CONTROL_ENTITY).is_set_to('off')
 
@@ -142,13 +143,16 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     # no sensor off command is received
 
     given_that.state_of(SENSOR_ENTITY).is_set_to('on')
+    given_that.mock_functions_are_cleared()
     ml.timer_expire()
     # should NOT turn off because sensor is still on
     assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was_not.turned_off()
 
+    ml.timer_expire()
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
     
+    assert ml.state == "idle"
     # should now turn off because sensor is off
     assert_that(CONTROL_ENTITY).was.turned_off()
 
