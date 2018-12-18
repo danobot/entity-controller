@@ -103,11 +103,10 @@ class LightingSM(hass.Hass):
         self.log("Sensor state change")
         if new == self.SENSOR_ON_STATE:
             self.sensor_on()
-        if new == self.SENSOR_OFF_STATE:
-            if self.sensor_type == SENSOR_TYPE_EVENT:
-                self.sensor_off()
-            else:
-                self.sensor_off_duration()
+        if new == self.SENSOR_OFF_STATE and self.sensor_type == SENSOR_TYPE_DURATION:
+            # We only care about sensor off state changes when the sensor is a duration sensor.
+            self.sensor_off_duration()
+
     def override_state_change(self, entity, attribute, old, new, kwargs):
         self.logger.info("DIsabling fds")
         if new == self.OVERRIDE_ON_STATE:
@@ -242,7 +241,6 @@ class LightingSM(hass.Hass):
 
 
     def on_enter_active(self):
-        # self.enter()
         self.backoff_count = 0
         if self.is_night():
             self.logger.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
@@ -262,6 +260,7 @@ class LightingSM(hass.Hass):
             else:
                 self.logger.debug("Turning on {} (no parameters passed to service call)".format(e))
                 self.turn_on(e)
+        self.enter()
 
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer")
