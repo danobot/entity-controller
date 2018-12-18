@@ -2,7 +2,7 @@ import pytest
 import time as thetime
 from datetime import time
 from apps.LightingSM import LightingSM
-
+# from freezegun import freeze_time
 # Important:
 # For this example to work, do not forget to copy the `conftest.py` file.
 # See README.md for more info
@@ -50,7 +50,7 @@ def test_basic_config(given_that, ml, assert_that, time_travel):
     assert ml.state == "idle"
 
     motion(ml)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     ml.timer_expire()
     assert ml.state == "idle"
@@ -104,13 +104,13 @@ def test_basic_duration_happy(given_that, ml, assert_that, time_travel):
     given_that.state_of(SENSOR_ENTITY).is_set_to('on')
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
 
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
 
 
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
     # Should stay on because timer has not expired (min timer or sensor)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
 
     given_that.state_of(SENSOR_ENTITY).is_set_to('off')
     ml.timer_expire()
@@ -133,7 +133,7 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     given_that.state_of(SENSOR_ENTITY).is_set_to('on')
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
 
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
 
     # no sensor off command is received
@@ -141,7 +141,7 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     given_that.state_of(SENSOR_ENTITY).is_set_to('on')
     ml.timer_expire()
     # should NOT turn off because sensor is still on
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was_not.turned_off()
     
 def test_basic_disable(given_that, ml, assert_that, time_travel):
@@ -183,7 +183,7 @@ def test_control_multiple(given_that, ml, assert_that, time_travel):
     assert ml.state == "idle"
 
     motion(ml)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     assert_that(CONTROL_ENTITY2).was.turned_on()
     ml.timer_expire()
@@ -215,7 +215,7 @@ def test_state_multiple_off(given_that, ml, assert_that, time_travel):
     assert ml.state == "idle"
 
     motion(ml)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     ml.timer_expire()
     assert ml.state == "idle"
@@ -262,7 +262,7 @@ def test_sensor_multiple(given_that, ml, assert_that, time_travel):
 
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     ml.timer_expire()
     assert ml.state == "idle"
@@ -270,7 +270,7 @@ def test_sensor_multiple(given_that, ml, assert_that, time_travel):
 
     ml.sensor_state_change(SENSOR_ENTITY2, None, 'off', 'on', None)
     ml.sensor_state_change(SENSOR_ENTITY2, None, 'on', 'off', None)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     ml.timer_expire()
     assert ml.state == "idle"
@@ -293,7 +293,7 @@ def test_complex(given_that, ml, assert_that, time_travel):
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
     ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
     ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     assert_that(CONTROL_ENTITY2).was.turned_on()
     # ml.timer_expire()
@@ -308,7 +308,7 @@ def test_complex(given_that, ml, assert_that, time_travel):
 
     ml.sensor_state_change(SENSOR_ENTITY2, None, 'off', 'on', None)
     ml.sensor_state_change(SENSOR_ENTITY2, None, 'on', 'off', None)
-    assert ml.state == "active_timer_normal"
+    assert ml.state == "active_timer"
     assert_that(CONTROL_ENTITY).was.turned_on()
     assert_that(CONTROL_ENTITY2).was.turned_on()
 
@@ -378,12 +378,15 @@ def test_entity_on_off(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY2).was_not.turned_off()
     assert_that(SCRIPT).was.turned_on()
 
-def night_mode(given_that, ml, assert_that, time_travel):
+def test_night_mode(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('brightness').is_set_to(100)
     given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(SENSOR_ENTITY).is_set_to('off')
     night = {}
     night['brightness']=20
+    night['delay']=1
     night['start_time'] ='20:00:00'
     night['end_time'] = '20:00:00'
     given_that.passed_arg('night_mode').is_set_to(night)
@@ -391,16 +394,25 @@ def night_mode(given_that, ml, assert_that, time_travel):
 
     ml.initialize()
     given_that.mock_functions_are_cleared()
-    motion(ml)
-    assert_that(CONTROL_ENTITY).was.turned_on_with(brightness=100)
 
-    given_that.time_is(time(hour=19))
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
+    
+
+    assert_that(CONTROL_ENTITY).was.turned_on(brightness=100)
+    assert ml.previous_delay == 180
+    given_that.time_is(time(hour=20))
+    
     given_that.mock_functions_are_cleared()
-    motion(ml)
+    
 
-    assert_that(CONTROL_ENTITY).was.turned_on_with(brightness=20)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
 
+    assert ml.previous_delay == 20
+    assert ml.lightParams['delay'] == 1
 
+    assert_that(CONTROL_ENTITY).was.turned_on(brightness=20)
     given_that.passed_arg('entity').is_set_to('light.alfred')
     given_that.passed_arg('entity_on').is_set_to('light.dennis')
     given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)

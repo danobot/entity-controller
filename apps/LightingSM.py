@@ -8,6 +8,8 @@ import time
 VERSION = '0.5.1'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
+DEFAULT_DELAY = 180
+DEFAULT_BRIGHTNESS = 100
 # App to turn lights on when motion detected then off again after a delay
 class LightingSM(hass.Hass):
     
@@ -23,6 +25,9 @@ class LightingSM(hass.Hass):
     night_mode = None
     backoff = False
     backoff_count = 0
+    light_params_day = {}
+    light_params_night = {}
+
     def custom_log(self, **kwargs):
         self.logger.error("Callback")
         self.logger.info(kwargs)
@@ -65,18 +70,18 @@ class LightingSM(hass.Hass):
         self.machine.add_transition(trigger='enter',        source='active',            dest='active_stay_on',          conditions='will_stay_on')
 
         # Active Timer
-        self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_normal',     unless=['is_night'])
-        self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_night',      conditions=['is_night'])
+        # self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_normal',     unless=['is_night'])
+        # self.machine.add_transition(trigger='enter',        source='active_timer',      dest='active_timer_night',      conditions=['is_night'])
         self.machine.add_transition(trigger='sensor_on',    source='active_timer',      dest=None,                      after='_reset_timer')
 
         # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
         
         # Active Timer Normal
-        self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_duration_sensor', 'is_sensor_off'])
+        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle', conditions=['is_event_sensor'])
+        self.machine.add_transition(trigger='timer_expires', source='active_timer', dest='idle', conditions=['is_duration_sensor', 'is_sensor_off'])
         self.machine.add_transition(trigger='timer_expires', source='active_stay_on', dest=None)
-        self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest=None, conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='sensor_off',    source='active_timer_normal', dest='idle', conditions=['is_duration_sensor','is_timer_expired'])
+        self.machine.add_transition(trigger='sensor_off',    source='active_timer', dest=None, conditions=['is_event_sensor'])
+        self.machine.add_transition(trigger='sensor_off',    source='active_timer', dest='idle', conditions=['is_duration_sensor','is_timer_expired'])
         self.machine.add_transition(trigger='sensor_off',    source='active_stay_on', dest=None)
 		
         # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
@@ -121,12 +126,12 @@ class LightingSM(hass.Hass):
             self.control()
 
     def _start_timer(self):
+        self.logger.info(self.lightParams)
         if self.backoff_count == 0:
-            self.previous_delay = self.delay
+            self.previous_delay = self.lightParams.get('delay', DEFAULT_DELAY)
         else:
-            self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.delay, self.backoff_factor))
+            self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.lightParams.get('delay',DEFAULT_DELAY), self.backoff_factor))
             self.previous_delay = self.previous_delay*self.backoff_factor
-                # delay = 10
             if self.previous_delay > self.backoff_max:
                 self.log("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
@@ -189,10 +194,14 @@ class LightingSM(hass.Hass):
         return self.args.get('stay', False)
 
     def is_night(self):
+        self.logger.info("night mode; " +str(self.night_mode))
         if self.night_mode is None:
             return False
         else:
-            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
+            # start=  self.parse_time(self.night_mode['start_time'])
+            # end=  self.parse_time(self.night_mode['end_time'])
+            #return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
+            return True
 
     def is_event_sensor(self):
         return self.sensor_type == SENSOR_TYPE_EVENT
@@ -215,6 +224,8 @@ class LightingSM(hass.Hass):
                 self.timer_expires()
         else:    
             self.timer_expires()
+
+
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
@@ -228,17 +239,31 @@ class LightingSM(hass.Hass):
 
 
     def on_enter_active(self):
-        self.enter();
+        self.enter()
         self.backoff_count = 0
+        if self.is_night():
+            self.logger.info("nigth mode")
+            self.lightParams = self.light_params_night
+        else:
+            self.logger.info("day mode")
+            self.lightParams = self.light_params_day
 
         self.log("Entering active state. Starting timer and turning on entities.")
         self._start_timer()
 
         for e in self.controlEntities:
-            self.turn_on(e)
-    
-    def on_enter_active_timer(self):
-        self.enter()
+            self.logger.info("light params before turning on: " + str(self.lightParams))
+            self.logger.info("brightness value" + str(self.lightParams.get('brightness')))
+            if self.lightParams.get('brightness') is not None:
+                self.logger.info("brightness")
+                self.turn_on(e, brightness=self.lightParams.get('brightness'))
+            else:
+                self.logger.info("not brightness")
+                self.turn_on(e)
+
+    # def on_enter_active_timer(self):
+
+
 
     def on_exit_active(self):
         self.log("Turning off entities, cancelling timer")
@@ -356,35 +381,49 @@ class LightingSM(hass.Hass):
         self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off");
         self.STATE_ON_STATE = self.args.get("state_state_on", "on");
         self.STATE_OFF_STATE = self.args.get("state_state_off", "off");
+
+
     def config_night_mode(self):
 
         # should be implemented by passing nightmore paramters to active_timer state (resuse active_timer state)
 
         if "night_mode" in self.args:
             self.night_mode = self.args["night_mode"]
-            if not "start_time" in self.night_mode:
+            night_mode = self.args["night_mode"]
+            self.logger.info(night_mode)
+            self.light_params_night['delay'] = night_mode.get('delay',self.args.get("delay", DEFAULT_DELAY))
+            self.light_params_night['brightness'] = night_mode.get('brightness',None)
+
+            self.logger.info(self.light_params_night)
+            if not "start_time" in night_mode:
                 self.log("Night mode requires a start_time parameter !")
 
-            if not "end_time" in self.night_mode:
+            if not "end_time" in night_mode:
                 self.log("Night mode requires a end_time parameter !")
             
+
     def config_other(self):
+
+        self.do_draw = self.args.get("draw", False)
+        
         if "entity_off" in self.args:
             self.entityOff = self.args.get("entity_off", None)
 
-        self.delay = self.args.get("delay", 180);
-        self.do_draw = self.args.get("draw", False)
+        params = {}
+        params['delay'] = self.args.get("delay", DEFAULT_DELAY)
+        params['brightness'] = self.args.get("brightness", None)
+        self.light_params_day = params
+
         self.backoff = self.args.get('backoff', False)
+
         if self.backoff:
             self.log("setting up backoff. Using delay as initial backoff value.")
             self.backoff_factor = self.args.get('backoff_factor', 1)
             self.backoff_max = self.args.get('backoff_max', 300)
 
         self.stay = self.args.get("stay", False)
-
-        if "brightness" in self.args:
-            self.brightness = self.args["brightness"]
-
+        self.server_dataon = self.args.get('service_data')
+   
         self.overrideSwitch = self.args.get("override_switch", None)
         if self.overrideSwitch is not None:
             self.logger.info("Setting override callback")
@@ -394,4 +433,14 @@ class LightingSM(hass.Hass):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
+
+
+# class Strategy(LightingSM):
+#     def __init__(self, delay, brightness):
+#         self.delay = delay
+#         self.brightness = brightness
+
+#     def start(self):
+#         raise NotImplementedError
+
 
