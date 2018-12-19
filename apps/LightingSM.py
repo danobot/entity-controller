@@ -101,18 +101,18 @@ class LightingSM(hass.Hass):
 
     def sensor_state_change(self, entity, attribute, old, new, kwargs):
         self.log("Sensor state change")
-        if new == self.SENSOR_ON_STATE:
+        if self.matches(new, self.SENSOR_ON_STATE):
             self.sensor_on()
-        if new == self.SENSOR_OFF_STATE and self.sensor_type == SENSOR_TYPE_DURATION:
+        if self.matches(new,self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
             # We only care about sensor off state changes when the sensor is a duration sensor.
             self.sensor_off_duration()
 
     def override_state_change(self, entity, attribute, old, new, kwargs):
         self.logger.info("DIsabling fds")
-        if new == self.OVERRIDE_ON_STATE:
+        if self.matches(new, self.OVERRIDE_ON_STATE):
             self.logger.info("DIsabling")
             self.disable()
-        if new == self.OVERRIDE_OFF_STATE:
+        if self.matches(new, self.OVERRIDE_OFF_STATE):
             self.enable()
 
 
@@ -161,7 +161,7 @@ class LightingSM(hass.Hass):
             s = self.get_state(e)
             self.logger.info(s)
             self.logger.info(" * State of {} is {}".format(e, s))
-            if s == self.SENSOR_ON_STATE:
+            if self.matches(s, self.SENSOR_ON_STATE):
                 self.logger.debug("Sensor entities are ON. [{}]".format(e))
                 return True
         self.logger.debug("Sensor entities are OFF.")
@@ -178,7 +178,7 @@ class LightingSM(hass.Hass):
             s = self.get_state(e)
             self.logger.info(s)
             self.log(" * State of {} is {}".format(e, s))
-            if s == self.STATE_ON_STATE:
+            if self.matches(s, self.STATE_ON_STATE):
                 self.logger.debug("State entities are ON. [{}]".format(e))
                 return True
         self.logger.debug("State entities are OFF.")
@@ -201,8 +201,8 @@ class LightingSM(hass.Hass):
             self.logger.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             # start=  self.parse_time(self.night_mode['start_time'])
             # end=  self.parse_time(self.night_mode['end_time'])
-            #return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
-            return True
+            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
+
 
 
     def is_event_sensor(self):
@@ -251,12 +251,12 @@ class LightingSM(hass.Hass):
 
         self._start_timer()
 
+        self.logger.debug("light params before turning on: " + str(self.lightParams))
         for e in self.controlEntities:
-            # self.logger.debug("light params before turning on: " + str(self.lightParams))
             # self.logger.debug("brightness value" + str(self.lightParams.get('brightness')))
-            if self.lightParams.get('brightness') is not None:
-                self.logger.debug("Turning on {} with service parameters {}".format(e, self.lightParams))
-                self.turn_on(e, brightness=self.lightParams.get('brightness'))
+            if self.lightParams.get('service_data') is not None:
+                self.logger.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
+                self.turn_on(e, self.lightParams.get('service_data'))
             else:
                 self.logger.debug("Turning on {} (no parameters passed to service call)".format(e))
                 self.turn_on(e)
@@ -370,15 +370,37 @@ class LightingSM(hass.Hass):
     
 
     def config_static_strings(self):
-        self.CONTROL_ON_STATE = self.args.get("control_state_on", "on")
-        self.CONTROL_OFF_STATE = self.args.get("control_state_off", "off")
-        self.SENSOR_ON_STATE = self.args.get("sensor_state_on", "on")
-        self.SENSOR_OFF_STATE = self.args.get("sensor_state_off", "off")
-        self.OVERRIDE_ON_STATE = self.args.get("override_state_on", "on")
-        self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off")
-        self.STATE_ON_STATE = self.args.get("state_state_on", "on")
-        self.STATE_OFF_STATE = self.args.get("state_state_off", "off")
+        self.CONTROL_ON_STATE = self.args.get("control_states_on", ["on"])
+        self.CONTROL_OFF_STATE = self.args.get("control_states_off", ["off"])
+        self.SENSOR_ON_STATE = self.args.get("sensor_states_on", ["on"])
+        self.SENSOR_OFF_STATE = self.args.get("sensor_states_off", ["off"])
+        self.OVERRIDE_ON_STATE = self.args.get("override_states_on", ["on"])
+        self.OVERRIDE_OFF_STATE = self.args.get("override_states_off", ["off"])
+        self.STATE_ON_STATE = self.args.get("state_states_on", ["on"])
+        self.STATE_OFF_STATE = self.args.get("state_states_off", ["off"])
 
+        on = self.args.get('state_strings_on', False)
+        if on:
+            self.CONTROL_ON_STATE.extend(on)
+            self.SENSOR_ON_STATE.extend(on)
+            self.OVERRIDE_ON_STATE.extend(on)
+            self.STATE_ON_STATE.extend(on)
+
+        off = self.args.get('state_strings_off', False)
+        if off:
+            self.CONTROL_OFF_STATE.extend(off)
+            self.SENSOR_OFF_STATE.extend(off)
+            self.OVERRIDE_OFF_STATE.extend(off)
+            self.STATE_OFF_STATE.extend(off)
+
+    
+
+    def matches(self, value, list):
+        try:
+            index = list.index(value)
+            return True
+        except ValueError:
+            return False
 
     def config_night_mode(self):
 
@@ -389,8 +411,7 @@ class LightingSM(hass.Hass):
             night_mode = self.args["night_mode"]
             self.logger.info(night_mode)
             self.light_params_night['delay'] = night_mode.get('delay',self.args.get("delay", DEFAULT_DELAY))
-            self.light_params_night['brightness'] = night_mode.get('brightness',None)
-
+            self.light_params_night['service_data'] = night_mode.get('service_data',self.light_params_day.get('service_data'))
             self.logger.info(self.light_params_night)
             if not "start_time" in night_mode:
                 self.log("Night mode requires a start_time parameter !")
@@ -405,10 +426,11 @@ class LightingSM(hass.Hass):
         
         if "entity_off" in self.args:
             self.entityOff = self.args.get("entity_off", None)
-
+       
         params = {}
         params['delay'] = self.args.get("delay", DEFAULT_DELAY)
-        params['brightness'] = self.args.get("brightness", None)
+        params['service_data'] = self.args.get("service_data", None)
+        self.logger.info("serivce data set up: " + str(self.args))
         self.light_params_day = params
 
         self.backoff = self.args.get('backoff', False)
@@ -419,7 +441,6 @@ class LightingSM(hass.Hass):
             self.backoff_max = self.args.get('backoff_max', 300)
 
         self.stay = self.args.get("stay", False)
-        self.server_dataon = self.args.get('service_data')
    
         self.overrideSwitch = self.args.get("override_switch", None)
         if self.overrideSwitch is not None:

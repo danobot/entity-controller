@@ -2,3 +2,5 @@ pytest
 appdaemontestframework
 pytest-watch
 transitions[diagrams]
+freezegun
+pytest-mock

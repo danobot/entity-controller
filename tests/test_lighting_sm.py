@@ -1,11 +1,11 @@
 import pytest
+import mock
 import time as thetime
 from datetime import time
 from apps.LightingSM import LightingSM
-# from freezegun import freeze_time
-# Important:
-# For this example to work, do not forget to copy the `conftest.py` file.
-# See README.md for more info
+from freezegun import freeze_time
+import appdaemon as AppDaemon
+
 CONTROL_ENTITY = 'light.test_light';
 CONTROL_ENTITY2 = 'light.test_light2';
 CONTROL_ENTITIES = [CONTROL_ENTITY, CONTROL_ENTITY2]
@@ -392,42 +392,6 @@ def test_entity_on_off(given_that, ml, assert_that, time_travel):
     assert_that(CONTROL_ENTITY2).was_not.turned_off()
     assert_that(SCRIPT).was.turned_on()
 
-def test_night_mode(given_that, ml, assert_that, time_travel):
-    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
-    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
-    given_that.passed_arg('brightness').is_set_to(100)
-    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
-    given_that.state_of(SENSOR_ENTITY).is_set_to('off')
-    night = {}
-    night['brightness']=20
-    night['delay']=1
-    night['start_time'] ='20:00:00'
-    night['end_time'] = '20:00:00'
-    given_that.passed_arg('night_mode').is_set_to(night)
-    given_that.time_is(time(hour=19))
-
-    ml.initialize()
-    given_that.mock_functions_are_cleared()
-
-    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
-    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
-    
-
-    assert_that(CONTROL_ENTITY).was.turned_on(brightness=100)
-    assert ml.previous_delay == 180
-    given_that.time_is(time(hour=20))
-    
-    given_that.mock_functions_are_cleared()
-    
-
-    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
-    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
-
-    assert ml.previous_delay == 20
-    assert ml.lightParams['delay'] == 1
-
-    assert_that(CONTROL_ENTITY).was.turned_on(brightness=20)
-
 
 def test_parameters_entity(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entity').is_set_to('light.alfred')
@@ -461,6 +425,96 @@ def test_parameters_state(given_that, ml, assert_that, time_travel):
     ml.controlEntities.index(CONTROL_ENTITY2)
     ml.stateEntities.index(STATE_ENTITY) 
     ml.stateEntities.index(STATE_ENTITY2) 
+
+def test_parameters_state_strings(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)
+    given_that.passed_arg('state_entities').is_set_to(STATE_ENTITIES)
+    given_that.passed_arg('control_states_on').is_set_to(["playing"])
+    given_that.passed_arg('state_states_on').is_set_to(["idle"])
+    given_that.passed_arg('state_states_off').is_set_to(["not_home"])
+    given_that.passed_arg('override_states_on').is_set_to(["off", "paused"])
+    given_that.passed_arg('state_strings_on').is_set_to(["hello", "world"])
+    given_that.passed_arg('state_strings_off').is_set_to(["hello2", "world2"])
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+    ml.CONTROL_ON_STATE.index('playing') 
+    ml.STATE_ON_STATE.index('idle') 
+    ml.OVERRIDE_ON_STATE.index('paused') 
+
+    ml.OVERRIDE_ON_STATE.index('hello') 
+    ml.STATE_ON_STATE.index('hello') 
+    ml.SENSOR_ON_STATE.index('hello') 
+
+    ml.STATE_OFF_STATE.index('not_home') 
+
+    ml.OVERRIDE_ON_STATE.index('world') 
+    ml.STATE_ON_STATE.index('world') 
+    ml.CONTROL_ON_STATE.index('world') 
+    ml.SENSOR_ON_STATE.index('world') 
+
+    ml.OVERRIDE_OFF_STATE.index('hello2') 
+    ml.STATE_OFF_STATE.index('hello2') 
+    ml.STATE_OFF_STATE.index('hello2') 
+    ml.SENSOR_OFF_STATE.index('hello2') 
+
+    ml.OVERRIDE_OFF_STATE.index('world2') 
+    ml.STATE_OFF_STATE.index('world2') 
+    ml.CONTROL_OFF_STATE.index('world2') 
+    ml.SENSOR_OFF_STATE.index('world2') 
+
+    assert ml.matches("hi", ["hi", "hello"]) == True
+    assert ml.matches("bye", ["hi", "hello"]) == False
+
+
+
+# @mock.patch('AppDaemon.now_is_between')
+def night_mode(given_that, ml, assert_that, time_travel):
+    given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
+    given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('hi').is_set_to('treW')
+    given_that.state_of(CONTROL_ENTITY).is_set_to('off')
+    given_that.state_of(SENSOR_ENTITY).is_set_to('off')
+    # mocker.return_value = True
+    night = {}
+    night['service_data'] = {}
+    night['service_data']['brightness']=20
+    night['delay']=1
+    night['start_time'] ='20:00:00'
+    night['end_time'] = '22:00:00'
+    given_that.passed_arg('night_mode').is_set_to(night)
+    # freezer = freeze_time("19:00:00")
+    # freezer.start()
+    given_that.time_is(time(hour=19))
+
+    ml.initialize()
+    given_that.mock_functions_are_cleared()
+
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
+    
+
+    assert_that(CONTROL_ENTITY).was.turned_on(brightness=98)
+    assert ml.previous_delay == 180
+    # freezer.stop()
+    given_that.time_is(time(hour=21))
+    # freezer = freeze_time("21:00:00")
+    # freezer.start()
+    given_that.mock_functions_are_cleared()
+    
+
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'off', 'on', None)
+    ml.sensor_state_change(SENSOR_ENTITY, None, 'on', 'off', None)
+
+    assert ml.previous_delay == 20
+    assert ml.lightParams['delay'] == 1
+    
+
+
+    assert_that(CONTROL_ENTITY).was.turned_on(brightness=20)
+
+
 
 # Helper Functions
 def motion(ml):
