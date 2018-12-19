@@ -5,7 +5,7 @@ import logging
 from threading import Timer
 import time
 
-VERSION = '0.5.3'
+VERSION = '1.0.0'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -93,7 +93,7 @@ class LightingSM(hass.Hass):
     def draw(self):
         if self.do_draw:
             self.log("Updating graph in state: " + self.state)
-            self.get_graph().draw(self.args.get('image_path','/conf/temp') + '/fsm_diagram_'+str(self.name)+'.png', prog='dot', format='png')
+            self.get_graph().draw(self.args.get('image_path','/conf/temp') + self.args.get('image_prefix','/fsm_diagram_')+str(self.name)+'.png', prog='dot', format='png')
             # self.log("Updated graph")
 
     # =====================================================
@@ -396,6 +396,7 @@ class LightingSM(hass.Hass):
         on = self.args.get('state_strings_on', False)
         if on:
             self.CONTROL_ON_STATE.extend(on)
+            self.CONTROL_ON_STATE.extend(on)
             self.SENSOR_ON_STATE.extend(on)
             self.OVERRIDE_ON_STATE.extend(on)
             self.STATE_ON_STATE.extend(on)
@@ -455,7 +456,7 @@ class LightingSM(hass.Hass):
 
         if self.backoff:
             self.log("setting up backoff. Using delay as initial backoff value.")
-            self.backoff_factor = self.args.get('backoff_factor', 1)
+            self.backoff_factor = self.args.get('backoff_factor', 1.1)
             self.backoff_max = self.args.get('backoff_max', 300)
 
         self.stay = self.args.get("stay", False)

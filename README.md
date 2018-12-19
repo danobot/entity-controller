@@ -19,70 +19,119 @@ This AppDaemon app is by far the most elegant solution I have found for this pro
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
 
-**Basic Configuration**
+## Basic Configuration
 `MotionLight` needs a `binary_sensor` to monitor as well as an entity to control.
 
 ```yaml
 motion_light:
-  module: motion_lights
-  class: MotionLights
+  module: LightingSM
+  class: LightingSM
   sensor: binary_sensor.living_room_motion  # required
-  entity_on: light.table_lamp               # required
+  entity: light.table_lamp                  # required, [entity,entities,entity_on]
   delay: 300                                # optional, overwrites default delay of 180s
 ```
 
-**Using AppDaemon Constraints**
-You may wish to constrain at what time of day your MOtionLights are activated. You can use AppDaemon's contraint mechanism for this.
+### Using AppDaemon Constraints
+You may wish to constrain at what time of day your motion lights are activated. You can use AppDaemon's constraint mechanism for this.
 ```yaml
 motion_light:
-  module: motion_lights
-  class: MotionLights
+  module: LightingSM
+  class: LightingSM
   sensor: binary_sensor.living_room_motion
-  entity_on: light.table_lamp
+  entity: light.table_lamp
   constrain_start_time: sunset - 00:00:00
   constrain_end_time: sunrise + 00:30:00
 ```
-**Advanced Parameters**
+
+### Overrides
+You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
 ```yaml
-motion_light:
-  module: motion_lights
-  class: MotionLights
-  sensor: binary_sensor.living_room_motion
-  entity_on: light.tv_led                   # LED strip supports `brightness`
-  brightness: 80                            # Go to 80% brightness
-  override_switch: input_boolean.my_toggle  # Toggle switch to disable motion light altogether. 
+override_example:
+  module: LightingSM
+  class: LightingSM
+  sensors: 
+    - input_boolean.motion_detected
+  entities:
+    - light.tv_led
+  delay: 5
+  overrides:
+    - media_player.tv
+    - input_boolean.bedroom_motion_trigger
 ```
 
-**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your MotionLights based on automations!
+**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations!
 
-## Night Mode
-Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval at night as people are typically asleep and the light may only need to stay on for a minute. Adjusting a custom night time brightness is useful as well.
+
+### Night Mode
+Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval at night as people are typically asleep and the light may only need to stay on for a minute. Adjusting a custom night brightness is useful as well. (see *Specifying Custom Service Call Parameters* under *Advanced Configuration* for details.)
 
 ```yaml
 motion_light:
-  module: motion_lights
-  class: MotionLights
+  module: LightingSM
+  class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity_on: light.tv_led
   delay: 300
-  brightness: 80
+  service_data:
+    brightness: 80
   night_mode:
     delay: 60
-    brightness: 20
+    service_data:
+      brightness: 20
     start_time: '22:00:00'                  # required
     end_time: '07:00:00'                    # required
 ```
 
+### Support for different sensor types
+There are two types of motion sensors:
+  1. Sends a signal when motion happens (instantaneous event)
+  2. Sends a signal when motion happens, stays on for the duration of motion and sends an `off` signal when motion supposedly ceases. (duration)
+
+By default, the app assumed you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
+
+If your motion sensor emits both `on` and `off` signals, then add `sensor_type_duration: True` to your configuration.
+
+Control entities are turned off when the following events occur (whichever happens last)
+  * the timer expires
+  * the sensor is turned off
+
 ## Advanced Configuration
+### Specifying Custom Service Call Parameters
+Any custom `service_data` defined in the app configuration will be passed to the `turn_on` call of the control entities. Simply add a `service_data` field to the root or `night_mode` fields to pass custom service parameters along.
 
+# Exponential Backoff
+Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
+The graph below shows the relationship between number of sensor triggers and timeout values for the shown parameters.
+```
+delay = 60
+backoff_factor = 1.1
+```
+
+![Backoff Graph](images/backoff_graph.png)
+
+### Calling custom scripts
+
+You may want to call different entities for the `turn_on` and `turn_off` call. This is the case when using custom scripts. You can define `entity_on` and `entity_off`. The app will call the `turn_on` service on both and observe the state using `entity`. (You can pass along custom `service_data` as well to give script inputs.)
+
+```yaml
+motion_light:
+  module: LightingSM
+  class: LightingSM
+  sensor: binary_sensor.living_room_motion
+  entity: light.led                         # required
+  entity_on: script.fade_in_led             # required
+  entity_off: script.fade_out_led           # required if `turn_off` does not work on `entity_on`
+  
+```
 ### State Entities
-It is possible to separate control entities and state entities. You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if the Boolean OR combination of all `state_entities` evaluates to `False` (all state entities are off).
+It is possible to separate control entities and state entities. You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`.
 
-The use case here is that I do not want the `MotionLight` to turn on when I am watching TV.
+Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define. I left the functionality in case it provides some people with some additional flexibility.
+
 ```yaml
 mtn_lounge:
-  module: motion_lights
-  class: MotionLights
+  module: LightingSM
+  class: LightingSM
   # entity: light.tv_led
   sensors:
     - binary_sensor.living_room_motion
@@ -96,51 +145,30 @@ mtn_lounge:
   delay: 300
 ```
 
-Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your MotionLight might never turn off unless you intervene. (This is because the MotionLight does not turn off the light.) Use this advanced feature at your own risk.
-
-You cannot use `entity`, `entity_on` or `entities` at the same time. Only one must be defined. If more than one is defined, the first one in the following list will be applied:
-1. `entity_on`
-2. `entity`
-3. `entities`
-
-For state entities, a similar logic applies. only one of `entity`, `entity_on` or `state_entities` will be used to determine state of MotionLight and they are chosen in the following order:
-1. `state_entities`
-2. `entities`
-3. `entity`
-4. `entity_on`
+Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your light might never turn off unless you intervene. (This is because the MotionLight does not turn off the light.) Use this advanced feature at your own risk.
 
 These parameters are advanced and should be used with caution.
-**Calling custom scripts**
 
-You may use custom scripts to control a `light` entity with more precision. This is the case when the `entity_on` entity does not support a `turn_off` service call or use want to pass custom service parameters to the service call. You can define `entity_on` and `entity_off`. The `MotionLight` will call the `turn_on` service on both and observe the state using `entity`.
+### Drawing State Machine Diagrams
 
+You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
 ```yaml
-motion_light:
-  module: motion_lights
-  class: MotionLights
-  sensor: binary_sensor.living_room_motion
-  entity: light.led                         # required
-  entity_on: script.fade_in_led             # required
-  entity_off: script.fade_out_led           # required if `turn_off` does not work on `entity_on`
-  
+diagram_test:
+  module: LightingSM
+  class: LightingSM
+  sensors: 
+    - binary_sensor.motion_detected
+  entities:
+    - light.tv_led
+  draw: True                                # required, default is False
+  image_path: '/conf/temp'                  # optional, default shown
+  image_prefix: '/fsm_diagram_'             # optional, default shown
+
 ```
 
-**MQTT Topic (to be implemented)**
+# About LightingSM 
 
-Supplying the top-level `topic` parameter allows the MotionLight to react to MQTT messages. This is used to cancel any pending motion timeouts when the entity is controlled through some other means, for example another automation (refer to state diagram `CONTROL_COMMAND` event). This mechanism is yet to be implemented and tested.
-
-```yaml
-motion_light:
-  module: motion_lights
-  class: MotionLights
-  sensor: binary_sensor.living_room_motion # required
-  entity_on: light.table_lamp
-  topic: "cmnd/table_lamp/POWER"
-```
-
-# About Lighting SM 
-
-`LightingSM` is a complete rewrite of the application, using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
+`LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
 ![Lighting SM State Diagram](images/lighting_sm.png)
 You can trial the beta version by including `tracker-lsm.json` on the `develop` branch and changing the app declarations to:
