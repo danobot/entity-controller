@@ -24,7 +24,7 @@ The app is quite configurable. In its most basic form, you can define the follow
 
 ```yaml
 motion_light:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensor: binary_sensor.living_room_motion  # required
   entity: light.table_lamp                  # required, [entity,entities,entity_on]
@@ -35,7 +35,7 @@ motion_light:
 You may wish to constrain at what time of day your motion lights are activated. You can use AppDaemon's constraint mechanism for this.
 ```yaml
 motion_light:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
@@ -47,7 +47,7 @@ motion_light:
 You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
 ```yaml
 override_example:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensors: 
     - input_boolean.motion_detected
@@ -67,7 +67,7 @@ Night mode allows you to use slightly different parameters at night. The use cas
 
 ```yaml
 motion_light:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity_on: light.tv_led
@@ -115,7 +115,7 @@ You may want to call different entities for the `turn_on` and `turn_off` call. T
 
 ```yaml
 motion_light:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity: light.led                         # required
@@ -130,7 +130,7 @@ Since the release of `v1.0.0` and the introduction of `override` entities, the r
 
 ```yaml
 mtn_lounge:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   # entity: light.tv_led
   sensors:
@@ -154,7 +154,7 @@ These parameters are advanced and should be used with caution.
 You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
 ```yaml
 diagram_test:
-  module: LightingSM
+  module: lighting_sm
   class: LightingSM
   sensors: 
     - binary_sensor.motion_detected

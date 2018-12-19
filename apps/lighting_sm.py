@@ -1,3 +1,8 @@
+# State Machine-based Motion Lighting Implementation for AppDaemon
+# Maintainer:       Daniel Mason
+# Version:          v1.0.0
+# Documentation:    https://github.com/danobot/appdaemon-motion-lights
+
 import appdaemon.plugins.hass.hassapi as hass
 from transitions import Machine
 from transitions.extensions import HierarchicalGraphMachine as Machine
@@ -10,7 +15,7 @@ SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
-# App to turn lights on when motion detected then off again after a delay
+
 class LightingSM(hass.Hass):
     
     
