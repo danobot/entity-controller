@@ -1,7 +1,7 @@
 # Introduction
 This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup.
 
-![State Machine](images/state_machine_diagram.png)
+![Lighting SM State Diagram](images/lighting_sm.png)
 # Requirements
 Motion lights have the following requirements (R) that I discussed in detail [on my blog](https://www.danielha.tk/2018/05/17/appdaemon-motion-lights.html).
 
