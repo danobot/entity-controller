@@ -5,7 +5,7 @@ import logging
 from threading import Timer
 import time
 
-VERSION = '0.5.1'
+VERSION = '0.5.2'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -370,14 +370,14 @@ class LightingSM(hass.Hass):
     
 
     def config_static_strings(self):
-        self.CONTROL_ON_STATE = self.args.get("control_state_on", "on");
-        self.CONTROL_OFF_STATE = self.args.get("control_state_off", "off");
-        self.SENSOR_ON_STATE = self.args.get("sensor_state_on", "on");
-        self.SENSOR_OFF_STATE = self.args.get("sensor_state_off", "off");
-        self.OVERRIDE_ON_STATE = self.args.get("override_state_on", "on");
-        self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off");
-        self.STATE_ON_STATE = self.args.get("state_state_on", "on");
-        self.STATE_OFF_STATE = self.args.get("state_state_off", "off");
+        self.CONTROL_ON_STATE = self.args.get("control_state_on", "on")
+        self.CONTROL_OFF_STATE = self.args.get("control_state_off", "off")
+        self.SENSOR_ON_STATE = self.args.get("sensor_state_on", "on")
+        self.SENSOR_OFF_STATE = self.args.get("sensor_state_off", "off")
+        self.OVERRIDE_ON_STATE = self.args.get("override_state_on", "on")
+        self.OVERRIDE_OFF_STATE = self.args.get("override_state_off", "off")
+        self.STATE_ON_STATE = self.args.get("state_state_on", "on")
+        self.STATE_OFF_STATE = self.args.get("state_state_off", "off")
 
 
     def config_night_mode(self):
