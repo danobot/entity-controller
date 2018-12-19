@@ -159,12 +159,19 @@ def test_basic_duration_sad(given_that, ml, assert_that, time_travel):
     
     
 def test_basic_disable(given_that, ml, assert_that, time_travel):
+    """
+        Tests override switch as well as some custom state strings.
+    """
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
+    given_that.passed_arg('override_states_on').is_set_to(["on",'playing']) # for override only
+    given_that.passed_arg('state_strings_off').is_set_to(["off",'idle', 'paused']) # for all
     OVERRIDE_SWITCH='binary_sensor.override'
-    given_that.passed_arg('override_switch').is_set_to(OVERRIDE_SWITCH)
+    OVERRIDE_SWITCH_TV='media_player.tv'
+    given_that.passed_arg('overrides').is_set_to([OVERRIDE_SWITCH, OVERRIDE_SWITCH_TV])
     given_that.state_of(CONTROL_ENTITY).is_set_to('off')
     given_that.state_of(OVERRIDE_SWITCH).is_set_to('off')
+    given_that.state_of(OVERRIDE_SWITCH_TV).is_set_to('idle')
 
     ml.initialize()
     given_that.mock_functions_are_cleared()
@@ -178,11 +185,24 @@ def test_basic_disable(given_that, ml, assert_that, time_travel):
 
     assert_that(CONTROL_ENTITY).was_not.turned_on()
 
-    assert ml.state == "disabled"
     assert_that(CONTROL_ENTITY).was_not.turned_off()
     ml.override_state_change(OVERRIDE_SWITCH, None, 'on', 'off', None)
     assert ml.state == "idle"
-    
+
+    # same for the other switch
+    assert ml.state == "idle"
+    # statechange of override switch should transition to disabled
+    ml.override_state_change(OVERRIDE_SWITCH, None, 'idle', 'playing', None)
+    assert ml.state == "disabled"
+    motion(ml)
+    assert ml.state == "disabled"
+
+    assert_that(CONTROL_ENTITY).was_not.turned_on()
+
+    assert_that(CONTROL_ENTITY).was_not.turned_off()
+    ml.override_state_change(OVERRIDE_SWITCH, None, 'playing', 'paused', None)
+    assert ml.state == "idle"
+
    
 def test_control_multiple(given_that, ml, assert_that, time_travel):
     given_that.passed_arg('entities').is_set_to(CONTROL_ENTITIES)

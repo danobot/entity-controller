@@ -38,10 +38,11 @@ class LightingSM(hass.Hass):
         # self.listen_log(self.custom_log)
         self.config_static_strings()
         self.config_state_entities()
-        self.config_control_entities()
+        self.config_control_entities() # must come after config_state_entities
         self.config_sensor_entities()
         self.config_off_entities()
-        self.config_night_mode()
+        self.config_normal_mode() 
+        self.config_night_mode() #must come after normal_mode
         self.config_other()
         self.machine = Machine(model=self, 
             states=LightingSM.STATES, 
@@ -108,9 +109,7 @@ class LightingSM(hass.Hass):
             self.sensor_off_duration()
 
     def override_state_change(self, entity, attribute, old, new, kwargs):
-        self.logger.info("DIsabling fds")
         if self.matches(new, self.OVERRIDE_ON_STATE):
-            self.logger.info("DIsabling")
             self.disable()
         if self.matches(new, self.OVERRIDE_OFF_STATE):
             self.enable()
@@ -307,7 +306,7 @@ class LightingSM(hass.Hass):
 
 
         # IF no state entities are defined, use control entites as state
-        if self.stateEntities is  None:
+        if self.stateEntities is None:
             self.stateEntities = []
             self.stateEntities.extend(self.controlEntities)
             self.log("Added Control Entities as state entities: " + str(self.stateEntities))
@@ -396,6 +395,9 @@ class LightingSM(hass.Hass):
     
 
     def matches(self, value, list):
+        """
+            Checks whether a string is contained in a list (used for matching state strings)
+        """
         try:
             index = list.index(value)
             return True
@@ -403,9 +405,9 @@ class LightingSM(hass.Hass):
             return False
 
     def config_night_mode(self):
-
-        # should be implemented by passing nightmore paramters to active_timer state (resuse active_timer state)
-
+        """
+            Configured night mode parameters. If no night_mode service parameters are given, the day mode parameters are used instead. If those do not exist, the 
+        """
         if "night_mode" in self.args:
             self.night_mode = self.args["night_mode"]
             night_mode = self.args["night_mode"]
@@ -419,7 +421,12 @@ class LightingSM(hass.Hass):
             if not "end_time" in night_mode:
                 self.log("Night mode requires a end_time parameter !")
             
-
+    def config_normal_mode(self):
+        params = {}
+        params['delay'] = self.args.get("delay", DEFAULT_DELAY)
+        params['service_data'] = self.args.get("service_data", None)
+        self.logger.info("serivce data set up: " + str(self.args))
+        self.light_params_day = params
     def config_other(self):
 
         self.do_draw = self.args.get("draw", False)
@@ -427,11 +434,7 @@ class LightingSM(hass.Hass):
         if "entity_off" in self.args:
             self.entityOff = self.args.get("entity_off", None)
        
-        params = {}
-        params['delay'] = self.args.get("delay", DEFAULT_DELAY)
-        params['service_data'] = self.args.get("service_data", None)
-        self.logger.info("serivce data set up: " + str(self.args))
-        self.light_params_day = params
+
 
         self.backoff = self.args.get('backoff', False)
 
@@ -442,10 +445,12 @@ class LightingSM(hass.Hass):
 
         self.stay = self.args.get("stay", False)
    
-        self.overrideSwitch = self.args.get("override_switch", None)
-        if self.overrideSwitch is not None:
-            self.logger.info("Setting override callback")
-            self.listen_state(self.override_state_change, self.overrideSwitch)
+        self.overrideEntities = self.args.get("overrides", None)
+
+        if self.overrideEntities is not None:
+            for e in self.overrideEntities:
+                self.logger.info("Setting override callback/s: " + str(e))
+                self.listen_state(self.override_state_change, e)
             
         if self.args.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
