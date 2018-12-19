@@ -5,7 +5,7 @@ import logging
 from threading import Timer
 import time
 
-VERSION = '0.5.2'
+VERSION = '0.5.3'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
