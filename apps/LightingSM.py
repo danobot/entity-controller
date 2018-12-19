@@ -111,7 +111,7 @@ class LightingSM(hass.Hass):
     def override_state_change(self, entity, attribute, old, new, kwargs):
         if self.matches(new, self.OVERRIDE_ON_STATE):
             self.disable()
-        if self.matches(new, self.OVERRIDE_OFF_STATE):
+        if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
 
@@ -154,7 +154,17 @@ class LightingSM(hass.Hass):
     # =====================================================
     # S T A T E   M A C H I N E   C O N D I T I O N S
     # =====================================================
-    
+    def _override_entity_state(self):
+        for e in self.overrideEntities:
+            s = self.get_state(e)
+            self.logger.info(s)
+            self.logger.info(" * State of {} is {}".format(e, s))
+            if self.matches(s, self.OVERRIDE_ON_STATE):
+                self.logger.debug("Override entities are ON. [{}]".format(e))
+                return True
+        self.logger.debug("Override entities are OFF.")
+        return False
+
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
             s = self.get_state(e)
@@ -237,6 +247,8 @@ class LightingSM(hass.Hass):
     def on_exit_idle(self):
         self.log("Exiting idle")
 
+    def on_enter_disable(self):
+        self.log("Now disabled")
 
 
     def on_enter_active(self):
@@ -255,7 +267,8 @@ class LightingSM(hass.Hass):
             # self.logger.debug("brightness value" + str(self.lightParams.get('brightness')))
             if self.lightParams.get('service_data') is not None:
                 self.logger.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
-                self.turn_on(e, self.lightParams.get('service_data'))
+                self.log("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
+                self.turn_on(e, **self.lightParams.get('service_data'))
             else:
                 self.logger.debug("Turning on {} (no parameters passed to service call)".format(e))
                 self.turn_on(e)
@@ -324,9 +337,9 @@ class LightingSM(hass.Hass):
 
     def config_off_entities(self):
     
-        self.log("Setting up off entities")
         temp = self.args.get("entity_off", None)
         if temp is not None:
+            self.log("Setting up off entities")
             self.offEntities = []
             if type(temp) == str:
                 self.offEntities.append(temp)
@@ -369,14 +382,16 @@ class LightingSM(hass.Hass):
     
 
     def config_static_strings(self):
-        self.CONTROL_ON_STATE = self.args.get("control_states_on", ["on"])
-        self.CONTROL_OFF_STATE = self.args.get("control_states_off", ["off"])
-        self.SENSOR_ON_STATE = self.args.get("sensor_states_on", ["on"])
-        self.SENSOR_OFF_STATE = self.args.get("sensor_states_off", ["off"])
-        self.OVERRIDE_ON_STATE = self.args.get("override_states_on", ["on"])
-        self.OVERRIDE_OFF_STATE = self.args.get("override_states_off", ["off"])
-        self.STATE_ON_STATE = self.args.get("state_states_on", ["on"])
-        self.STATE_OFF_STATE = self.args.get("state_states_off", ["off"])
+        DEFAULT_ON = ["on","playing","home"]
+        DEFAULT_OFF = ["off","idle","paused","away"]
+        self.CONTROL_ON_STATE = self.args.get("control_states_on", DEFAULT_ON)
+        self.CONTROL_OFF_STATE = self.args.get("control_states_off", DEFAULT_OFF)
+        self.SENSOR_ON_STATE = self.args.get("sensor_states_on", DEFAULT_ON)
+        self.SENSOR_OFF_STATE = self.args.get("sensor_states_off", DEFAULT_OFF)
+        self.OVERRIDE_ON_STATE = self.args.get("override_states_on", DEFAULT_ON)
+        self.OVERRIDE_OFF_STATE = self.args.get("override_states_off", DEFAULT_OFF)
+        self.STATE_ON_STATE = self.args.get("state_states_on", DEFAULT_ON)
+        self.STATE_OFF_STATE = self.args.get("state_states_off", DEFAULT_OFF)
 
         on = self.args.get('state_strings_on', False)
         if on:
