@@ -99,7 +99,7 @@ Control entities are turned off when the following events occur (whichever happe
 ### Specifying Custom Service Call Parameters
 Any custom `service_data` defined in the app configuration will be passed to the `turn_on` call of the control entities. Simply add a `service_data` field to the root or `night_mode` fields to pass custom service parameters along.
 
-# Exponential Backoff
+### Exponential Backoff
 Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
 The graph below shows the relationship between number of sensor triggers and timeout values for the shown parameters.
 ```
@@ -145,7 +145,7 @@ mtn_lounge:
   delay: 300
 ```
 
-Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your light might never turn off unless you intervene. (This is because the MotionLight does not turn off the light.) Use this advanced feature at your own risk.
+Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your light might never turn off unless you intervene. (This is because the motion light does not turn off the light.) Use this advanced feature at your own risk.
 
 These parameters are advanced and should be used with caution.
 
@@ -170,8 +170,7 @@ diagram_test:
 
 `LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
-![Lighting SM State Diagram](images/lighting_sm.png)
-You can trial the beta version by including `tracker-lsm.json` on the `develop` branch and changing the app declarations to:
+
 ```yaml
   module: lighting_sm
   class: LightingSM
