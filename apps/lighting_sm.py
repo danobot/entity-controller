@@ -1,6 +1,6 @@
 # State Machine-based Motion Lighting Implementation for AppDaemon
 # Maintainer:       Daniel Mason
-# Version:          v1.0.0
+# Version:          v1.0.1
 # Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 import appdaemon.plugins.hass.hassapi as hass
@@ -10,7 +10,7 @@ import logging
 from threading import Timer
 import time
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
