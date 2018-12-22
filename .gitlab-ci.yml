@@ -11,6 +11,6 @@ test:
     - ls -la
     - ls tests -la
     - echo ${PWD}
-    - apt install -y python-dev python-pip
-    - pip install -r requirements.txt
+    # - apt install -y python-dev python-pip
+    # - pip install -r requirements.txt
     - docker run --rm -v ${PWD}:/app ci_test
