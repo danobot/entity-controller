@@ -7,5 +7,5 @@ before_script:
   - docker info
 test:
   script:
-    - ls -la
-    - docker run --rm -v ${PWD}:/app test_ml --entrypoint=/bin/pytest
+    - docker build -t test_container .
+    - docker run --rm -v ${PWD}:/app test_container 
