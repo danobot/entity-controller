@@ -10,4 +10,5 @@ test:
     - docker build -t ci_test -f Dockerfile.ci-test .
     - ls -la
     - ls tests -la
+    - echo ${PWD}
     - docker run --rm -v .:/app ci_test pytest
