@@ -50,6 +50,7 @@ class LightingSM(hass.Hass):
         self.config_normal_mode() 
         self.config_night_mode() #must come after normal_mode
         self.config_other()
+        self.event_handle = self.listen_event(self.event_handler, event = 'lightingsm-reset')
         self.machine = Machine(model=self, 
             states=LightingSM.STATES, 
             initial='idle', 
@@ -145,6 +146,18 @@ class LightingSM(hass.Hass):
         self.log(self.is_active_timer_normal())
         if self.is_active_timer_normal():
             self.control()
+
+    def event_handler(self,event, data, el,**kwargs):
+        self.log("Event: " + str(event))
+        self.log("Data: " + str(data))
+        self.log("kwargs: " + str(el))
+
+        if data['entity_id'] == self.name:
+            self.log("It is me!")
+            if event == 'lightingsm-reset':
+                self.machine.set_state('idle')
+                self.log("Reset was called")
+
 
     def _start_timer(self):
         self.logger.info(self.lightParams)
