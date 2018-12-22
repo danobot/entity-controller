@@ -10,4 +10,4 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
 
-ENTRYPOINT [ "pytest", "tests/test_lighting_sm.py" ]
+ENTRYPOINT [ "pytest", "./tests/test_lighting_sm.py" ]
