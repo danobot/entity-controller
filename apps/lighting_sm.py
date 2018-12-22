@@ -1,6 +1,6 @@
 # State Machine-based Motion Lighting Implementation for AppDaemon
 # Maintainer:       Daniel Mason
-# Version:          v1.1.0
+# Version:          v1.1.1
 # Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 import appdaemon.plugins.hass.hassapi as hass
@@ -42,15 +42,7 @@ class LightingSM(hass.Hass):
     def initialize(self):
         # self.set_app_pin(True);
         # self.listen_log(self.custom_log)
-        self.config_static_strings()
-        self.config_state_entities()
-        self.config_control_entities() # must come after config_state_entities
-        self.config_sensor_entities()
-        self.config_off_entities()
-        self.config_normal_mode() 
-        self.config_night_mode() #must come after normal_mode
-        self.config_other()
-        self.event_handle = self.listen_event(self.event_handler, event = 'lightingsm-reset')
+        
         self.machine = Machine(model=self, 
             states=LightingSM.STATES, 
             initial='idle', 
@@ -96,7 +88,15 @@ class LightingSM(hass.Hass):
             # * sensor turns off and timer has expired
         # do not turn off if
             # * sensor is on and timer expires
-    
+        self.config_static_strings()
+        self.config_state_entities()
+        self.config_control_entities() # must come after config_state_entities
+        self.config_sensor_entities()
+        self.config_off_entities()
+        self.config_normal_mode() 
+        self.config_night_mode() #must come after normal_mode
+        self.config_other()
+
     def draw(self):
         self.update()
         if self.do_draw:
@@ -370,16 +370,18 @@ class LightingSM(hass.Hass):
             self.stateEntities = []
             self.stateEntities.extend(self.controlEntities)
             self.log("Added Control Entities as state entities: " + str(self.stateEntities))
+            self.update(state_entities=self.stateEntities)
+        self.update(control_entities=self.controlEntities)
         self.log("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self):
-    
+        
         self.log("Setting up state entities")
         if self.args.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
             self.log("config defined")
             self.stateEntities = []
             self.stateEntities.extend(self.args.get('state_entities',[]))
-
+            self.update(state_entities=self.stateEntities)
         self.log("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self):
@@ -392,6 +394,7 @@ class LightingSM(hass.Hass):
                 self.offEntities.append(temp)
             else:
                 self.offEntities.extend(temp)
+            self.update(off_entities=self.offEntities)
             self.logger.info('entities: ' + str(self.offEntities))
 
 
@@ -416,11 +419,11 @@ class LightingSM(hass.Hass):
 
             
         
-
         if self.sensorEntities.count == 0:
             self.log("No sensor specified, doing nothing")
 
         self.log("Sensor Entities: " + str(self.sensorEntities))
+        self.update(sensor_entities=self.sensorEntities)
 
         for sensor in self.sensorEntities:
             self.log("Registering sensor: " + str(sensor))
@@ -514,7 +517,7 @@ class LightingSM(hass.Hass):
             for e in self.overrideEntities:
                 self.logger.info("Setting override callback/s: " + str(e))
                 self.listen_state(self.override_state_change, e)
-            
+            self.update(override_entities=self.overrideEntities)
         if self.args.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
