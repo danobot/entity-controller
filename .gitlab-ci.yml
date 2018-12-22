@@ -8,4 +8,4 @@ before_script:
 test:
   script:
     - ls -la
-    - docker run --rm -v ${PWD}:/app test_ml --entrypoint=pytest
+    - docker run --rm -v ${PWD}:/app test_ml --entrypoint=/bin/pytest
