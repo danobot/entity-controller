@@ -10,4 +10,4 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
 
-CMD [ "pytest", "/app/tests/test_lighting_sm.py" ]
+CMD [ "pytest", "${PWD}/tests/test_lighting_sm.py" ]
