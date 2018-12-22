@@ -10,4 +10,4 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
 RUN cd /app
-CMD [ "pytest", "tests/test_lighting_sm.py" ]
+CMD [ "pytest", "-h" ]
