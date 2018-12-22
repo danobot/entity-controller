@@ -1,6 +1,6 @@
 # State Machine-based Motion Lighting Implementation for AppDaemon
 # Maintainer:       Daniel Mason
-# Version:          v1.0.1
+# Version:          v1.1.0
 # Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 import appdaemon.plugins.hass.hassapi as hass
@@ -8,14 +8,15 @@ from transitions import Machine
 from transitions.extensions import HierarchicalGraphMachine as Machine
 import logging
 from threading import Timer
-import time
+from datetime import datetime  
+from datetime import timedelta  
 
-VERSION = '1.0.1'
+VERSION = '1.1.0'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
-
+DOMAIN = 'lightingsm'
 class LightingSM(hass.Hass):
     
     
@@ -96,11 +97,27 @@ class LightingSM(hass.Hass):
             # * sensor is on and timer expires
     
     def draw(self):
+        self.update()
         if self.do_draw:
             self.log("Updating graph in state: " + self.state)
             self.get_graph().draw(self.args.get('image_path','/conf/temp') + self.args.get('image_prefix','/fsm_diagram_')+str(self.name)+'.png', prog='dot', format='png')
             # self.log("Updated graph")
+    def update(self, **kwargs):
+        self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
 
+    def clear_state_attributes(self):
+        kwargs = {}
+        kwargs["reset_count"] = None
+        kwargs["reset_at"] = None
+        kwargs["expires_at"] = None
+        kwargs["delay"] = None
+        kwargs["disabled_by"] = None
+        kwargs["disabled_at"] = None
+        kwargs["service_data"] = None
+        # kwargs["last_triggered_by"] = None
+        # kwargs["last_triggered_at"] = None
+
+        self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
     # =====================================================
@@ -108,14 +125,18 @@ class LightingSM(hass.Hass):
     def sensor_state_change(self, entity, attribute, old, new, kwargs):
         self.log("Sensor state change")
         if self.matches(new, self.SENSOR_ON_STATE):
+            self.update(last_triggered_by=entity)
             self.sensor_on()
         if self.matches(new,self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
+            self.update(last_triggered_by=entity)
             # We only care about sensor off state changes when the sensor is a duration sensor.
             self.sensor_off_duration()
 
     def override_state_change(self, entity, attribute, old, new, kwargs):
         if self.matches(new, self.OVERRIDE_ON_STATE):
+            self.update(disabled_by=entity)
             self.disable()
+            self.update(disabled_at=str(datetime.now()))
         if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
@@ -131,7 +152,7 @@ class LightingSM(hass.Hass):
             self.previous_delay = self.lightParams.get('delay', DEFAULT_DELAY)
         else:
             self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.lightParams.get('delay',DEFAULT_DELAY), self.backoff_factor))
-            self.previous_delay = self.previous_delay*self.backoff_factor
+            self.previous_delay = round(self.previous_delay*self.backoff_factor, 2)
             if self.previous_delay > self.backoff_max:
                 self.log("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
@@ -139,6 +160,8 @@ class LightingSM(hass.Hass):
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
         self.log("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
+        expiry_time = str(datetime.now() + timedelta(seconds=self.previous_delay));
+        self.update(delay=self.previous_delay, expires_at=expiry_time)
     
     def _cancel_timer(self):
         if self.timer_handle.is_alive():
@@ -150,6 +173,7 @@ class LightingSM(hass.Hass):
         if self.backoff:
             self.log("inc backoff")
             self.backoff_count += 1
+            self.update(reset_count=self.backoff_count,reset_at=str(datetime.now()))
         self._start_timer()
         # self.log(str(self.timer_handle))
         return True
@@ -210,8 +234,10 @@ class LightingSM(hass.Hass):
     def is_night(self):
         if self.night_mode is None:
             self.logger.debug("(night mode disabled): " + str(self.night_mode))
+            self.update(night_mode='on')
             return False
         else:
+            self.update(night_mode='off')
             self.logger.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             # start=  self.parse_time(self.night_mode['start_time'])
             # end=  self.parse_time(self.night_mode['end_time'])
@@ -247,6 +273,7 @@ class LightingSM(hass.Hass):
     # =====================================================
     def on_enter_idle(self):
         self.log("Entering idle")
+        self.clear_state_attributes()
         # self.draw();
 
     def on_exit_idle(self):
@@ -257,6 +284,7 @@ class LightingSM(hass.Hass):
 
 
     def on_enter_active(self):
+        self.update(last_triggered_at=str(datetime.now()))
         self.backoff_count = 0
         if self.is_night():
             self.logger.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
@@ -265,6 +293,7 @@ class LightingSM(hass.Hass):
             self.logger.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
 
+        self.update(service_data=self.lightParams['service_data'])
         self._start_timer()
 
         self.logger.debug("light params before turning on: " + str(self.lightParams))
