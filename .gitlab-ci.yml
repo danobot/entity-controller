@@ -1,4 +1,3 @@
-
 # build:
 #   stage: build
 #   script:
@@ -7,4 +6,5 @@
 
 test:
   script:
-    - echo "hi"
+    - ls -la
+    - docker run --rm -v ${PWD}:/app test_ml
