@@ -1,12 +1,9 @@
 
-before_script:
-  - docker info
-
-build:
-  stage: build
-  script:
-    - docker build -t test_container .
-    - docker run -v .:/app test_container
+# build:
+#   stage: build
+#   script:
+#     - docker build -t test_container .
+#     - docker run -v .:/app test_container
 
 test:
   script:
