@@ -10,4 +10,4 @@ test:
     - docker build -t ci_test -f Dockerfile.ci-test .
     - ls -la
     - ls tests -la
-    - docker run --rm -v ${PWD}:/app ci_test /bin/pytest test_lighting_sm.py
+    - docker run --rm -v ${PWD}:/app ci_test pytest test_lighting_sm.py
