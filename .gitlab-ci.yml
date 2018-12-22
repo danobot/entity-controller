@@ -9,4 +9,5 @@ test:
   script:
     - docker build -t ci_test -f Dockerfile.ci-test .
     - ls -la
+    - ls tests -la
     - docker run --rm -v ${PWD}:/app ci_test
