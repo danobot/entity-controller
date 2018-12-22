@@ -10,4 +10,4 @@ test:
     - docker build -t ci_test -f Dockerfile.ci-test .
     - ls -la
     - ls tests -la
-    - docker run --rm -v ${PWD}:/app ci_test /bin/bash ci.sh
+    - docker run --rm -v ${PWD}:/app ci_test /bin/bash /app/ci.sh
