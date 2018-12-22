@@ -3,7 +3,7 @@ import mock
 import time as thetime
 from datetime import time
 from apps.lighting_sm import LightingSM
-from freezegun import freeze_time
+# from freezegun import freeze_time
 import appdaemon as AppDaemon
 
 CONTROL_ENTITY = 'light.test_light';
