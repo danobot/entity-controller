@@ -1,1 +1,4 @@
 language: python
+
+install:
+    - pip install -r /tmp/requirements.txt
