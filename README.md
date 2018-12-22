@@ -43,6 +43,13 @@ motion_light:
   constrain_end_time: sunrise + 00:30:00
 ```
 
+### Home Assistant State Entities
+Since `v1.1.0`, the app creates and updates entities representing the motion light itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
+
+![HASS Entity](images/hass_entity.png)
+
+These can be referenced in various `sensor` and `automation` configurations.
+
 ### Overrides
 You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
 ```yaml
@@ -124,9 +131,13 @@ motion_light:
   
 ```
 ### State Entities
-It is possible to separate control entities and state entities. You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`.
+It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by the application. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (If the light already on, you dont want to start a timer and turn it off). The notion of separate state entities allows you to keep the entity tat is being controlled separate from the one that is being observed.
 
-Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define. I left the functionality in case it provides some people with some additional flexibility.
+Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define. I did not remove the feature, just in case it provides some people with some additional flexibility.
+
+You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`.
+
+
 
 ```yaml
 mtn_lounge:

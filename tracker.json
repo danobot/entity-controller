@@ -1,9 +1,9 @@
 {
     "appdaemon_motion_lights": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "local_location": "appdaemon/apps/lighting_sm.py",
       "remote_location": "https://raw.githubusercontent.com/danobot/appdaemon_motion_lights/master/apps/lighting_sm.py",
-      "visit_repo": "https://github.com/danobot/appdaemon_motion_lights",
-      "changelog": "https://github.com/danobot/appdaemon_motion_lights/releases/latest"
+      "visit_repo": "https://github.com/danobot/appdaemon-motion-lights",
+      "changelog": "https://github.com/danobot/appdaemon-motion-lights/releases/latest"
     }
 }
