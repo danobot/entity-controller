@@ -13,4 +13,4 @@ test:
     - echo ${PWD}
     # - apt install -y python-dev python-pip
     # - pip install -r requirements.txt
-    - docker run --rm ci_test
+    - docker run -u root --rm ${PWD}:/app ci_test
