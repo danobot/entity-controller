@@ -9,6 +9,8 @@ RUN pip install -r /tmp/requirements.txt
 WORKDIR /app
 ENV PYTHONPATH=/app
 ADD . .
+RUN chown root:root -R .
+RUN chmod 777 -R .
 RUN ls -la
 RUN echo ${PWD}
 CMD [ "pytest", "./tests/test_lighting_sm.py" ]
