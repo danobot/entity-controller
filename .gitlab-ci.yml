@@ -1,4 +1,3 @@
-
 image: docker:stable
 
 variables:
@@ -26,8 +25,7 @@ before_script:
 build:
   stage: build
   script:
-    - docker build -t registry.danielha.tk/ha/appdaemon-motion-lights/test_container .
-    - docker push registry.danielha.tk/ha/appdaemon-motion-lights/test_container
+    - docker build -t test_container .
     - docker run -v .:/app registry.danielha.tk/ha/appdaemon-motion-lights/test_container
 
 test:
