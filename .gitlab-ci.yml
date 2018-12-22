@@ -8,4 +8,4 @@ before_script:
 test:
   script:
     - docker build -t ci_test -f Dockerfile.ci-test .
-    - docker run --rm -v ${PWD}:/app ci_test pytest ./tests/test_lighting_sm.py
+    - docker run --rm -v ${PWD}:/app ci_test pytest /app/tests/test_lighting_sm.py
