@@ -11,7 +11,7 @@ from threading import Timer
 from datetime import datetime  
 from datetime import timedelta  
 
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
