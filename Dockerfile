@@ -10,4 +10,5 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # ADD . .
 
-CMD [ "ptw","--","-sv" ]
+# CMD [ "ptw","--","-sv" ]
+CMD [ "/bin/bash" ]

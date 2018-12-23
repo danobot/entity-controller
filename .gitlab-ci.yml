@@ -7,10 +7,5 @@ before_script:
   - docker info
 test:
   script:
-    - docker build -t ci_test -f Dockerfile.ci-test .
-    - ls -la
-    - ls tests -la
-    - echo ${PWD}
-    # - apt install -y python-dev python-pip
-    # - pip install -r requirements.txt
-    - docker run --rm ci_test
+    - docker build -t ci_test .
+    - docker run --rm -v ${PWD}/:/app  ci_test pytest tests/test_lighting_sm.py

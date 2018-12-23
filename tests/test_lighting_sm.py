@@ -72,7 +72,10 @@ def test_basic_config_sad(given_that, ml, assert_that, time_travel):
 
     assert_that(CONTROL_ENTITY).was_not.turned_on()
 
-def test_basic_config_stay(given_that, ml, assert_that, time_travel):
+def basic_config_stay(given_that, ml, assert_that, time_travel):
+    """
+        This test blocks the pytest thread (process will not quit)
+    """
     given_that.passed_arg('entity').is_set_to(CONTROL_ENTITY)
     given_that.passed_arg('sensor').is_set_to(SENSOR_ENTITY)
     given_that.passed_arg('stay').is_set_to(True)
