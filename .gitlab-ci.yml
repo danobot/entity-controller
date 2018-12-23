@@ -7,5 +7,5 @@ before_script:
   - docker info
 test:
   script:
-    - docker build -t ci_test .
-    - docker run --rm -v ${PWD}/:/app  ci_test pytest tests/test_lighting_sm.py
+    - docker build -t ci_test -f Dockerfile.ci-test .
+    - docker run --rm -v ${PWD}/:/app  ci_test
