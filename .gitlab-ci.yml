@@ -8,4 +8,4 @@ before_script:
 test:
   script:
     - docker build -t ci_test -f Dockerfile.ci-test .
-    - docker run --rm -v ${PWD}/:/app  ci_test
+    - docker run -u root --rm -v ${PWD}/:/app  ci_test
