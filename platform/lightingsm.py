@@ -49,7 +49,7 @@ SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
 DOMAIN = 'lightingsm'
-class LightingSM(hass.Hass):
+class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
     
     
     logger = logging.getLogger(__name__)
