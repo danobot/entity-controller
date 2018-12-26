@@ -1,7 +1,7 @@
 """
-State Machine-based Motion Lighting Implementation (Home Assistant Platform)
+State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v1.1.2
+Version:          v1.2.0 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -9,50 +9,64 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import entity
+from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
 
+_LOGGER = logging.getLogger(__name__)
 DOMAIN = 'lightingsm'
 # DEPENDENCIES = ['transitions','threading','time']
-REQUIREMENTS = ['transitions==0.6.9','logging==0.4.9.6']
-def setup(hass, config):
-    _LOGGER = logging.getLogger(__name__)
-    from transitions import Machine
-    from transitions.extensions import HierarchicalGraphMachine as Machine
-    from lsm import LightingSM
-    myconfig = config[DOMAIN]
-    _LOGGER.info("The {} component is ready!".format(DOMAIN))
+REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
+DEFAULT_NAME = 'Motion Light'
+CONF_NAME = 'name'
+CONF_CONTROL = 'entities'
+CONF_SENSORS = 'sensors'
+CONF_STATE = 'state_entities'
+CONF_DELAY= 'delay'
+CONF_NIGHT_MODE = 'night_mode'
+
+# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+#     vol.Required(CONF_NAME, default=DEFAULT_NAME): cv.string,
+#     vol.Required(CONF_CONTROL): cv.entity_ids,
+#     vol.Required(CONF_SENSORS): cv.entity_ids,
+#     vol.Optional(CONF_STATE): cv.entity_ids,
+#     vol.Optional(CONF_DELAY): cv.positive_int
+# })
+
+devices = []
+
+def setup_platform(hass, config, add_devices, discovery_info=None):
+    # from lsm import LightingSM
+    myconfig = config
+    _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
 
     # Get the text from the configuration. Use DEFAULT_TEXT if no name is provided.
     # text = config[DOMAIN].get(CONF_TEXT, DEFAULT_TEXT)
 
     _LOGGER.info("Config: "  + str(myconfig))
 
-    for key, value in myconfig.items():
-        _LOGGER.info("Config Item {}: {}".format(str(key), str(value)))
-        
-        # lsm = LightingSM(hass, myconfig)
+    for key, config in myconfig.get('entities').items():
+        _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
+        config["name"] = key
+        devices.append(LightingSM(hass, config))
 
+
+    add_devices(devices)
     return True
 
 
+# import appdaemon.plugins.hass.hassapi as hass
 
-import appdaemon.plugins.hass.hassapi as hass
-from transitions import Machine
-from transitions.extensions import HierarchicalGraphMachine as Machine
-import logging
-from threading import Timer
-from datetime import datetime  
-from datetime import timedelta  
-
-VERSION = '1.1.2'
+VERSION = '1.2.0'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
 DOMAIN = 'lightingsm'
-class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
+class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
+
     
     
-    logger = logging.getLogger(__name__)
+    
     STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
     stateEntities = None
     controlEntities = None
@@ -65,25 +79,29 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
     backoff_count = 0
     light_params_day = {}
     light_params_night = {}
+    name = None
 
-    def custom_log(self, **kwargs):
-        self.logger.error("Callback")
-        self.logger.info(kwargs)
-
-
-    def initialize(self):
-        # self.set_app_pin(True);
-        # self.listen_log(self.custom_log)
+    def __init__(self, hass, config):
+        import logging
+        from transitions import Machine
+        from transitions.extensions import HierarchicalMachine as Machine
+        from threading import Timer
+        from datetime import datetime  
+        from datetime import timedelta  
+        logger = logging.getLogger(__name__ + '.' + config.get('name'))
+        logger.debug("Init LightingSM with: " + str(config))
+        self.name = config.get('name')
+        logger.debug("Name: " + str(self.name))
         
         self.machine = Machine(model=self, 
-            states=LightingSM.STATES, 
+            states=self.STATES, 
             initial='idle', 
-            title=str(__name__)+" State Diagram",
-            show_conditions=True,
+            # title=self.name+" State Diagram",
+            # show_conditions=True
             # show_auto_transitions = True,
-            finalize_event=self.draw
+            # finalize_event=self.draw
         )
-        self.logger.info("Hello")
+
         self.machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
 
         # Idle
@@ -120,21 +138,22 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
             # * sensor turns off and timer has expired
         # do not turn off if
             # * sensor is on and timer expires
-        self.config_static_strings()
-        self.config_state_entities()
-        self.config_control_entities() # must come after config_state_entities
-        self.config_sensor_entities()
-        self.config_off_entities()
-        self.config_normal_mode() 
-        self.config_night_mode() #must come after normal_mode
-        self.config_other()
+        self.config_static_strings(config)
+        self.config_state_entities(config)
+        self.config_control_entities(config) # must come after config_state_entities
+        self.config_sensor_entities(config)
+        self.config_off_entities(config)
+        self.config_normal_mode(config) 
+        self.config_night_mode(config) #must come after normal_mode
+        self.config_other(config)
 
     def draw(self):
         self.update()
         if self.do_draw:
             self.log("Updating graph in state: " + self.state)
-            self.get_graph().draw(self.args.get('image_path','/conf/temp') + self.args.get('image_prefix','/fsm_diagram_')+str(self.name)+'.png', prog='dot', format='png')
-            # self.log("Updated graph")
+            self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
+
+
     def update(self, **kwargs):
         self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
 
@@ -274,7 +293,7 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
         return self._state_entity_state()
     
     def will_stay_on(self):
-        return self.args.get('stay', False)
+        return _config.get('stay', False)
 
     def is_night(self):
         if self.night_mode is None:
@@ -286,6 +305,7 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
             self.logger.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             # start=  self.parse_time(self.night_mode['start_time'])
             # end=  self.parse_time(self.night_mode['end_time'])
+            # http://dev-docs.home-assistant.io/en/master/api/util.html#homeassistant.util.dt.parse_time
             return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
 
 
@@ -377,19 +397,19 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
 
 
 
-    def config_control_entities(self):
+    def config_control_entities(self, _config):
     
         self.log("Setting up control entities")
         self.controlEntities = []
 
-        if "entity" in self.args: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
-            self.controlEntities.append( self.args["entity"])
+        if "entity" in _config: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
+            self.controlEntities.append( _config["entity"])
 
-        if "entities" in self.args: 
-            self.controlEntities.extend( self.args['entities'])
+        if "entities" in _config: 
+            self.controlEntities.extend( _config['entities'])
 
-        if "entity_on" in self.args: 
-            self.controlEntities.append( self.args["entity_on"] )
+        if "entity_on" in _config: 
+            self.controlEntities.append( _config["entity_on"] )
 
 
         #for control in self.controlEntities:
@@ -406,19 +426,19 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
         self.update(control_entities=self.controlEntities)
         self.log("Control Entities: " + str(self.controlEntities))
 
-    def config_state_entities(self):
+    def config_state_entities(self, _config):
         
         self.log("Setting up state entities")
-        if self.args.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
+        if _config.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
             self.log("config defined")
             self.stateEntities = []
-            self.stateEntities.extend(self.args.get('state_entities',[]))
+            self.stateEntities.extend(_config.get('state_entities',[]))
             self.update(state_entities=self.stateEntities)
         self.log("State Entities: " + str(self.stateEntities))
 
-    def config_off_entities(self):
+    def config_off_entities(self, _config):
     
-        temp = self.args.get("entity_off", None)
+        temp = _config.get("entity_off", None)
         if temp is not None:
             self.log("Setting up off entities")
             self.offEntities = []
@@ -430,22 +450,22 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
             self.logger.info('entities: ' + str(self.offEntities))
 
 
-    def config_sensor_entities(self):
+    def config_sensor_entities(self, _config):
         self.sensorEntities = []
-        temp = self.args.get("sensor", None)
+        temp = _config.get("sensor", None)
         if temp is not None:
             self.sensorEntities.append(temp)
             
-        temp = self.args.get("sensors", None)
+        temp = _config.get("sensors", None)
         if temp is not None:
             self.sensorEntities.extend(temp)
 
 
         # self.sensorEntities = [];
-        # temp = self.args.get("sensor", [])
+        # temp = _config.get("sensor", [])
         # self.sensorEntities.extend(temp)
             
-        # temp = self.args.get("sensors", [])
+        # temp = _config.get("sensors", [])
         # self.sensorEntities.extend(temp)
 
 
@@ -463,19 +483,19 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
 
     
 
-    def config_static_strings(self):
+    def config_static_strings(self, _config):
         DEFAULT_ON = ["on","playing","home"]
         DEFAULT_OFF = ["off","idle","paused","away"]
-        self.CONTROL_ON_STATE = self.args.get("control_states_on", DEFAULT_ON)
-        self.CONTROL_OFF_STATE = self.args.get("control_states_off", DEFAULT_OFF)
-        self.SENSOR_ON_STATE = self.args.get("sensor_states_on", DEFAULT_ON)
-        self.SENSOR_OFF_STATE = self.args.get("sensor_states_off", DEFAULT_OFF)
-        self.OVERRIDE_ON_STATE = self.args.get("override_states_on", DEFAULT_ON)
-        self.OVERRIDE_OFF_STATE = self.args.get("override_states_off", DEFAULT_OFF)
-        self.STATE_ON_STATE = self.args.get("state_states_on", DEFAULT_ON)
-        self.STATE_OFF_STATE = self.args.get("state_states_off", DEFAULT_OFF)
+        self.CONTROL_ON_STATE = _config.get("control_states_on", DEFAULT_ON)
+        self.CONTROL_OFF_STATE = _config.get("control_states_off", DEFAULT_OFF)
+        self.SENSOR_ON_STATE = _config.get("sensor_states_on", DEFAULT_ON)
+        self.SENSOR_OFF_STATE = _config.get("sensor_states_off", DEFAULT_OFF)
+        self.OVERRIDE_ON_STATE = _config.get("override_states_on", DEFAULT_ON)
+        self.OVERRIDE_OFF_STATE = _config.get("override_states_off", DEFAULT_OFF)
+        self.STATE_ON_STATE = _config.get("state_states_on", DEFAULT_ON)
+        self.STATE_OFF_STATE = _config.get("state_states_off", DEFAULT_OFF)
 
-        on = self.args.get('state_strings_on', False)
+        on = _config.get('state_strings_on', False)
         if on:
             self.CONTROL_ON_STATE.extend(on)
             self.CONTROL_ON_STATE.extend(on)
@@ -483,7 +503,7 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
             self.OVERRIDE_ON_STATE.extend(on)
             self.STATE_ON_STATE.extend(on)
 
-        off = self.args.get('state_strings_off', False)
+        off = _config.get('state_strings_off', False)
         if off:
             self.CONTROL_OFF_STATE.extend(off)
             self.SENSOR_OFF_STATE.extend(off)
@@ -502,15 +522,15 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
         except ValueError:
             return False
 
-    def config_night_mode(self):
+    def config_night_mode(self, _config):
         """
             Configured night mode parameters. If no night_mode service parameters are given, the day mode parameters are used instead. If those do not exist, the 
         """
-        if "night_mode" in self.args:
-            self.night_mode = self.args["night_mode"]
-            night_mode = self.args["night_mode"]
+        if "night_mode" in _config:
+            self.night_mode = _config["night_mode"]
+            night_mode = _config["night_mode"]
             self.logger.info(night_mode)
-            self.light_params_night['delay'] = night_mode.get('delay',self.args.get("delay", DEFAULT_DELAY))
+            self.light_params_night['delay'] = night_mode.get('delay',_config.get("delay", DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get('service_data',self.light_params_day.get('service_data'))
             self.logger.info(self.light_params_night)
             if not "start_time" in night_mode:
@@ -519,38 +539,38 @@ class LightingSM(hass.Hass): # https://dev-docs.home-assistant.io/en/master/api/
             if not "end_time" in night_mode:
                 self.log("Night mode requires a end_time parameter !")
             
-    def config_normal_mode(self):
+    def config_normal_mode(self, _config):
         params = {}
-        params['delay'] = self.args.get("delay", DEFAULT_DELAY)
-        params['service_data'] = self.args.get("service_data", None)
-        self.logger.info("serivce data set up: " + str(self.args))
+        params['delay'] = _config.get("delay", DEFAULT_DELAY)
+        params['service_data'] = _config.get("service_data", None)
+        self.logger.info("serivce data set up: " + str(_config))
         self.light_params_day = params
-    def config_other(self):
+    def config_other(self, _config):
 
-        self.do_draw = self.args.get("draw", False)
+        self.do_draw = _config.get("draw", False)
         
-        if "entity_off" in self.args:
-            self.entityOff = self.args.get("entity_off", None)
+        if "entity_off" in _config:
+            self.entityOff = _config.get("entity_off", None)
        
-
-
-        self.backoff = self.args.get('backoff', False)
+        self.image_prefix = _config.get('image_prefix','/fsm_diagram_')
+        self.image_path = _config.get('image_path','/conf/temp')
+        self.backoff = _config.get('backoff', False)
 
         if self.backoff:
             self.log("setting up backoff. Using delay as initial backoff value.")
-            self.backoff_factor = self.args.get('backoff_factor', 1.1)
-            self.backoff_max = self.args.get('backoff_max', 300)
+            self.backoff_factor = _config.get('backoff_factor', 1.1)
+            self.backoff_max = _config.get('backoff_max', 300)
 
-        self.stay = self.args.get("stay", False)
+        self.stay = _config.get("stay", False)
    
-        self.overrideEntities = self.args.get("overrides", None)
+        self.overrideEntities = _config.get("overrides", None)
 
         if self.overrideEntities is not None:
             for e in self.overrideEntities:
                 self.logger.info("Setting override callback/s: " + str(e))
                 self.listen_state(self.override_state_change, e)
             self.update(override_entities=self.overrideEntities)
-        if self.args.get("sensor_type_duration"):
+        if _config.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
