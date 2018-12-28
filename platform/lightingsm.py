@@ -11,6 +11,7 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
 from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
+from homeassistant.util.dt import parse_time
 # from custom_components.lightingsm import StateMachine
 from homeassistant.components.switch import SwitchDevice
 _LOGGER = logging.getLogger(__name__)
@@ -19,8 +20,7 @@ import logging
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
-from datetime import datetime  
-from datetime import timedelta  
+from datetime import datetime,  timedelta, date, time
 
 # DEPENDENCIES = ['transitions','threading','time']
 REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
@@ -357,10 +357,10 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         else:
             # self.update(night_mode='off')
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
-            # start=  self.parse_time(self.night_mode['start_time'])
-            # end=  self.parse_time(self.night_mode['end_time'])
+            start=  parse_time(self.night_mode['start_time'])
+            end=  parse_time(self.night_mode['end_time'])
             # http://dev-docs.home-assistant.io/en/master/api/util.html#homeassistant.util.dt.parse_time
-            return self.now_is_between(self.night_mode['start_time'], self.night_mode['end_time'])
+            return self.now_is_between(start, end)
 
 
 
@@ -644,6 +644,24 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
 
+# HElpers
+
+    def now_is_between2(self, start, end, x=datetime.now()):
+        """Return true if x is in the range [start, end]"""
+        if start <= end:
+            return start <= x <= end
+        else:
+            return start <= x or x <= end
+    def now_is_between(self, start, end, x=datetime.time(datetime.now())):
+        today = date.today()
+        start = datetime.combine(today, start)
+        end = datetime.combine(today, end)
+        x = datetime.combine(today, x)
+        if end <= start:
+            end += timedelta(1) # tomorrow!
+        if x <= start:
+            x += timedelta(1) # tomorrow!
+        return start <= x <= end
 
 # class Strategy(LightingSM):
 #     def __init__(self, delay, brightness):
