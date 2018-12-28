@@ -23,7 +23,7 @@ from threading import Timer
 from datetime import datetime,  timedelta, date, time
 
 DEPENDENCIES = ['light','sensor','binary_sensor','cover','fan','media_player']
-REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
+REQUIREMENTS = ['transitions==0.6.9']
 
 DOMAIN = 'lightingsm'
 
@@ -50,19 +50,11 @@ async def async_setup(hass, config):
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
 
-
-
-
-    # from lsm import LightingSM
     logging.basicConfig(level=logging.DEBUG)
-    # Set transitions' log level to INFO; DEBUG messages will be omitted
     logging.getLogger('transitions').setLevel(logging.DEBUG)
     myconfig = config[DOMAIN]
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, config))
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
-
-    # Get the text from the configuration. Use DEFAULT_TEXT if no name is provided.
-    # text = config[DOMAIN].get(CONF_TEXT, DEFAULT_TEXT)
 
     _LOGGER.info("Config: "  + str(myconfig))
     
@@ -105,24 +97,14 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
 
-    # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
     machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
-    # machine.on_enter_active('on_enter_active')
-    # machine.on_enter_idle('on_enter_idle')
-    # machine.on_enter_disabled('on_enter_disabled')
-    # machine.on_exit_active('on_exit_active')
-    # machine.on_exit_idle('on_exit_idle')
-
-    # machine.is_state_entities_off('is_state_entities_off')
 
 
     await component.async_add_entities(devices)
     return True
 
 
-# import appdaemon.plugins.hass.hassapi as hass
-# class LightingSM(StateMachine):
 class LightingSM(entity.Entity):
 
     def __init__(self, hass, config, machine):
@@ -147,7 +129,8 @@ class LightingSM(entity.Entity):
         return {'hello': 'fdfs'}
 
 
-class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
+class Model():
+    """ Represents the transitions state machine model """
 
        
     stateEntities = []
@@ -165,7 +148,8 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
     machine = None
     entity = None
     stay = False
-    def __init__(self, hass, config,entity):
+
+    def __init__(self, hass, config, entity):
         self.hass = hass
         self.entity =entity
 
@@ -174,6 +158,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         self.log.debug("Init LightingSM with: " + str(config))
         self.name = config.get('name', 'Unnamed Motion Light')
         self.log.debug("Name: " + str(self.name))
+
         entity.machine.add_model(self) # add here because machine generated methods are being used in methods below.
         self.config_static_strings(config)
         self.config_state_entities(config)
@@ -183,19 +168,12 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         self.config_normal_mode(config) 
         self.config_night_mode(config) #must come after normal_mode
         self.config_other(config)
-        # duration sensor: we want to turn off if:
-            # * timer expires. sensor is off
-            # * sensor turns off and timer has expired
-        # do not turn off if
-            # * sensor is on and timer expires
- 
 
-    # def draw(self):
-    #     self.update()
-    #     if self.do_draw:
-    #         self.log.debug("Updating graph in state: " + self.state)
-    #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
-
+        # def draw(self):
+        #     self.update()
+        #     if self.do_draw:
+        #         self.log.debug("Updating graph in state: " + self.state)
+        #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
 
     def update(self, **kwargs):
         self.entity.async_schedule_update_ha_state(True)
@@ -218,6 +196,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         # kwargs["last_triggered_at"] = None
 
         # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
+   
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
     # =====================================================
@@ -358,7 +337,6 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             start=  parse_time(self.night_mode['start_time'])
             end=  parse_time(self.night_mode['end_time'])
-            # http://dev-docs.home-assistant.io/en/master/api/util.html#homeassistant.util.dt.parse_time
             return self.now_is_between(start, end)
 
 
@@ -370,7 +348,6 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         return self.sensor_type == SENSOR_TYPE_DURATION
 
     def is_timer_expired(self):
-
         expired = self.timer_handle.is_alive() == False
         self.log.debug("is_timer_expired -> " + str(expired))
         return expired
@@ -427,7 +404,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         self.enter()
 
     def call_service(self, entity, service, **kwargs):
-        """ Helper for calling HA services """
+        """ Helper for calling HA services with the correct parameters """
         domain, e = entity.split('.')
         params = {}
         if kwargs is not None:
@@ -441,10 +418,9 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         self.log.debug("Turning off entities, cancelling timer")
         self._cancel_timer() # cancel previous timer
 
-
         if self.offEntities is not None:
-            self.log.info("using oFF entitesi")
-            for e in self.offEntities:
+            self.log.info("Turning on special off_entities that were defined, instead of turning off the regular control_entities")
+            for e in self.offEntities: 
                 self.log.debug("Turning on {}".format(e))
                 self.call_service(e, 'turn_on')
         else:
@@ -464,7 +440,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         self.log.debug("Setting up control entities")
         self.controlEntities = []
 
-        if "entity" in config: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
+        if "entity" in config:
             self.controlEntities.append( config["entity"])
 
         if "entities" in config: 
@@ -477,11 +453,8 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         for control in self.controlEntities:
           self.log.debug("Registering control: " + str(control))
           event.async_track_state_change(self.hass, control, self.control_state_change)
-        #   self.listen_state(self.control_state_change, control)
 
-
-        # IF no state entities are defined, use control entites as state
-        self.log.debug("State consiion" + str(self.stateEntities))
+        # Id no state entities are defined, use control entites as state
         if len(self.stateEntities) == 0:
             self.stateEntities.extend(self.controlEntities)
             self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
@@ -494,25 +467,25 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
     def config_state_entities(self, config):
         
         self.log.info("Setting up state entities")
-        if config.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
-            self.log.debug("config defined")
+        if config.get('state_entities',False):
+            self.log.debug("State entitity config defined")
             self.stateEntities = []
             self.stateEntities.extend(config.get('state_entities',[]))
             # self.update(state_entities=self.stateEntities)
-        self.log.info("State Entities: " + str(self.stateEntities))
+            self.log.info("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self, config):
     
         temp = config.get("entity_off", None)
         if temp is not None:
-            self.log.debug("Setting up off entities")
+            self.log.debug("Setting up off_entities")
             self.offEntities = []
             if type(temp) == str:
                 self.offEntities.append(temp)
             else:
                 self.offEntities.extend(temp)
             # self.update(off_entities=self.offEntities)
-            self.log.info('entities: ' + str(self.offEntities))
+            self.log.info('Off Entities: ' + str(self.offEntities))
 
 
     def config_sensor_entities(self, config):
@@ -525,18 +498,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         if temp is not None:
             self.sensorEntities.extend(temp)
 
-
-        # self.sensorEntities = [];
-        # temp = config.get("sensor", [])
-        # self.sensorEntities.extend(temp)
-            
-        # temp = config.get("sensors", [])
-        # self.sensorEntities.extend(temp)
-
-
-            
-        
-        if self.sensorEntities.count == 0:
+        if len(self.sensorEntities) == 0:
             self.log.debug("No sensor specified, doing nothing")
 
         self.log.debug("Sensor Entities: " + str(self.sensorEntities))
@@ -545,9 +507,6 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         for sensor in self.sensorEntities:
             self.log.debug("Registering sensor: " + str(sensor))
             event.async_track_state_change(self.hass, sensor, self.sensor_state_change)
-            # self.hass.listen_state(self.sensor_state_change, sensor)
-
-    
 
     def config_static_strings(self, config):
         DEFAULT_ON = ["on","playing","home"]
