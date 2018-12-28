@@ -11,8 +11,8 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
 from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
-from custom_components.lightingsm import StateMachine
-# from homeassistant.components.switch import SwitchDevice
+# from custom_components.lightingsm import StateMachine
+from homeassistant.components.switch import SwitchDevice
 _LOGGER = logging.getLogger(__name__)
 
 import logging
@@ -121,7 +121,8 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 
 # import appdaemon.plugins.hass.hassapi as hass
-class LightingSM(StateMachine):
+# class LightingSM(StateMachine):
+class LightingSM(SwitchDevice):
 
     def __init__(self, hass, config, machine):
         # StateMachine.__init__(self, config)
@@ -435,14 +436,12 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         if self.offEntities is not None:
             self.log.info("using oFF entitesi")
             for e in self.offEntities:
-                self.log.info("Turning on {}".format(e))
-                
                 self.log.debug("Turning on {}".format(e))
-                self.turn_on(e)
+                self.hass.services.async_call(e, 'turn_on')
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off {}".format(e))
-                self.turn_off(e)
+                self.hass.services.async_call(e, 'turn_off')
 
     
     # =====================================================
@@ -451,19 +450,19 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
 
 
 
-    def config_control_entities(self, _config):
+    def config_control_entities(self, config):
     
         self.log.debug("Setting up control entities")
         self.controlEntities = []
 
-        if "entity" in _config: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
-            self.controlEntities.append( _config["entity"])
+        if "entity" in config: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
+            self.controlEntities.append( config["entity"])
 
-        if "entities" in _config: 
-            self.controlEntities.extend( _config['entities'])
+        if "entities" in config: 
+            self.controlEntities.extend( config['entities'])
 
-        if "entity_on" in _config: 
-            self.controlEntities.append( _config["entity_on"] )
+        if "entity_on" in config: 
+            self.controlEntities.append( config["entity_on"] )
 
 
         for control in self.controlEntities:
@@ -483,19 +482,19 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         # self.update(control_entities=self.controlEntities)
         self.log.debug("Control Entities: " + str(self.controlEntities))
 
-    def config_state_entities(self, _config):
+    def config_state_entities(self, config):
         
         self.log.info("Setting up state entities")
-        if _config.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
+        if config.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
             self.log.debug("config defined")
             self.stateEntities = []
-            self.stateEntities.extend(_config.get('state_entities',[]))
+            self.stateEntities.extend(config.get('state_entities',[]))
             # self.update(state_entities=self.stateEntities)
         self.log.info("State Entities: " + str(self.stateEntities))
 
-    def config_off_entities(self, _config):
+    def config_off_entities(self, config):
     
-        temp = _config.get("entity_off", None)
+        temp = config.get("entity_off", None)
         if temp is not None:
             self.log.debug("Setting up off entities")
             self.offEntities = []
@@ -507,22 +506,22 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
             self.log.info('entities: ' + str(self.offEntities))
 
 
-    def config_sensor_entities(self, _config):
+    def config_sensor_entities(self, config):
         self.sensorEntities = []
-        temp = _config.get("sensor", None)
+        temp = config.get("sensor", None)
         if temp is not None:
             self.sensorEntities.append(temp)
             
-        temp = _config.get("sensors", None)
+        temp = config.get("sensors", None)
         if temp is not None:
             self.sensorEntities.extend(temp)
 
 
         # self.sensorEntities = [];
-        # temp = _config.get("sensor", [])
+        # temp = config.get("sensor", [])
         # self.sensorEntities.extend(temp)
             
-        # temp = _config.get("sensors", [])
+        # temp = config.get("sensors", [])
         # self.sensorEntities.extend(temp)
 
 
@@ -541,19 +540,19 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
 
     
 
-    def config_static_strings(self, _config):
+    def config_static_strings(self, config):
         DEFAULT_ON = ["on","playing","home"]
         DEFAULT_OFF = ["off","idle","paused","away"]
-        self.CONTROL_ON_STATE = _config.get("control_states_on", DEFAULT_ON)
-        self.CONTROL_OFF_STATE = _config.get("control_states_off", DEFAULT_OFF)
-        self.SENSOR_ON_STATE = _config.get("sensor_states_on", DEFAULT_ON)
-        self.SENSOR_OFF_STATE = _config.get("sensor_states_off", DEFAULT_OFF)
-        self.OVERRIDE_ON_STATE = _config.get("override_states_on", DEFAULT_ON)
-        self.OVERRIDE_OFF_STATE = _config.get("override_states_off", DEFAULT_OFF)
-        self.STATE_ON_STATE = _config.get("state_states_on", DEFAULT_ON)
-        self.STATE_OFF_STATE = _config.get("state_states_off", DEFAULT_OFF)
+        self.CONTROL_ON_STATE = config.get("control_states_on", DEFAULT_ON)
+        self.CONTROL_OFF_STATE = config.get("control_states_off", DEFAULT_OFF)
+        self.SENSOR_ON_STATE = config.get("sensor_states_on", DEFAULT_ON)
+        self.SENSOR_OFF_STATE = config.get("sensor_states_off", DEFAULT_OFF)
+        self.OVERRIDE_ON_STATE = config.get("override_states_on", DEFAULT_ON)
+        self.OVERRIDE_OFF_STATE = config.get("override_states_off", DEFAULT_OFF)
+        self.STATE_ON_STATE = config.get("state_states_on", DEFAULT_ON)
+        self.STATE_OFF_STATE = config.get("state_states_off", DEFAULT_OFF)
 
-        on = _config.get('state_strings_on', False)
+        on = config.get('state_strings_on', False)
         if on:
             self.CONTROL_ON_STATE.extend(on)
             self.CONTROL_ON_STATE.extend(on)
@@ -561,7 +560,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
             self.OVERRIDE_ON_STATE.extend(on)
             self.STATE_ON_STATE.extend(on)
 
-        off = _config.get('state_strings_off', False)
+        off = config.get('state_strings_off', False)
         if off:
             self.CONTROL_OFF_STATE.extend(off)
             self.SENSOR_OFF_STATE.extend(off)
@@ -580,15 +579,15 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
         except ValueError:
             return False
 
-    def config_night_mode(self, _config):
+    def config_night_mode(self, config):
         """
             Configured night mode parameters. If no night_mode service parameters are given, the day mode parameters are used instead. If those do not exist, the 
         """
-        if "night_mode" in _config:
-            self.night_mode = _config["night_mode"]
-            night_mode = _config["night_mode"]
+        if "night_mode" in config:
+            self.night_mode = config["night_mode"]
+            night_mode = config["night_mode"]
             self.log.info(night_mode)
-            self.light_params_night['delay'] = night_mode.get('delay',_config.get("delay", DEFAULT_DELAY))
+            self.light_params_night['delay'] = night_mode.get('delay',config.get("delay", DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get('service_data',self.light_params_day.get('service_data'))
             self.log.info(self.light_params_night)
             if not "start_time" in night_mode:
@@ -597,32 +596,32 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
             if not "end_time" in night_mode:
                 self.log.debug("Night mode requires a end_time parameter !")
             
-    def config_normal_mode(self, _config):
+    def config_normal_mode(self, config):
         params = {}
-        params['delay'] = _config.get("delay", DEFAULT_DELAY)
-        params['service_data'] = _config.get("service_data", None)
-        self.log.info("serivce data set up: " + str(_config))
+        params['delay'] = config.get("delay", DEFAULT_DELAY)
+        params['service_data'] = config.get("service_data", None)
+        self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
-    def config_other(self, _config):
+    def config_other(self, config):
 
-        self.do_draw = _config.get("draw", False)
+        self.do_draw = config.get("draw", False)
         
-        if "entity_off" in _config:
-            self.entityOff = _config.get("entity_off", None)
+        if "entity_off" in config:
+            self.entityOff = config.get("entity_off", None)
        
-        self.image_prefix = _config.get('image_prefix','/fsm_diagram_')
-        self.image_path = _config.get('image_path','/conf/temp')
-        self.backoff = _config.get('backoff', False)
-        self.stay = _config.get('stay', False)
+        self.image_prefix = config.get('image_prefix','/fsm_diagram_')
+        self.image_path = config.get('image_path','/conf/temp')
+        self.backoff = config.get('backoff', False)
+        self.stay = config.get('stay', False)
 
         if self.backoff:
             self.log.debug("setting up backoff. Using delay as initial backoff value.")
-            self.backoff_factor = _config.get('backoff_factor', 1.1)
-            self.backoff_max = _config.get('backoff_max', 300)
+            self.backoff_factor = config.get('backoff_factor', 1.1)
+            self.backoff_max = config.get('backoff_max', 300)
 
-        self.stay = _config.get("stay", False)
+        self.stay = config.get("stay", False)
    
-        self.overrideEntities = _config.get("overrides", None)
+        self.overrideEntities = config.get("overrides", None)
 
         if self.overrideEntities is not None:
             for e in self.overrideEntities:
@@ -630,7 +629,7 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
                 event.async_track_state_change(self.hass, e, self.override_state_change)
                 # self.listen_state(self.override_state_change, e)
             # self.update(override_entities=self.overrideEntities)
-        if _config.get("sensor_type_duration"):
+        if config.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
