@@ -10,19 +10,19 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
-from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
+# from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
 from homeassistant.util.dt import parse_time
 # from custom_components.lightingsm import StateMachine
-from homeassistant.components.switch import SwitchDevice
+# from homeassistant.components.switch import SwitchDevice
+from homeassistant.helpers.entity_component import EntityComponent
 _LOGGER = logging.getLogger(__name__)
-from tests.components.light import common
 import logging
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
 from datetime import datetime,  timedelta, date, time
 
-# DEPENDENCIES = ['transitions','threading','time']
+DEPENDENCIES = ['light']
 REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
 
 DOMAIN = 'lightingsm'
@@ -42,22 +42,23 @@ CONF_DELAY= 'delay'
 CONF_NIGHT_MODE = 'night_mode'
 
 STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
-# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-#     vol.Required(CONF_NAME, default=DEFAULT_NAME): cv.string,
-#     vol.Required(CONF_CONTROL): cv.entity_ids,
-#     vol.Required(CONF_SENSORS): cv.entity_ids,
-#     vol.Optional(CONF_STATE): cv.entity_ids,
-#     vol.Optional(CONF_DELAY): cv.positive_int
-# })
+
 
 devices = []
+async def async_setup(hass, config):
+    """Load graph configurations."""
+    component = EntityComponent(
+        _LOGGER, DOMAIN, hass)
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
+
+
+
     # from lsm import LightingSM
-    myconfig = config
     logging.basicConfig(level=logging.DEBUG)
     # Set transitions' log level to INFO; DEBUG messages will be omitted
     logging.getLogger('transitions').setLevel(logging.DEBUG)
+    myconfig = config[DOMAIN]
+    _LOGGER.info("The {} component is ready! {}".format(DOMAIN, config))
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
 
     # Get the text from the configuration. Use DEFAULT_TEXT if no name is provided.
@@ -74,13 +75,13 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     )
 
     
-    for key, config in myconfig.get('entities').items():
+    for key, config in myconfig.items():
         _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
         config["name"] = key
         m = LightingSM(hass, config, machine)
         # machine.add_model(m.model)
         devices.append(m)
-
+        # hass.
 
     machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
 
@@ -116,13 +117,13 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     # machine.is_state_entities_off('is_state_entities_off')
 
 
-    add_devices(devices)
+    await component.async_add_entities(devices)
     return True
 
 
 # import appdaemon.plugins.hass.hassapi as hass
 # class LightingSM(StateMachine):
-class LightingSM(SwitchDevice):
+class LightingSM(entity.Entity):
 
     def __init__(self, hass, config, machine):
         # StateMachine.__init__(self, config)
@@ -144,13 +145,11 @@ class LightingSM(SwitchDevice):
         """Return the state of the entity."""
 
         return {'hello': 'fdfs'}
-  
+
 
 class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
 
-    
-
-    
+       
     stateEntities = []
     controlEntities = None
     sensorEntities = None
