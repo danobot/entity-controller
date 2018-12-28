@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v1.2.0 - Component Rewrite
+Version:          v2.0.0 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -9,13 +9,30 @@ import logging
 import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import entity
+from homeassistant.helpers import entity, service, event
 from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
-
+from custom_components.lightingsm import StateMachine
+# from homeassistant.components.switch import SwitchDevice
 _LOGGER = logging.getLogger(__name__)
-DOMAIN = 'lightingsm'
+
+import logging
+from transitions import Machine
+from transitions.extensions import HierarchicalMachine as Machine
+from threading import Timer
+from datetime import datetime  
+from datetime import timedelta  
+
 # DEPENDENCIES = ['transitions','threading','time']
 REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
+
+DOMAIN = 'lightingsm'
+
+
+VERSION = '2.0.0'
+SENSOR_TYPE_DURATION = 1
+SENSOR_TYPE_EVENT = 2
+DEFAULT_DELAY = 180
+DEFAULT_BRIGHTNESS = 100
 DEFAULT_NAME = 'Motion Light'
 CONF_NAME = 'name'
 CONF_CONTROL = 'entities'
@@ -24,6 +41,7 @@ CONF_STATE = 'state_entities'
 CONF_DELAY= 'delay'
 CONF_NIGHT_MODE = 'night_mode'
 
+STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
 # PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 #     vol.Required(CONF_NAME, default=DEFAULT_NAME): cv.string,
 #     vol.Required(CONF_CONTROL): cv.entity_ids,
@@ -37,17 +55,65 @@ devices = []
 def setup_platform(hass, config, add_devices, discovery_info=None):
     # from lsm import LightingSM
     myconfig = config
+    logging.basicConfig(level=logging.DEBUG)
+    # Set transitions' log level to INFO; DEBUG messages will be omitted
+    logging.getLogger('transitions').setLevel(logging.DEBUG)
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
 
     # Get the text from the configuration. Use DEFAULT_TEXT if no name is provided.
     # text = config[DOMAIN].get(CONF_TEXT, DEFAULT_TEXT)
 
     _LOGGER.info("Config: "  + str(myconfig))
+    
+    machine = Machine(states=STATES, 
+        initial='idle',
+        # title=self.name+" State Diagram",
+        # show_conditions=True
+        # show_auto_transitions = True,
+        finalize_event='finalize'
+    )
 
+    
     for key, config in myconfig.get('entities').items():
         _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
         config["name"] = key
-        devices.append(LightingSM(hass, config))
+        m = LightingSM(hass, config, machine)
+        # machine.add_model(m.model)
+        devices.append(m)
+
+
+    machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
+
+    # Idle
+    machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
+    machine.add_transition(trigger='sensor_on',            source='idle',              dest='active',          conditions=['is_state_entities_off'])
+    # Disabled      
+    machine.add_transition(trigger='enable',               source='disabled',          dest='idle')
+    machine.add_transition(trigger='sensor_on',            source='disabled',          dest=None)
+    
+
+    machine.add_transition(trigger='sensor_off',           source='disabled',          dest=None)
+
+    machine.add_transition(trigger='enter',                source='active',            dest='active_timer',    unless='will_stay_on')
+    machine.add_transition(trigger='enter',                source='active',            dest='active_stay_on',  conditions='will_stay_on')
+
+    # Active Timer
+    machine.add_transition(trigger='sensor_on',            source='active_timer',      dest=None,              after='_reset_timer')
+    machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
+    machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
+    machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
+    machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
+
+    # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
+    machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
+    machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
+    # machine.on_enter_active('on_enter_active')
+    # machine.on_enter_idle('on_enter_idle')
+    # machine.on_enter_disabled('on_enter_disabled')
+    # machine.on_exit_active('on_exit_active')
+    # machine.on_exit_idle('on_exit_idle')
+
+    # machine.is_state_entities_off('is_state_entities_off')
 
 
     add_devices(devices)
@@ -55,20 +121,36 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 
 # import appdaemon.plugins.hass.hassapi as hass
+class LightingSM(StateMachine):
 
-VERSION = '1.2.0'
-SENSOR_TYPE_DURATION = 1
-SENSOR_TYPE_EVENT = 2
-DEFAULT_DELAY = 180
-DEFAULT_BRIGHTNESS = 100
-DOMAIN = 'lightingsm'
-class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
+    def __init__(self, hass, config, machine):
+        # StateMachine.__init__(self, config)
+        self.machine = machine
+        self.model = Model(hass, config, self)
+        
+
+    @property
+    def state(self):
+        """Return the state of the entity."""
+        return self.model.state 
+    @property
+    def name(self):
+        """Return the state of the entity."""
+        return self.model.name
+
+    @property
+    def state_attributes(self):
+        """Return the state of the entity."""
+
+        return {'hello': 'fdfs'}
+  
+
+class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#module-homeassistant.helpers.entity
 
     
+
     
-    
-    STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
-    stateEntities = None
+    stateEntities = []
     controlEntities = None
     sensorEntities = None
     offEntities = None
@@ -80,64 +162,19 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
     light_params_day = {}
     light_params_night = {}
     name = None
+    machine = None
+    entity = None
+    stay = False
+    def __init__(self, hass, config,entity):
+        self.hass = hass
+        self.entity =entity
 
-    def __init__(self, hass, config):
-        import logging
-        from transitions import Machine
-        from transitions.extensions import HierarchicalMachine as Machine
-        from threading import Timer
-        from datetime import datetime  
-        from datetime import timedelta  
-        logger = logging.getLogger(__name__ + '.' + config.get('name'))
-        logger.debug("Init LightingSM with: " + str(config))
-        self.name = config.get('name')
-        logger.debug("Name: " + str(self.name))
-        
-        self.machine = Machine(model=self, 
-            states=self.STATES, 
-            initial='idle', 
-            # title=self.name+" State Diagram",
-            # show_conditions=True
-            # show_auto_transitions = True,
-            # finalize_event=self.draw
-        )
-
-        self.machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
-
-        # Idle
-        self.machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
-        self.machine.add_transition(trigger='sensor_on',            source='idle',              dest='active',          conditions=['is_state_entities_off'])
-        # Disabled      
-        self.machine.add_transition(trigger='enable',               source='disabled',          dest='idle')
-        self.machine.add_transition(trigger='sensor_on',            source='disabled',          dest=None)
-        
-
-        self.machine.add_transition(trigger='sensor_off',           source='disabled',          dest=None)
-
-        self.machine.add_transition(trigger='enter',                source='active',            dest='active_timer',    unless='will_stay_on')
-        self.machine.add_transition(trigger='enter',                source='active',            dest='active_stay_on',  conditions='will_stay_on')
-
-        # Active Timer
-        self.machine.add_transition(trigger='sensor_on',            source='active_timer',      dest=None,              after='_reset_timer')
-        self.machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
-        self.machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
-        self.machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
-
-        # self.machine.add_transition(trigger='sensor_off', source='active', dest='idle')
-        self.machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
-        self.machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
-        
-        # Active Timer Normal
-		
-        # self.machine.add_transition(trigger='timer_expires', source='active_timer_normal', dest='idle', conditions=['is_event_sensor'])
-        # self.machine.add_transition(trigger='control',    source='active', dest='idle', before='_cancel_timer')
-
-        # duration sensor: we want to turn off if:
-            # * timer expires. sensor is off
-            # * sensor turns off and timer has expired
-        # do not turn off if
-            # * sensor is on and timer expires
+        self.log = logging.getLogger(__name__ + '.' + config.get('name'))
+        self.log.setLevel(logging.DEBUG)
+        self.log.debug("Init LightingSM with: " + str(config))
+        self.name = config.get('name', 'Unnamed Motion Light')
+        self.log.debug("Name: " + str(self.name))
+        entity.machine.add_model(self) # add here because machine generated methods are being used in methods below.
         self.config_static_strings(config)
         self.config_state_entities(config)
         self.config_control_entities(config) # must come after config_state_entities
@@ -146,16 +183,27 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         self.config_normal_mode(config) 
         self.config_night_mode(config) #must come after normal_mode
         self.config_other(config)
+        # duration sensor: we want to turn off if:
+            # * timer expires. sensor is off
+            # * sensor turns off and timer has expired
+        # do not turn off if
+            # * sensor is on and timer expires
+ 
 
-    def draw(self):
-        self.update()
-        if self.do_draw:
-            self.log("Updating graph in state: " + self.state)
-            self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
+    # def draw(self):
+    #     self.update()
+    #     if self.do_draw:
+    #         self.log.debug("Updating graph in state: " + self.state)
+    #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
 
 
     def update(self, **kwargs):
-        self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
+        self.entity.async_schedule_update_ha_state(True)
+        # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
+
+    def finalize(self):
+        self.log.debug("state: " + self.state)
+        self.entity.async_schedule_update_ha_state(True)
 
     def clear_state_attributes(self):
         kwargs = {}
@@ -169,77 +217,82 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         # kwargs["last_triggered_by"] = None
         # kwargs["last_triggered_at"] = None
 
-        self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
+        # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
     # =====================================================
 
-    def sensor_state_change(self, entity, attribute, old, new, kwargs):
-        self.log("Sensor state change")
-        if self.matches(new, self.SENSOR_ON_STATE):
-            self.update(last_triggered_by=entity)
+    def sensor_state_change(self, entity, old, new):
+        self.log.debug("Sensor state change: " + new.state)
+        self.log.debug("state: " + self.state)
+
+
+        if self.matches(new.state, self.SENSOR_ON_STATE):
+            self.log.debug("matches on")
+            # self.update(last_triggered_by=entity)
             self.sensor_on()
-        if self.matches(new,self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
-            self.update(last_triggered_by=entity)
+        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
+            self.log.debug("matches off")
+            # self.update(last_triggered_by=entity)
             # We only care about sensor off state changes when the sensor is a duration sensor.
             self.sensor_off_duration()
 
-    def override_state_change(self, entity, attribute, old, new, kwargs):
+    def override_state_change(self, entity, old, new):
         if self.matches(new, self.OVERRIDE_ON_STATE):
-            self.update(disabled_by=entity)
+            # self.update(disabled_by=entity)
             self.disable()
-            self.update(disabled_at=str(datetime.now()))
+            # self.update(disabled_at=str(datetime.now()))
         if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
 
-    def control_state_change(self, entity, attribute, old, new, kwargs):
-        self.log(self.is_active_timer_normal())
-        if self.is_active_timer_normal():
+    def control_state_change(self, entity, old, new):
+        self.log.debug(self.is_active())
+        if self.is_active():
             self.control()
 
-    def event_handler(self,event, data, el,**kwargs):
-        self.log("Event: " + str(event))
-        self.log("Data: " + str(data))
-        self.log("kwargs: " + str(el))
+    def event_handler(self, event, data, el,**kwargs):
+        self.log.debug("Event: " + str(event))
+        self.log.debug("Data: " + str(data))
+        self.log.debug("kwargs: " + str(el))
 
         if data['entity_id'] == self.name:
-            self.log("It is me!")
+            self.log.debug("It is me!")
             if event == 'lightingsm-reset':
-                self.machine.set_state('idle')
-                self.log("Reset was called")
+                self.set_state('idle')
+                self.log.debug("Reset was called")
 
 
     def _start_timer(self):
-        self.logger.info(self.lightParams)
+        self.log.info(self.lightParams)
         if self.backoff_count == 0:
             self.previous_delay = self.lightParams.get('delay', DEFAULT_DELAY)
         else:
-            self.log("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.lightParams.get('delay',DEFAULT_DELAY), self.backoff_factor))
+            self.log.debug("Backoff: {},  count: {}, delay{}, factor: {}".format(self.backoff,self.backoff_count, self.lightParams.get('delay',DEFAULT_DELAY), self.backoff_factor))
             self.previous_delay = round(self.previous_delay*self.backoff_factor, 2)
             if self.previous_delay > self.backoff_max:
-                self.log("Max backoff reached. Will not increase further.")
+                self.log.debug("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
 
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
-        self.log("Delay: " + str(self.previous_delay))
+        self.log.debug("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
-        expiry_time = str(datetime.now() + timedelta(seconds=self.previous_delay));
-        self.update(delay=self.previous_delay, expires_at=expiry_time)
+        expiry_time = str(datetime.now() + timedelta(seconds=self.previous_delay))
+        # self.update(delay=self.previous_delay, expires_at=expiry_time)
     
     def _cancel_timer(self):
         if self.timer_handle.is_alive():
             self.timer_handle.cancel()
 
     def _reset_timer(self):
-        self.log("Resetting timer" + str(self.backoff))
+        self.log.debug("Resetting timer" + str(self.backoff))
         self._cancel_timer()
         if self.backoff:
-            self.log("inc backoff")
+            self.log.debug("inc backoff")
             self.backoff_count += 1
-            self.update(reset_count=self.backoff_count,reset_at=str(datetime.now()))
+            # self.update(reset_count=self.backoff_count,reset_at=str(datetime.now()))
         self._start_timer()
-        # self.log(str(self.timer_handle))
+        # self.log.debug(str(self.timer_handle))
         return True
 
        
@@ -249,24 +302,24 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
     # =====================================================
     def _override_entity_state(self):
         for e in self.overrideEntities:
-            s = self.get_state(e)
-            self.logger.info(s)
-            self.logger.info(" * State of {} is {}".format(e, s))
+            s = self.hass.states.getself.hass.states.get(e)
+            self.log.info(s)
+            self.log.info(" * State of {} is {}".format(e, s))
             if self.matches(s, self.OVERRIDE_ON_STATE):
-                self.logger.debug("Override entities are ON. [{}]".format(e))
+                self.log.debug("Override entities are ON. [{}]".format(e))
                 return True
-        self.logger.debug("Override entities are OFF.")
+        self.log.debug("Override entities are OFF.")
         return False
 
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
-            s = self.get_state(e)
-            self.logger.info(s)
-            self.logger.info(" * State of {} is {}".format(e, s))
+            s = self.hass.states.get(e)
+            self.log.info(s)
+            self.log.info(" * State of {} is {}".format(e, s))
             if self.matches(s, self.SENSOR_ON_STATE):
-                self.logger.debug("Sensor entities are ON. [{}]".format(e))
+                self.log.debug("Sensor entities are ON. [{}]".format(e))
                 return True
-        self.logger.debug("Sensor entities are OFF.")
+        self.log.debug("Sensor entities are OFF.")
         return False
 
     def is_sensor_off(self):
@@ -277,13 +330,13 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         
     def _state_entity_state(self):
         for e in self.stateEntities:
-            s = self.get_state(e)
-            self.logger.info(s)
-            self.log(" * State of {} is {}".format(e, s))
+            s = self.hass.states.get(e)
+            self.log.info(s)
+            self.log.debug(" * State of {} is {}".format(e, s))
             if self.matches(s, self.STATE_ON_STATE):
-                self.logger.debug("State entities are ON. [{}]".format(e))
+                self.log.debug("State entities are ON. [{}]".format(e))
                 return True
-        self.logger.debug("State entities are OFF.")
+        self.log.debug("State entities are OFF.")
         return False
     
     def is_state_entities_off(self):
@@ -293,16 +346,16 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         return self._state_entity_state()
     
     def will_stay_on(self):
-        return _config.get('stay', False)
+        return self.stay
 
     def is_night(self):
         if self.night_mode is None:
-            self.logger.debug("(night mode disabled): " + str(self.night_mode))
-            self.update(night_mode='on')
+            self.log.debug("(night mode disabled): " + str(self.night_mode))
+            # self.update(night_mode='on')
             return False
         else:
-            self.update(night_mode='off')
-            self.logger.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
+            # self.update(night_mode='off')
+            self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             # start=  self.parse_time(self.night_mode['start_time'])
             # end=  self.parse_time(self.night_mode['end_time'])
             # http://dev-docs.home-assistant.io/en/master/api/util.html#homeassistant.util.dt.parse_time
@@ -319,15 +372,15 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
     def is_timer_expired(self):
 
         expired = self.timer_handle.is_alive() == False
-        self.logger.debug("is_timer_expired -> " + str(expired))
+        self.log.debug("is_timer_expired -> " + str(expired))
         return expired
     
     def timer_expire(self):
-        # self.log("Timer expired")
+        # self.log.debug("Timer expired")
         if self.is_duration_sensor():
-            self.logger.debug("It's a DURATION sensor")
+            self.log.debug("It's a DURATION sensor")
             if self.is_sensor_off():
-                self.logger.debug("Sensor entities are OFF.")
+                self.log.debug("Sensor entities are OFF.")
                 self.timer_expires()
         else:    
             self.timer_expires()
@@ -337,57 +390,58 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
     def on_enter_idle(self):
-        self.log("Entering idle")
+        self.log.debug("Entering idle")
         self.clear_state_attributes()
         # self.draw();
 
     def on_exit_idle(self):
-        self.log("Exiting idle")
+        self.log.debug("Exiting idle")
 
-    def on_enter_disable(self):
-        self.log("Now disabled")
+    def on_enter_disabled(self):
+        self.log.debug("Now disabled")
 
 
     def on_enter_active(self):
-        self.update(last_triggered_at=str(datetime.now()))
+        # self.update(last_triggered_at=str(datetime.now()))
         self.backoff_count = 0
         if self.is_night():
-            self.logger.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
+            self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
             self.lightParams = self.light_params_night
         else:
-            self.logger.debug("Using DAY MODE parameters: " + str(self.light_params_day))
+            self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
 
-        self.update(service_data=self.lightParams['service_data'])
+        # self.update(service_data=self.lightParams['service_data'])
         self._start_timer()
 
-        self.logger.debug("light params before turning on: " + str(self.lightParams))
+        self.log.debug("light params before turning on: " + str(self.lightParams))
         for e in self.controlEntities:
-            # self.logger.debug("brightness value" + str(self.lightParams.get('brightness')))
+            # self.log.debug("brightness value" + str(self.lightParams.get('brightness')))
             if self.lightParams.get('service_data') is not None:
-                self.logger.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
-                self.log("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
-                self.turn_on(e, **self.lightParams.get('service_data'))
+                self.log.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
+                self.log.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
+                self.hass.services.async_call(e, 'turn_on', self.lightParams.get('service_data'))
             else:
-                self.logger.debug("Turning on {} (no parameters passed to service call)".format(e))
-                self.turn_on(e)
+                self.log.debug("Turning on {} (no parameters passed to service call)".format(e))
+                self.hass.services.async_call(e, 'turn_on')
         self.enter()
 
+
     def on_exit_active(self):
-        self.log("Turning off entities, cancelling timer")
+        self.log.debug("Turning off entities, cancelling timer")
         self._cancel_timer() # cancel previous timer
 
 
         if self.offEntities is not None:
-            self.logger.info("using oFF entitesi")
+            self.log.info("using oFF entitesi")
             for e in self.offEntities:
-                self.logger.info("Turning on {}".format(e))
+                self.log.info("Turning on {}".format(e))
                 
-                self.log("Turning on {}".format(e))
+                self.log.debug("Turning on {}".format(e))
                 self.turn_on(e)
         else:
             for e in self.controlEntities:
-                self.log("Turning off {}".format(e))
+                self.log.debug("Turning off {}".format(e))
                 self.turn_off(e)
 
     
@@ -399,7 +453,7 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
 
     def config_control_entities(self, _config):
     
-        self.log("Setting up control entities")
+        self.log.debug("Setting up control entities")
         self.controlEntities = []
 
         if "entity" in _config: # definition of entity tells program to use this entity when checking state (ie. don't use state of entity_on bceause it might be a script.)
@@ -412,42 +466,45 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
             self.controlEntities.append( _config["entity_on"] )
 
 
-        #for control in self.controlEntities:
-        #   self.log("Registering control: " + str(control))
+        for control in self.controlEntities:
+          self.log.debug("Registering control: " + str(control))
+          event.async_track_state_change(self.hass, control, self.control_state_change)
         #   self.listen_state(self.control_state_change, control)
 
 
         # IF no state entities are defined, use control entites as state
-        if self.stateEntities is None:
-            self.stateEntities = []
+        self.log.debug("State consiion" + str(self.stateEntities))
+        if len(self.stateEntities) == 0:
             self.stateEntities.extend(self.controlEntities)
-            self.log("Added Control Entities as state entities: " + str(self.stateEntities))
-            self.update(state_entities=self.stateEntities)
-        self.update(control_entities=self.controlEntities)
-        self.log("Control Entities: " + str(self.controlEntities))
+            self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
+        else:
+            self.log.debug("Using existing state entities: " + str(self.stateEntities))
+            # self.update(state_entities=self.stateEntities)
+        # self.update(control_entities=self.controlEntities)
+        self.log.debug("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self, _config):
         
-        self.log("Setting up state entities")
+        self.log.info("Setting up state entities")
         if _config.get('state_entities',False): # will control all enti OR the states of all entities and use the result.
-            self.log("config defined")
+            self.log.debug("config defined")
             self.stateEntities = []
             self.stateEntities.extend(_config.get('state_entities',[]))
-            self.update(state_entities=self.stateEntities)
-        self.log("State Entities: " + str(self.stateEntities))
+            # self.update(state_entities=self.stateEntities)
+        self.log.info("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self, _config):
     
         temp = _config.get("entity_off", None)
         if temp is not None:
-            self.log("Setting up off entities")
+            self.log.debug("Setting up off entities")
             self.offEntities = []
             if type(temp) == str:
                 self.offEntities.append(temp)
             else:
                 self.offEntities.extend(temp)
-            self.update(off_entities=self.offEntities)
-            self.logger.info('entities: ' + str(self.offEntities))
+            # self.update(off_entities=self.offEntities)
+            self.log.info('entities: ' + str(self.offEntities))
 
 
     def config_sensor_entities(self, _config):
@@ -472,14 +529,15 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
             
         
         if self.sensorEntities.count == 0:
-            self.log("No sensor specified, doing nothing")
+            self.log.debug("No sensor specified, doing nothing")
 
-        self.log("Sensor Entities: " + str(self.sensorEntities))
-        self.update(sensor_entities=self.sensorEntities)
+        self.log.debug("Sensor Entities: " + str(self.sensorEntities))
+        # self.update(sensor_entities=self.sensorEntities)
 
         for sensor in self.sensorEntities:
-            self.log("Registering sensor: " + str(sensor))
-            self.listen_state(self.sensor_state_change, sensor)
+            self.log.debug("Registering sensor: " + str(sensor))
+            event.async_track_state_change(self.hass, sensor, self.sensor_state_change)
+            # self.hass.listen_state(self.sensor_state_change, sensor)
 
     
 
@@ -529,21 +587,21 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         if "night_mode" in _config:
             self.night_mode = _config["night_mode"]
             night_mode = _config["night_mode"]
-            self.logger.info(night_mode)
+            self.log.info(night_mode)
             self.light_params_night['delay'] = night_mode.get('delay',_config.get("delay", DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get('service_data',self.light_params_day.get('service_data'))
-            self.logger.info(self.light_params_night)
+            self.log.info(self.light_params_night)
             if not "start_time" in night_mode:
-                self.log("Night mode requires a start_time parameter !")
+                self.log.debug("Night mode requires a start_time parameter !")
 
             if not "end_time" in night_mode:
-                self.log("Night mode requires a end_time parameter !")
+                self.log.debug("Night mode requires a end_time parameter !")
             
     def config_normal_mode(self, _config):
         params = {}
         params['delay'] = _config.get("delay", DEFAULT_DELAY)
         params['service_data'] = _config.get("service_data", None)
-        self.logger.info("serivce data set up: " + str(_config))
+        self.log.info("serivce data set up: " + str(_config))
         self.light_params_day = params
     def config_other(self, _config):
 
@@ -555,9 +613,10 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
         self.image_prefix = _config.get('image_prefix','/fsm_diagram_')
         self.image_path = _config.get('image_path','/conf/temp')
         self.backoff = _config.get('backoff', False)
+        self.stay = _config.get('stay', False)
 
         if self.backoff:
-            self.log("setting up backoff. Using delay as initial backoff value.")
+            self.log.debug("setting up backoff. Using delay as initial backoff value.")
             self.backoff_factor = _config.get('backoff_factor', 1.1)
             self.backoff_max = _config.get('backoff_max', 300)
 
@@ -567,9 +626,10 @@ class LightingSM(entity.Entity): # https://dev-docs.home-assistant.io/en/master/
 
         if self.overrideEntities is not None:
             for e in self.overrideEntities:
-                self.logger.info("Setting override callback/s: " + str(e))
-                self.listen_state(self.override_state_change, e)
-            self.update(override_entities=self.overrideEntities)
+                self.log.info("Setting override callback/s: " + str(e))
+                event.async_track_state_change(self.hass, e, self.override_state_change)
+                # self.listen_state(self.override_state_change, e)
+            # self.update(override_entities=self.overrideEntities)
         if _config.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
