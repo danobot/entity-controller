@@ -14,7 +14,7 @@ from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHE
 # from custom_components.lightingsm import StateMachine
 from homeassistant.components.switch import SwitchDevice
 _LOGGER = logging.getLogger(__name__)
-
+from tests.components.light import common
 import logging
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
@@ -417,16 +417,26 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
 
         self.log.debug("light params before turning on: " + str(self.lightParams))
         for e in self.controlEntities:
+        
             # self.log.debug("brightness value" + str(self.lightParams.get('brightness')))
             if self.lightParams.get('service_data') is not None:
                 self.log.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
-                self.log.debug("Turning on {} with service parameters {}".format(e, self.lightParams.get('service_data')))
-                self.hass.services.async_call(e, 'turn_on', self.lightParams.get('service_data'))
+                self.call_service(e, 'turn_on', **self.lightParams.get('service_data'))
             else:
                 self.log.debug("Turning on {} (no parameters passed to service call)".format(e))
-                self.hass.services.async_call(e, 'turn_on')
+                self.call_service(e, 'turn_on')
         self.enter()
 
+    def call_service(self, entity, service, **kwargs):
+        """ Helper for calling HA services """
+        domain, e = entity.split('.')
+        params = {}
+        if kwargs is not None:
+            params = kwargs
+
+        params['entity_id'] = entity
+
+        self.hass.services.call(domain, service, kwargs)
 
     def on_exit_active(self):
         self.log.debug("Turning off entities, cancelling timer")
@@ -437,11 +447,11 @@ class Model(): # https://dev-docs.home-assistant.io/en/master/api/helpers.html#m
             self.log.info("using oFF entitesi")
             for e in self.offEntities:
                 self.log.debug("Turning on {}".format(e))
-                self.hass.services.async_call(e, 'turn_on')
+                self.call_service(e, 'turn_on')
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off {}".format(e))
-                self.hass.services.async_call(e, 'turn_off')
+                self.call_service(e, 'turn_off')
 
     
     # =====================================================
