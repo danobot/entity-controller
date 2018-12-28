@@ -22,7 +22,7 @@ from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
 from datetime import datetime,  timedelta, date, time
 
-DEPENDENCIES = ['light']
+DEPENDENCIES = ['light','sensor','binary_sensor','cover','fan','media_player']
 REQUIREMENTS = ['transitions==0.6.9'] # ,'logging==0.4.9.6'
 
 DOMAIN = 'lightingsm'
