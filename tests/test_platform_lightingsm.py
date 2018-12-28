@@ -3,15 +3,15 @@ import json
 from asynctest import patch
 import pytest
 
-from homeassistant.setup import async_setup_component
+from homeassistant.core import callback
+from homeassistant import setup
 from homeassistant.const import STATE_UNAVAILABLE, ATTR_ASSUMED_STATE
 import homeassistant.core as ha
 from homeassistant.components import switch, mqtt
 from homeassistant.components.mqtt.discovery import async_start
 
 from tests.common import (
-    mock_coro, async_mock_mqtt_component, async_fire_mqtt_message,
-    MockConfigEntry)
+    get_test_home_assistant, assert_setup_component)
 from tests.components.switch import common
 
 
@@ -27,69 +27,51 @@ STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 
 # test_flux.py:75 example of mockiong time
 STATE_IDLE = 'idle'
-@pytest.fixture
-def mock_publish(hass):
-    """Initialize components."""
-    yield hass.loop.run_until_complete(async_mock_mqtt_component(hass))
+STATE_ACTIVE = 'active_timer'
 
 
-async def test_basic_config(hass):
-    """Test the controlling state via topic."""
-    assert await async_setup_component(hass, switch.DOMAIN, {
+class TestLightingSM:
+    hass = None
+    calls = None
+    # pylint: disable=invalid-name
 
-        # switch.DOMAIN: {
-        #         'platform': 'mqtt',
-        #         'name': 'test',
-        #         'command_topic': 'command-topic',
-        #         'payload_on': 'beer on',
-        #         'payload_off': 'beer off',
-        #         'qos': '2'
-        #     }
+    def setup_method(self, method):
+        """Set up things to be run when tests are started."""
+        self.hass = get_test_home_assistant()
+        self.calls = []
 
-        'switch': {
-            'platform': 'lightingsm',
-            'entities': {
-                'test': {
-                        'entity': CONTROL_ENTITY,
-                        'sensor': SENSOR_ENTITY
+        @callback
+        def record_call(service):
+            """Track function calls.."""
+            self.calls.append(service)
+
+        self.hass.services.register('test', 'automation', record_call)
+
+    def teardown_method(self, method):
+        """Stop everything that was started."""
+        self.hass.stop()
+    def test_basic_config(self):
+        """Test the controlling state via topic."""
+        with assert_setup_component(1, 'switch'):
+            assert setup.setup_component(self.hass, switch.DOMAIN, {
+                'switch': {
+                    'platform': 'lightingsm',
+                    'entities': {
+                        'test': {
+                            'entity': CONTROL_ENTITY,
+                            'sensor': SENSOR_ENTITY,
+                            'delay': 2
+                        }
                     }
-            }
-        }
-        # switch.DOMAIN: {
-        #     'platform': 'lightingsm',
-        #     'entities': [
-                
-        #             'test': {
-        #                 'entity': CONTROL_ENTITY,
-        #                 'sensor': SENSOR_ENTITY
-        #             }
-                
-        #     ]
-        # }
-        
-    })
+                }
+            })
+        self.hass.start()
+        self.hass.block_till_done()
 
-    # setup.setup_component(self.hass, 'switch', {
-    #             'switch': {
-    #                 'platform': 'template',
-    #                 'switches': {
-    #                     'test_template_switch': {
-    #                         'value_template':
-    #                             "{{ states.switch.test_state.state }}",
-    #                         'turn_on': {
-    #                             'service': 'switch.turn_on',
-    #                             'entity_id': 'switch.test_state'
-    #                         },
-    #                         'turn_off': {
-    #                             'service': 'switch.turn_off',
-    #                             'entity_id': 'switch.test_state'
-    #                         },
-    #                     }
-    #                 }
-    #             }
-    #         })
+        state = self.hass.states.set(CONTROL_ENTITY, 'off')
+        self.hass.block_till_done()
+        assert self.hass.states.get('switch.test').state == STATE_IDLE
 
-    state = hass.states.get('switch.test')
-    assert STATE_IDLE == state.state
-    assert not state.attributes.get(ATTR_ASSUMED_STATE)
-
+        self.hass.states.set(SENSOR_ENTITY, 'on')
+        self.hass.block_till_done()
+        assert self.hass.states.get('switch.test').state == STATE_ACTIVE
