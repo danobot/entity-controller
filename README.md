@@ -14,7 +14,10 @@ That last one can be separated into the following two requirements:
 3.1 A light that is already on should not be affected by time outs.
 3.2 A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
 
-This AppDaemon app is by far the most elegant solution I have found for this problem.
+This component is by far the most elegant solution I have found for this problem.
+
+# Breaking Changes
+The application was converted to a native Home Assistant component. Appdaemon is no longer required. To receive future updates, update your HA configuration by adding the `lightingsm` top-level configuration key and inside a list of motion lights as shown in the examples below.
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
@@ -23,24 +26,21 @@ The app is quite configurable. In its most basic form, you can define the follow
 `MotionLight` needs a `binary_sensor` to monitor as well as an entity to control.
 
 ```yaml
-motion_light:
-  module: lighting_sm
-  class: LightingSM
-  sensor: binary_sensor.living_room_motion  # required
-  entity: light.table_lamp                  # required, [entity,entities,entity_on]
-  delay: 300                                # optional, overwrites default delay of 180s
+lightingsm:
+  motion_light:
+    sensor: binary_sensor.living_room_motion  # required
+    entity: light.table_lamp                  # required, [entity,entities,entity_on]
+    delay: 300                                # optional, overwrites default delay of 180s
 ```
 
-### Using AppDaemon Constraints
+### Using AppDaemon Constraints (not supported yet in v2.0.0)
 You may wish to constrain at what time of day your motion lights are activated. You can use AppDaemon's constraint mechanism for this.
 ```yaml
 motion_light:
-  module: lighting_sm
-  class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
-  constrain_start_time: sunset - 00:00:00
-  constrain_end_time: sunrise + 00:30:00
+  start_time: sunset - 00:00:00                # Not supported yet in v2.0.0
+  end_time: sunrise + 00:30:00                 # Not supported yet in v2.0.0
 ```
 
 ### Home Assistant State Entities
@@ -122,8 +122,6 @@ You may want to call different entities for the `turn_on` and `turn_off` call. T
 
 ```yaml
 motion_light:
-  module: lighting_sm
-  class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity: light.led                         # required
   entity_on: script.fade_in_led             # required
@@ -141,9 +139,6 @@ You can use the config key `entities` and `state_entities` to define these. For 
 
 ```yaml
 mtn_lounge:
-  module: lighting_sm
-  class: LightingSM
-  # entity: light.tv_led
   sensors:
     - binary_sensor.living_room_motion
     - binary_sensor.hallway_motion
@@ -165,8 +160,6 @@ These parameters are advanced and should be used with caution.
 You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
 ```yaml
 diagram_test:
-  module: lighting_sm
-  class: LightingSM
   sensors: 
     - binary_sensor.motion_detected
   entities:
@@ -180,14 +173,6 @@ diagram_test:
 # About LightingSM 
 
 `LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
-
-
-```yaml
-  module: lighting_sm
-  class: LightingSM
-```
-
-It is not 100% compatible with the current configuration (no feature parity yet).
 
 
 # Automatic updates
