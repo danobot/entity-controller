@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.0.0 - Component Rewrite
+Version:          v2.1.0 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -11,7 +11,7 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
 # from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
-from homeassistant.util.dt import parse_time
+from homeassistant.util import dt
 # from custom_components.lightingsm import StateMachine
 # from homeassistant.components.switch import SwitchDevice
 from homeassistant.helpers.entity_component import EntityComponent
@@ -28,7 +28,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -41,7 +41,7 @@ CONF_STATE = 'state_entities'
 CONF_DELAY= 'delay'
 CONF_NIGHT_MODE = 'night_mode'
 
-STATES = ['idle', 'disabled', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
+STATES = ['idle', 'overridden','constrained', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
 
 
 devices = []
@@ -72,20 +72,22 @@ async def async_setup(hass, config):
         config["name"] = key
         m = LightingSM(hass, config, machine)
         # machine.add_model(m.model)
+        # m.model.after_model(config)
         devices.append(m)
         # hass.
 
-    machine.add_transition(trigger='disable',              source='*',                 dest='disabled')
+    machine.add_transition(trigger='constrain',        source='*',    dest='constrained')
+    machine.add_transition(trigger='override',              source='*',                 dest='overridden')
 
     # Idle
     machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
     machine.add_transition(trigger='sensor_on',            source='idle',              dest='active',          conditions=['is_state_entities_off'])
     # Disabled      
-    machine.add_transition(trigger='enable',               source='disabled',          dest='idle')
-    machine.add_transition(trigger='sensor_on',            source='disabled',          dest=None)
+    machine.add_transition(trigger='enable',               source='overridden',          dest='idle')
+    machine.add_transition(trigger='sensor_on',            source='overridden',          dest=None)
     
 
-    machine.add_transition(trigger='sensor_off',           source='disabled',          dest=None)
+    machine.add_transition(trigger='sensor_off',           source='overridden',          dest=None)
 
     machine.add_transition(trigger='enter',                source='active',            dest='active_timer',    unless='will_stay_on')
     machine.add_transition(trigger='enter',                source='active',            dest='active_stay_on',  conditions='will_stay_on')
@@ -100,6 +102,16 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
 
+    machine.add_transition(trigger='enable',        source='constrained',    dest='idle')
+
+
+    for key, config in myconfig.items():
+        _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
+        config["name"] = key
+        m = LightingSM(hass, config, machine)
+        # machine.add_model(m.model)
+        # m.model.after_model(config)
+        devices.append(m)
 
     await component.async_add_entities(devices)
     return True
@@ -107,9 +119,11 @@ async def async_setup(hass, config):
 
 class LightingSM(entity.Entity):
 
+    attributes = {}
+
     def __init__(self, hass, config, machine):
         # StateMachine.__init__(self, config)
-        self.machine = machine
+        self.machine = machine # backwards reference to machine
         self.model = Model(hass, config, self)
         
 
@@ -121,13 +135,35 @@ class LightingSM(entity.Entity):
     def name(self):
         """Return the state of the entity."""
         return self.model.name
-
     @property
-    def state_attributes(self):
+    def icon(self):
         """Return the state of the entity."""
+        if self.model.state == 'idle':
+            return 'mdi:clock-outline'
+        if self.model.state == 'active':
+            return 'mdi:timer-sand'
+        if self.model.state == 'constrained':
+            return 'mdi:cancel'
+        if self.model.state == 'overridden':
+            return 'mdi:clock-alert-outline'
+        return 'mdi:eye'
 
-        return {'hello': 'fdfs'}
+    # @property
+    # def state_attributes(self):
+    #     """Return the state of the entity."""
+    #     # attributes = {}
 
+    #     # attributes["reset_count"] = None
+    #     # attributes["reset_at"] = None
+    #     # attributes["expires_at"] = None
+    #     # attributes["delay"] = None
+    #     # attributes["overridden_by"] = None
+    #     # attributes["overridden_at"] = None
+    #     # attributes["service_data"] = None
+    #     return self.attributes
+    def do_update(self, **kwargs):
+        self._state_attributes = kwargs
+        self.async_schedule_update_ha_state(True)
 
 class Model():
     """ Represents the transitions state machine model """
@@ -150,8 +186,8 @@ class Model():
     stay = False
 
     def __init__(self, hass, config, entity):
-        self.hass = hass
-        self.entity =entity
+        self.hass = hass # backwards reference to hass object
+        self.entity = entity # backwards reference to entity containing this model
 
         self.log = logging.getLogger(__name__ + '.' + config.get('name'))
         self.log.setLevel(logging.DEBUG)
@@ -168,15 +204,17 @@ class Model():
         self.config_normal_mode(config) 
         self.config_night_mode(config) #must come after normal_mode
         self.config_other(config)
-
+     
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
         #         self.log.debug("Updating graph in state: " + self.state)
         #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
+    # def after_model(self, config):
+
 
     def update(self, **kwargs):
-        self.entity.async_schedule_update_ha_state(True)
+        self.entity.do_update(kwargs)
         # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
 
     def finalize(self):
@@ -189,8 +227,8 @@ class Model():
         kwargs["reset_at"] = None
         kwargs["expires_at"] = None
         kwargs["delay"] = None
-        kwargs["disabled_by"] = None
-        kwargs["disabled_at"] = None
+        kwargs["overridden_by"] = None
+        kwargs["overridden_at"] = None
         kwargs["service_data"] = None
         # kwargs["last_triggered_by"] = None
         # kwargs["last_triggered_at"] = None
@@ -205,22 +243,27 @@ class Model():
         self.log.debug("Sensor state change: " + new.state)
         self.log.debug("state: " + self.state)
 
+        if not self.now_is_between(self.start, self.end):
+            self.log.debug("constraining because within time")
+            self.constrain()
+        else:
+            if self.matches(new.state, self.SENSOR_ON_STATE):
+                self.log.debug("matches on")
+                # self.update(last_triggered_by=entity)
+                self.sensor_on()
+            if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
+                self.log.debug("matches off")
+                # self.update(last_triggered_by=entity)
+                # We only care about sensor off state changes when the sensor is a duration sensor.
+                self.sensor_off_duration()
+                
 
-        if self.matches(new.state, self.SENSOR_ON_STATE):
-            self.log.debug("matches on")
-            # self.update(last_triggered_by=entity)
-            self.sensor_on()
-        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
-            self.log.debug("matches off")
-            # self.update(last_triggered_by=entity)
-            # We only care about sensor off state changes when the sensor is a duration sensor.
-            self.sensor_off_duration()
 
     def override_state_change(self, entity, old, new):
         if self.matches(new, self.OVERRIDE_ON_STATE):
-            # self.update(disabled_by=entity)
-            self.disable()
-            # self.update(disabled_at=str(datetime.now()))
+            # self.update(overridden_by=entity)
+            self.override()
+            # self.update(overridden_at=str(datetime.now()))
         if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
@@ -230,11 +273,20 @@ class Model():
         if self.is_active():
             self.control()
 
-    def event_handler(self, event, data, el,**kwargs):
+    def time_event_handler(self, event):
+        self.log.debug("Time event: " + str(event))
+
+
+    def event_handler(self,event, data):
         self.log.debug("Event: " + str(event))
         self.log.debug("Data: " + str(data))
         self.log.debug("kwargs: " + str(el))
-
+        if event == 'start_end_reached':
+            self.enable()
+        
+        if event == 'start_time_reached':
+            self.constrain()
+        
         if data['entity_id'] == self.name:
             self.log.debug("It is me!")
             if event == 'lightingsm-reset':
@@ -335,8 +387,8 @@ class Model():
         else:
             # self.update(night_mode='off')
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
-            start=  parse_time(self.night_mode['start_time'])
-            end=  parse_time(self.night_mode['end_time'])
+            start=  dt.parse_time(self.night_mode['start_time'])
+            end=  dt.parse_time(self.night_mode['end_time'])
             return self.now_is_between(start, end)
 
 
@@ -374,8 +426,8 @@ class Model():
     def on_exit_idle(self):
         self.log.debug("Exiting idle")
 
-    def on_enter_disabled(self):
-        self.log.debug("Now disabled")
+    def on_enter_overridden(self):
+        self.log.debug("Now overridden")
 
 
     def on_enter_active(self):
@@ -571,6 +623,7 @@ class Model():
         self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
     def config_other(self, config):
+        self.log.debug("Config other")
 
         self.do_draw = config.get("draw", False)
         
@@ -602,18 +655,41 @@ class Model():
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
 
+        start =  dt.parse_time(config.get('start_time'))
+        end =  dt.parse_time(config.get('end_time'))
+        self.log.debug("SEtting time callbacks  " + str(start) + "   " + str(end))
+        if end and start:
+            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
+            self.start = datetime.combine(dt.now(),start)
+            self.end = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
+            self.log.debug(type(self.end))
+            self.log.debug("SEtting time callbacks")
+            event.async_track_point_in_time(self.hass, self.constrain_start, dt.now()+timedelta(seconds=5))
+            event.async_track_point_in_time(self.hass, self.constrain_end, self.start)
+            # event.track_time_change(self.hass, self.time_event_handler, hour=end.hour, minute=end.minute, second=end.second)
+            # event.track_time_change(self.hass, self.time_event_handler, hour=start.hour, minute=start.minute, second=start.second)
+            
+                # self.set_state('constrain')
+
+
+    def constrain_start(self, event):
+        self.log.debug("Time event: " + str(event))
+        self.constrain()
+
+    def constrain_end(self, event):
+        self.log.debug("Time event: " + str(event))
+        self.enable()
 # HElpers
 
-    def now_is_between2(self, start, end, x=datetime.now()):
-        """Return true if x is in the range [start, end]"""
-        if start <= end:
-            return start <= x <= end
-        else:
-            return start <= x or x <= end
     def now_is_between(self, start, end, x=datetime.time(datetime.now())):
         today = date.today()
+        self.log.debug(str(isinstance(start, datetime)))
+        if isinstance(start, time):
+            start = datetime.date(start)
+        if isinstance(end, datetime.time):
+            end = datetime.date(end)
         start = datetime.combine(today, start)
-        end = datetime.combine(today, end)
+        end = datetime.combine(today,  end)
         x = datetime.combine(today, x)
         if end <= start:
             end += timedelta(1) # tomorrow!
