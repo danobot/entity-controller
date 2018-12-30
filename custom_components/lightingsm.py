@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.2.0 - Component Rewrite
+Version:          v2.2.1 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.0'
+VERSION = '2.2.1'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
