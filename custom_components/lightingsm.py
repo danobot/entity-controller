@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.2.1 - Component Rewrite
+Version:          v2.2.2 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.1'
+VERSION = '2.2.2'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -124,9 +124,11 @@ async def async_setup(hass, config):
 
 class LightingSM(entity.Entity):
 
-    attributes = {}
 
     def __init__(self, hass, config, machine):
+        self.attributes = {}
+        self.model = None
+        self.friendly_name = config.get('name', 'Motion Light')
         # StateMachine.__init__(self, config)
         self.machine = machine # backwards reference to machine
         self.model = Model(hass, config, self)
@@ -136,10 +138,11 @@ class LightingSM(entity.Entity):
     def state(self):
         """Return the state of the entity."""
         return self.model.state 
+
     @property
     def name(self):
         """Return the state of the entity."""
-        return self.model.name
+        return self.friendly_name
     @property
     def icon(self):
         """Return the entity icon."""
@@ -174,7 +177,8 @@ class LightingSM(entity.Entity):
             'state_entities',
             'control_entities',
             'sensor_entities',
-            'override_entities'
+            'override_entities',
+            'delay'
 
         ]
         for k,v in self.attributes.items():
@@ -231,27 +235,29 @@ class Model():
     """ Represents the transitions state machine model """
 
        
-    stateEntities = []
-    controlEntities = None
-    sensorEntities = None
-    offEntities = None
-    timer_handle = None
-    sensor_type = None
-    night_mode = None
-    backoff = False
-    backoff_count = 0
-    light_params_day = {}
-    light_params_night = {}
-    name = None
-    machine = None
-    entity = None
-    delay = None
-    stay = False
-    reset_count = None
     def __init__(self, hass, config, entity):
         self.hass = hass # backwards reference to hass object
         self.entity = entity # backwards reference to entity containing this model
 
+        
+        self.stateEntities = []
+        self.controlEntities = []
+        self.sensorEntities = []
+        self.offEntities = []
+        self.timer_handle = None
+        self.sensor_type = None
+        self.night_mode = None
+        self.backoff = False
+        self.backoff_count = 0
+        self.light_params_day = {}
+        self.light_params_night = {}
+        self.name = None
+        self.machine = None
+        self.delay = None
+        self.stay = False
+        self.start = None
+        self.end = None
+        self.reset_count = None
         self.log = logging.getLogger(__name__ + '.' + config.get('name'))
         self.log.setLevel(logging.DEBUG)
         self.log.debug("Init LightingSM with: " + str(config))
@@ -352,21 +358,21 @@ class Model():
         self.log.debug("Time event: " + str(event))
 
 
-    def event_handler(self,event, data):
-        self.log.debug("Event: " + str(event))
-        self.log.debug("Data: " + str(data))
-        self.log.debug("kwargs: " + str(el))
-        if event == 'start_end_reached':
-            self.enable()
+    # def event_handler(self,event, data):
+    #     self.log.debug("Event: " + str(event))
+    #     self.log.debug("Data: " + str(data))
+    #     self.log.debug("kwargs: " + str(el))
+    #     if event == 'start_end_reached':
+    #         self.enable()
         
-        if event == 'start_time_reached':
-            self.constrain()
+    #     if event == 'start_time_reached':
+    #         self.constrain()
         
-        if data['entity_id'] == self.name:
-            self.log.debug("It is me!")
-            if event == 'lightingsm-reset':
-                self.set_state('idle')
-                self.log.debug("Reset was called")
+    #     if data['entity_id'] == self.name:
+    #         self.log.debug("It is me!")
+    #         if event == 'lightingsm-reset':
+    #             self.set_state('idle')
+    #             self.log.debug("Reset was called")
 
 
     def _start_timer(self):
@@ -695,17 +701,20 @@ class Model():
             self.start = start # Time object
             self.end = end # Time object
             # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-            s = datetime.combine(dt.now(),start)
-            e = datetime.combine(dt.now(),end)
+            s = self.if_time_passed_get_tomorrow(start)
+            e = self.if_time_passed_get_tomorrow(end)
             # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
             self.log.debug(type(self.end))
-            self.log.debug("SEtting time callbacks")
+            self.log.debug("Setting time callbacks")
+            self.log.debug("Constrain end callback for : " + str(s))
+            self.log.debug("Constrain start callback for : " + str(e))
             self.constrain_end_hook = event.async_track_point_in_time(self.hass, self.constrain_end, s) # dt.now()+timedelta(seconds=3)) # s
             self.constrain_start_hook = event.async_track_point_in_time(self.hass, self.constrain_start, e) # dt.now()+timedelta(seconds=1)) # e
             if not self.now_is_between(start, end):
                 self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
                 event.async_call_later(self.hass, 1, self.constrain_fake)
 
+    
     def config_other(self, config):
         self.log.debug("Config other")
 
@@ -780,6 +789,20 @@ class Model():
 # =====================================================
 #    H E L P E R   F U N C T I O N S
 # =====================================================
+    def if_time_passed_get_tomorrow(self, time):
+        """ Returns tomorrows time if time is in the past """
+        today = date.today()
+        t = datetime.combine(today, time)
+        x = datetime.combine(today, datetime.time(datetime.now()))
+        self.log.debug("if_time_passed --- input time: " + str(t))
+        self.log.debug("if_time_passed --- current time: " + str(x))
+        if t <= x:
+            t += timedelta(1) # tomorrow!
+            self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
+        else:
+            self.log.debug("if_time_passed --- Time still happening today. " + str(t))
+
+        return t
 
     def now_is_between(self, start, end, x=datetime.time(datetime.now())):
         today = date.today()

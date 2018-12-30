@@ -11,3 +11,4 @@ v2.0.0      HA component rewrite
 v2.1.0      Implement time constraints and entity icons
 v2.2.0      State attributes and defects
 v2.2.1      Defect state entity
+v2.2.2      Defect constrain times
