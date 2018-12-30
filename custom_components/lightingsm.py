@@ -582,21 +582,20 @@ class Model():
 
 
     def config_state_entities(self, config):
-        
+        self.stateEntities = []
         self.log.info("Setting up state entities")
         if config.get('state_entities',False):
             self.log.debug("State entitity config defined")
-            self.stateEntities = []
             self.stateEntities.extend(config.get('state_entities',[]))
             #self.update(state_entities=self.stateEntities, delay=True)
             self.log.info("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self, config):
     
+        self.offEntities = []
         temp = config.get("entity_off", None)
         if temp is not None:
             self.log.debug("Setting up off_entities")
-            self.offEntities = []
             if type(temp) == str:
                 self.offEntities.append(temp)
             else:
