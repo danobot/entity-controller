@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.1.1 - Component Rewrite
+Version:          v2.2.0 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -10,10 +10,7 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
-# from homeassistant.components.light import ATTR_BRIGHTNESS, Light, PLATFORM_SCHEMA
 from homeassistant.util import dt
-# from custom_components.lightingsm import StateMachine
-# from homeassistant.components.switch import SwitchDevice
 from homeassistant.helpers.entity_component import EntityComponent
 import logging
 from transitions import Machine
@@ -27,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.1.1'
+VERSION = '2.2.0'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -145,19 +142,19 @@ class LightingSM(entity.Entity):
         return self.model.name
     @property
     def icon(self):
-        """Return the state of the entity."""
+        """Return the entity icon."""
         if self.model.state == 'idle':
-            return 'mdi:clock-outline'
+            return 'mdi:timer-sand'
         if self.model.state == 'active':
-            return 'mdi:timer-sand'
+            return 'mdi:check-circle'
         if self.model.state == 'active_timer':
-            return 'mdi:timer-sand'
+            return 'mdi:timer'
         if self.model.state == 'constrained':
             return 'mdi:cancel'
         if self.model.state == 'overridden':
-            return 'mdi:clock-alert-outline'
+            return 'mdi:timer-off'
         if self.model.state == 'blocked':
-            return 'mdi:clock-alert-outline'
+            return 'mdi:close-circle'
         return 'mdi:eye'
 
     @property
@@ -166,21 +163,31 @@ class LightingSM(entity.Entity):
         return self.attributes
 
     def reset_state(self):
-        att = self.attributes
-        del att['last_overridden_by']
-        del att['last_overridden_at']
-        del att["expires_at"]
-        del att['reset_count']
-        del att['backoff_count']
-        del att['backoff_delay']
-        _LOGGER.debug("reset att: " + str(att))
-        self.attributes = att
+        """ Reset state attributes by removing any state specific attributes when returning to idle state """
+        att = {}
 
+        PERSIST_STATE_ATTRIBUTES = [
+            'last_overridden_by',
+            'last_overridden_at',
+            'last_triggered_by',
+            'last_triggered_at',
+            'state_entities',
+            'control_entities',
+            'sensor_entities',
+            'override_entities'
+
+        ]
+        for k,v in self.attributes.items():
+            if k in PERSIST_STATE_ATTRIBUTES:
+                att[k] = v
+
+
+        self.attributes = att
+        self.do_update()
 
     def do_update(self, wait=False,**kwargs):
         # self._state_attributes = kwargs
 
-        attributes = self.attributes
 
         # if 'reset_count' in kwargs:
         #     attributes["reset_count"] = kwargs.get('reset_count')
@@ -211,8 +218,7 @@ class LightingSM(entity.Entity):
         # if 'override_entities' in kwargs:
         #     attributes["overrideEntities"] = kwargs.get('override_entities')
 
-        _LOGGER.debug("state: " + str(attributes))
-        self.attributes = attributes
+        # _LOGGER.debug("state: " + str(attributes))
 
 
         if wait == False:
@@ -265,24 +271,21 @@ class Model():
         self.update(wait=True, 
             delay=self.light_params_day['delay'], 
             state_entities=self.stateEntities, 
-            control_entities=self.controlEntities, 
             sensor_entities=self.sensorEntities,
-            override_entities=self.overrideEntities
+            override_entities=self.overrideEntities,
+            control_entities=self.controlEntities,
+
         )
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
         #         self.log.debug("Updating graph in state: " + self.state)
         #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
-    # def after_model(self, config):
-
 
     def update(self, wait=False, reset=False, **kwargs):
         """ Called from different methods to report a state attribute change """
-        if reset:
-            self.entity.reset_state()
-        else:
-            for k,v in kwargs.items():
+        for k,v in kwargs.items():
+            if v is not None:
                 self.entity.set_attr(k,v)
         
         self.entity.do_update(wait, **kwargs)
@@ -295,21 +298,17 @@ class Model():
         self.log.debug("state: " + self.state)
         self.update()
 
-        # self.entity.async_schedule_update_ha_state(True)
+    # def clear_state_attributes(self):
+    #     kwargs = {}
+    #     kwargs["reset_count"] = None
+    #     kwargs["reset_at"] = None
+    #     kwargs["expires_at"] = None
+    #     kwargs["delay"] = None
+    #     kwargs["overridden_by"] = None
+    #     kwargs["overridden_at"] = None
+    #     kwargs["service_data"] = None
+    #     self.update(**kwargs)
 
-    def clear_state_attributes(self):
-        kwargs = {}
-        kwargs["reset_count"] = None
-        kwargs["reset_at"] = None
-        kwargs["expires_at"] = None
-        kwargs["delay"] = None
-        kwargs["overridden_by"] = None
-        kwargs["overridden_at"] = None
-        kwargs["service_data"] = None
-        # kwargs["last_triggered_by"] = None
-        # kwargs["last_triggered_at"] = None
-
-        # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
    
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
@@ -319,10 +318,6 @@ class Model():
         self.log.debug("Sensor state change: " + new.state)
         self.log.debug("state: " + self.state)
 
-        # if not self.now_is_between(self.start, self.end):
-        #     self.log.debug("constraining because within time")
-        #     self.constrain()
-        # else:
         if self.matches(new.state, self.SENSOR_ON_STATE):
             self.log.debug("matches on")
             self.update(last_triggered_by=entity)
@@ -336,11 +331,12 @@ class Model():
 
 
     def override_state_change(self, entity, old, new):
-        if self.matches(new, self.OVERRIDE_ON_STATE):
+        self.log.debug("Override state change")
+        if self.matches(new.state, self.OVERRIDE_ON_STATE):
             self.update(overridden_by=entity)
             self.override()
             self.update(overridden_at=str(datetime.now()))
-        if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
+        if self.matches(new.state, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
 
@@ -414,10 +410,9 @@ class Model():
     # =====================================================
     def _override_entity_state(self):
         for e in self.overrideEntities:
-            s = self.hass.states.getself.hass.states.get(e)
-            self.log.info(s)
-            self.log.info(" * State of {} is {}".format(e, s))
-            if self.matches(s, self.OVERRIDE_ON_STATE):
+            s = self.hass.states.get(e)
+            self.log.debug(" * State of {} is {}".format(e, s.state))
+            if self.matches(s.state, self.OVERRIDE_ON_STATE):
                 self.log.debug("Override entities are ON. [{}]".format(e))
                 return True
         self.log.debug("Override entities are OFF.")
@@ -426,9 +421,8 @@ class Model():
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
             s = self.hass.states.get(e)
-            self.log.info(s)
-            self.log.info(" * State of {} is {}".format(e, s))
-            if self.matches(s, self.SENSOR_ON_STATE):
+            self.log.debug(" * State of {} is {}".format(e, s.state))
+            if self.matches(s.state, self.SENSOR_ON_STATE):
                 self.log.debug("Sensor entities are ON. [{}]".format(e))
                 return True
         self.log.debug("Sensor entities are OFF.")
@@ -444,8 +438,8 @@ class Model():
         for e in self.stateEntities:
             s = self.hass.states.get(e)
             self.log.info(s)
-            self.log.debug(" * State of {} is {}".format(e, s))
-            if self.matches(s, self.STATE_ON_STATE):
+            self.log.debug(" * State of {} is {}".format(e, s.state))
+            if self.matches(s.state, self.STATE_ON_STATE):
                 self.log.debug("State entities are ON. [{}]".format(e))
                 return True
         self.log.debug("State entities are OFF.")
@@ -501,8 +495,7 @@ class Model():
     # =====================================================
     def on_enter_idle(self):
         self.log.debug("Entering idle")
-        self.clear_state_attributes()
-        # self.draw();
+        self.entity.reset_state()
 
     def on_exit_idle(self):
         self.log.debug("Exiting idle")
@@ -552,7 +545,6 @@ class Model():
                 self.log.debug("Turning off {}".format(e))
                 self.call_service(e, 'turn_off')
 
-        # self.entity.reset_state()
 
     
     # =====================================================
@@ -580,13 +572,14 @@ class Model():
           self.log.debug("Registering control: " + str(control))
           event.async_track_state_change(self.hass, control, self.control_state_change)
 
-        # Id no state entities are defined, use control entites as state
+        # If no state entities are defined, use control entites as state
         if len(self.stateEntities) == 0:
             self.stateEntities.extend(self.controlEntities)
             self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
         else:
             self.log.debug("Using existing state entities: " + str(self.stateEntities))
         self.log.debug("Control Entities: " + str(self.controlEntities))
+
 
     def config_state_entities(self, config):
         
@@ -734,9 +727,16 @@ class Model():
 
         self.stay = config.get("stay", False)
    
-        self.overrideEntities = config.get("overrides", None)
 
-        if self.overrideEntities is not None:
+        self.overrideEntities = []
+        if 'override' in config:
+            self.overrideEntities.append(config.get('override'))
+
+        if 'overrides' in config:
+            self.overrideEntities.extend(config.get('overrides'))
+
+        self.log.debug("Override Entities: " + str(self.overrideEntities))
+        if len(self.overrideEntities) > 0:
             for e in self.overrideEntities:
                 self.log.info("Setting override callback/s: " + str(e))
                 event.async_track_state_change(self.hass, e, self.override_state_change)

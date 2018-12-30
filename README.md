@@ -167,7 +167,16 @@ diagram_test:
   image_prefix: '/fsm_diagram_'             # optional, default shown
 
 ```
+# State Meaning
 
+|---|---|
+|State|Description|
+|idle|Entity observing states, nothing else.|
+|active|Momentary, intermediate state to `active_timer`. You won't see this state much as all.|
+|active_timer|Control entities have been switched on and timer is running|
+|overridden|Entity is overridden by an `override_entity`|
+|blocked|Entities in this state wanted to turn on but were blocked because one or more `control_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
+|constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
 # About LightingSM 
 
 `LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
