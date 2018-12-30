@@ -7,4 +7,5 @@ v1.0.0      Major rewrite using state machine implementation and more configurat
 v1.0.1      Fix typos in readme, update module reference in test suite
 v1.1.0      Implements Home Assistant state entities including state attributes
 v1.1.1      Add more information to state attributes
-v1.1.2      
+v2.0.0      HA component rewrite
+v2.1.0      Implement time constraints
