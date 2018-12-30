@@ -15,7 +15,6 @@ from homeassistant.util import dt
 # from custom_components.lightingsm import StateMachine
 # from homeassistant.components.switch import SwitchDevice
 from homeassistant.helpers.entity_component import EntityComponent
-_LOGGER = logging.getLogger(__name__)
 import logging
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
@@ -47,11 +46,13 @@ STATES = ['idle', 'overridden','constrained', {'name': 'active', 'children': ['t
 devices = []
 async def async_setup(hass, config):
     """Load graph configurations."""
+    _LOGGER = logging.getLogger(__name__)
+
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
 
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger('transitions').setLevel(logging.DEBUG)
+    # logging.basicConfig(level=logging.DEBUG)
+    # logging.getLogger('transitions').setLevel(logging.DEBUG)
     myconfig = config[DOMAIN]
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, config))
     _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
@@ -214,12 +215,14 @@ class Model():
 
 
     def update(self, **kwargs):
-        self.entity.do_update(kwargs)
+        self.entity.do_update(**kwargs)
         # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
 
     def finalize(self):
         self.log.debug("state: " + self.state)
-        self.entity.async_schedule_update_ha_state(True)
+        self.update()
+
+        # self.entity.async_schedule_update_ha_state(True)
 
     def clear_state_attributes(self):
         kwargs = {}
@@ -659,37 +662,49 @@ class Model():
         end =  dt.parse_time(config.get('end_time'))
         self.log.debug("SEtting time callbacks  " + str(start) + "   " + str(end))
         if end and start:
+            self.start = start # Time object
+            self.end = end # Time object
             # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-            self.start = datetime.combine(dt.now(),start)
-            self.end = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
+            s = datetime.combine(dt.now(),start)
+            e = datetime.combine(dt.now(),end)
+            e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
             self.log.debug(type(self.end))
             self.log.debug("SEtting time callbacks")
-            event.async_track_point_in_time(self.hass, self.constrain_start, dt.now()+timedelta(seconds=5))
-            event.async_track_point_in_time(self.hass, self.constrain_end, self.start)
-            # event.track_time_change(self.hass, self.time_event_handler, hour=end.hour, minute=end.minute, second=end.second)
-            # event.track_time_change(self.hass, self.time_event_handler, hour=start.hour, minute=start.minute, second=start.second)
-            
-                # self.set_state('constrain')
+            self.constrain_end_hook = event.async_track_point_in_time(self.hass, self.constrain_end, dt.now()+timedelta(seconds=3)) # s
+            self.constrain_start_hook = event.async_track_point_in_time(self.hass, self.constrain_start, dt.now()+timedelta(seconds=1)) # e
+            if not self.now_is_between(start, end):
+                self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
+                event.async_track_point_in_time(self.hass, self.constrain_start, dt.now()+timedelta(seconds=5))
 
 
-    def constrain_start(self, event):
-        self.log.debug("Time event: " + str(event))
+    def constrain_start(self, evt):
+        self.log.debug("Constrain Start reached. Disabling ML: " + str(evt))
         self.constrain()
+        # time = datetime.combine(datetime.today(),self.end) + timedelta(seconds=5)
+        time = datetime.now() + timedelta(seconds=5)
+        self.log.debug("setting new callback in 24h" + str(time))
+        event.async_track_point_in_time(self.hass, self.constrain_start, time)
 
-    def constrain_end(self, event):
-        self.log.debug("Time event: " + str(event))
+    def constrain_end(self, evt):
+        self.log.debug("Constrain End reached. Enabling ML: " + str(evt))
         self.enable()
+        # time = datetime.combine(datetime.today(),self.end) + timedelta(seconds=5)
+        time = datetime.now() + timedelta(seconds=5)
+        self.log.debug("setting new callback in 24h" + str(time))
+        event.async_track_point_in_time(self.hass, self.constrain_end, time)
+        
 # HElpers
 
     def now_is_between(self, start, end, x=datetime.time(datetime.now())):
         today = date.today()
         self.log.debug(str(isinstance(start, datetime)))
-        if isinstance(start, time):
-            start = datetime.date(start)
-        if isinstance(end, datetime.time):
-            end = datetime.date(end)
+        # if isinstance(start, time):
+        #     start = datetime.date(start)
+        # if isinstance(end, datetime.time):
+        #     end = datetime.date(end)
+        # if isinstance(start, time):
         start = datetime.combine(today, start)
-        end = datetime.combine(today,  end)
+        end = datetime.combine(today, end)
         x = datetime.combine(today, x)
         if end <= start:
             end += timedelta(1) # tomorrow!
