@@ -115,6 +115,7 @@ async def async_setup(hass, config):
     for key, config in myconfig.items():
         _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
         config["name"] = key
+        m = None
         m = LightingSM(hass, config, machine)
         # machine.add_model(m.model)
         # m.model.after_model(config)
