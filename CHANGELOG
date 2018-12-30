@@ -9,3 +9,4 @@ v1.1.0      Implements Home Assistant state entities including state attributes
 v1.1.1      Add more information to state attributes
 v2.0.0      HA component rewrite
 v2.1.0      Implement time constraints and entity icons
+v2.1.1      fix defect (entity config reused betweeen instances)

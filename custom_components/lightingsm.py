@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.1.0 - Component Rewrite
+Version:          v2.1.1 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -27,7 +27,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.1.0'
+VERSION = '2.1.1'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -42,11 +42,11 @@ CONF_NIGHT_MODE = 'night_mode'
 
 STATES = ['idle', 'overridden','constrained','blocked', {'name': 'active', 'children': ['timer','stay_on'], 'initial': False}]
 
-
+_LOGGER = logging.getLogger(__name__)
 devices = []
 async def async_setup(hass, config):
     """Load graph configurations."""
-    _LOGGER = logging.getLogger(__name__)
+
 
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
@@ -133,7 +133,7 @@ class LightingSM(entity.Entity):
         # StateMachine.__init__(self, config)
         self.machine = machine # backwards reference to machine
         self.model = Model(hass, config, self)
-        
+        event.async_call_later(hass, 1, self.do_update)
 
     @property
     def state(self):
@@ -150,30 +150,76 @@ class LightingSM(entity.Entity):
             return 'mdi:clock-outline'
         if self.model.state == 'active':
             return 'mdi:timer-sand'
+        if self.model.state == 'active_timer':
+            return 'mdi:timer-sand'
         if self.model.state == 'constrained':
             return 'mdi:cancel'
         if self.model.state == 'overridden':
             return 'mdi:clock-alert-outline'
+        if self.model.state == 'blocked':
+            return 'mdi:clock-alert-outline'
         return 'mdi:eye'
 
-    # @property
-    # def state_attributes(self):
-    #     """Return the state of the entity."""
-    #     # attributes = {}
+    @property
+    def state_attributes(self):
+        """Return the state of the entity."""
+        return self.attributes
 
-    #     # attributes["reset_count"] = None
-    #     # attributes["reset_at"] = None
-    #     # attributes["expires_at"] = None
-    #     # attributes["delay"] = None
-    #     # attributes["overridden_by"] = None
-    #     # attributes["overridden_at"] = None
-    #     # attributes["service_data"] = None
-    #     return self.attributes
-    def do_update(self, delay=False, **kwargs):
-        self._state_attributes = kwargs
+    def reset_state(self):
+        att = self.attributes
+        del att['last_overridden_by']
+        del att['last_overridden_at']
+        del att["expires_at"]
+        del att['reset_count']
+        del att['backoff_count']
+        del att['backoff_delay']
+        _LOGGER.debug("reset att: " + str(att))
+        self.attributes = att
 
-        if delay == False:
+
+    def do_update(self, wait=False,**kwargs):
+        # self._state_attributes = kwargs
+
+        attributes = self.attributes
+
+        # if 'reset_count' in kwargs:
+        #     attributes["reset_count"] = kwargs.get('reset_count')
+            
+        # attributes["reset_at"] = self.model.reset_at
+        # attributes["expires_at"] = self.model.expires_at
+        # attributes["delay"] = self.model.delay
+        
+
+        # attributes["overridden_by"] = None
+        # attributes["overridden_at"] = None
+        
+        # if 'last_triggered_by' in kwargs: attributes["last_triggered_by"] = kwargs.get('last_triggered_by')
+        # if 'last_triggered_at' in kwargs: attributes["last_triggered_at"] = kwargs.get('last_triggered_at')
+
+        # attributes["last_blocked_by"] = kwargs.get('last_blocked_by')
+        # attributes["last_blocked_at"] = kwargs.get('last_blocked_at')
+
+        # attributes["last_overridden_by"] = kwargs.get('last_overridden_by')
+        # attributes["last_overridden_at"] = kwargs.get('last_overridden_at')
+
+        # if 'control_entities' in kwargs:
+        #     attributes["controlEntities"] = kwargs.get('control_entities')
+        # if 'sensor_entities' in kwargs:
+        #     attributes["sensorEntities"] = kwargs.get('sensor_entities')
+        # if 'state_entities' in kwargs:
+        #     attributes["state_entities"] = kwargs.get('state_entities')
+        # if 'override_entities' in kwargs:
+        #     attributes["overrideEntities"] = kwargs.get('override_entities')
+
+        _LOGGER.debug("state: " + str(attributes))
+        self.attributes = attributes
+
+
+        if wait == False:
             self.async_schedule_update_ha_state(True)
+
+    def set_attr(self, k, v):
+        self.attributes[k] = v
 
 class Model():
     """ Represents the transitions state machine model """
@@ -193,8 +239,9 @@ class Model():
     name = None
     machine = None
     entity = None
+    delay = None
     stay = False
-
+    reset_count = None
     def __init__(self, hass, config, entity):
         self.hass = hass # backwards reference to hass object
         self.entity = entity # backwards reference to entity containing this model
@@ -213,8 +260,15 @@ class Model():
         self.config_off_entities(config)
         self.config_normal_mode(config) 
         self.config_night_mode(config) #must come after normal_mode
+        self.config_constrain_times(config)
         self.config_other(config)
-     
+        self.update(wait=True, 
+            delay=self.light_params_day['delay'], 
+            state_entities=self.stateEntities, 
+            control_entities=self.controlEntities, 
+            sensor_entities=self.sensorEntities,
+            override_entities=self.overrideEntities
+        )
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -223,9 +277,18 @@ class Model():
     # def after_model(self, config):
 
 
-    def update(self, delay=False,**kwargs):
+    def update(self, wait=False, reset=False, **kwargs):
+        """ Called from different methods to report a state attribute change """
+        if reset:
+            self.entity.reset_state()
+        else:
+            for k,v in kwargs.items():
+                self.entity.set_attr(k,v)
+        
+        self.entity.do_update(wait, **kwargs)
 
-        self.entity.do_update(delay, **kwargs)
+        # if delay == False:
+        #     self.async_schedule_update_ha_state(True)
         # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
 
     def finalize(self):
@@ -262,11 +325,11 @@ class Model():
         # else:
         if self.matches(new.state, self.SENSOR_ON_STATE):
             self.log.debug("matches on")
-            # self.update(last_triggered_by=entity)
+            self.update(last_triggered_by=entity)
             self.sensor_on()
         if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
             self.log.debug("matches off")
-            # self.update(last_triggered_by=entity)
+            self.update(last_triggered_by=entity)
             # We only care about sensor off state changes when the sensor is a duration sensor.
             self.sensor_off_duration()
                 
@@ -274,9 +337,9 @@ class Model():
 
     def override_state_change(self, entity, old, new):
         if self.matches(new, self.OVERRIDE_ON_STATE):
-            # self.update(overridden_by=entity)
+            self.update(overridden_by=entity)
             self.override()
-            # self.update(overridden_at=str(datetime.now()))
+            self.update(overridden_at=str(datetime.now()))
         if self.matches(new, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
             self.enable()
 
@@ -320,12 +383,13 @@ class Model():
             if self.previous_delay > self.backoff_max:
                 self.log.debug("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
+            self.update(backoff_delay=self.previous_delay)
 
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
         self.log.debug("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
         expiry_time = str(datetime.now() + timedelta(seconds=self.previous_delay))
-        self.update(delay=self.previous_delay, expires_at=expiry_time)
+        self.update(expires_at=expiry_time)
     
     def _cancel_timer(self):
         if self.timer_handle.is_alive():
@@ -334,10 +398,11 @@ class Model():
     def _reset_timer(self):
         self.log.debug("Resetting timer" + str(self.backoff))
         self._cancel_timer()
+        self.update(reset_at=str(datetime.now()))
         if self.backoff:
             self.log.debug("inc backoff")
             self.backoff_count += 1
-            # self.update(reset_count=self.backoff_count,reset_at=str(datetime.now()))
+            self.update(backoff_count=self.backoff_count)
         self._start_timer()
         # self.log.debug(str(self.timer_handle))
         return True
@@ -398,10 +463,10 @@ class Model():
     def is_night(self):
         if self.night_mode is None:
             self.log.debug("(night mode disabled): " + str(self.night_mode))
-            # self.update(night_mode='on')
+            self.update(night_mode='on')
             return False
         else:
-            # self.update(night_mode='off')
+            self.update(night_mode='off')
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             start=  dt.parse_time(self.night_mode['start_time'])
             end=  dt.parse_time(self.night_mode['end_time'])
@@ -447,7 +512,7 @@ class Model():
 
 
     def on_enter_active(self):
-        # self.update(last_triggered_at=str(datetime.now()))
+        self.update(last_triggered_at=str(datetime.now()))
         self.backoff_count = 0
         if self.is_night():
             self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
@@ -456,7 +521,7 @@ class Model():
             self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
 
-        # self.update(service_data=self.lightParams['service_data'])
+        
         self._start_timer()
 
         self.log.debug("light params before turning on: " + str(self.lightParams))
@@ -471,16 +536,7 @@ class Model():
                 self.call_service(e, 'turn_on')
         self.enter()
 
-    def call_service(self, entity, service, **kwargs):
-        """ Helper for calling HA services with the correct parameters """
-        domain, e = entity.split('.')
-        params = {}
-        if kwargs is not None:
-            params = kwargs
 
-        params['entity_id'] = entity
-
-        self.hass.services.call(domain, service, kwargs)
 
     def on_exit_active(self):
         self.log.debug("Turning off entities, cancelling timer")
@@ -495,6 +551,8 @@ class Model():
             for e in self.controlEntities:
                 self.log.debug("Turning off {}".format(e))
                 self.call_service(e, 'turn_off')
+
+        # self.entity.reset_state()
 
     
     # =====================================================
@@ -528,8 +586,6 @@ class Model():
             self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
         else:
             self.log.debug("Using existing state entities: " + str(self.stateEntities))
-            #self.update(state_entities=self.stateEntities)
-        self.update(control_entities=self.controlEntities, delay=True)
         self.log.debug("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self, config):
@@ -539,7 +595,7 @@ class Model():
             self.log.debug("State entitity config defined")
             self.stateEntities = []
             self.stateEntities.extend(config.get('state_entities',[]))
-            self.update(state_entities=self.stateEntities, delay=True)
+            #self.update(state_entities=self.stateEntities, delay=True)
             self.log.info("State Entities: " + str(self.stateEntities))
 
     def config_off_entities(self, config):
@@ -552,7 +608,7 @@ class Model():
                 self.offEntities.append(temp)
             else:
                 self.offEntities.extend(temp)
-            self.update(off_entities=self.offEntities, delay=True)
+            #self.update(off_entities=self.offEntities, delay=True)
             self.log.info('Off Entities: ' + str(self.offEntities))
 
 
@@ -639,6 +695,25 @@ class Model():
         self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
 
+    def config_constrain_times(self, config):
+        start = dt.parse_time(config.get('start_time'))
+        end = dt.parse_time(config.get('end_time'))
+        self.log.debug("SEtting time callbacks  " + str(start) + "   " + str(end))
+        if end and start:
+            self.start = start # Time object
+            self.end = end # Time object
+            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
+            s = datetime.combine(dt.now(),start)
+            e = datetime.combine(dt.now(),end)
+            # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
+            self.log.debug(type(self.end))
+            self.log.debug("SEtting time callbacks")
+            self.constrain_end_hook = event.async_track_point_in_time(self.hass, self.constrain_end, s) # dt.now()+timedelta(seconds=3)) # s
+            self.constrain_start_hook = event.async_track_point_in_time(self.hass, self.constrain_start, e) # dt.now()+timedelta(seconds=1)) # e
+            if not self.now_is_between(start, end):
+                self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
+                event.async_call_later(self.hass, 1, self.constrain_fake)
+
     def config_other(self, config):
         self.log.debug("Config other")
 
@@ -666,29 +741,14 @@ class Model():
                 self.log.info("Setting override callback/s: " + str(e))
                 event.async_track_state_change(self.hass, e, self.override_state_change)
                 # self.listen_state(self.override_state_change, e)
-            #self.update(override_entities=self.overrideEntities)
         if config.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
-
-        start =  dt.parse_time(config.get('start_time'))
-        end =  dt.parse_time(config.get('end_time'))
-        self.log.debug("SEtting time callbacks  " + str(start) + "   " + str(end))
-        if end and start:
-            self.start = start # Time object
-            self.end = end # Time object
-            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-            s = datetime.combine(dt.now(),start)
-            e = datetime.combine(dt.now(),end)
-            # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
-            self.log.debug(type(self.end))
-            self.log.debug("SEtting time callbacks")
-            self.constrain_end_hook = event.async_track_point_in_time(self.hass, self.constrain_end, s) # dt.now()+timedelta(seconds=3)) # s
-            self.constrain_start_hook = event.async_track_point_in_time(self.hass, self.constrain_start, e) # dt.now()+timedelta(seconds=1)) # e
-            if not self.now_is_between(start, end):
-                self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
-                event.async_call_later(self.hass, 1, self.constrain_fake)
+        
+# =====================================================
+#    E V E N T   C A L L B A C K S
+# =====================================================
 
     def constrain_fake(self, evt):
         self.constrain()
@@ -718,16 +778,12 @@ class Model():
     #     self.log.debug("setting new callback in 24h" + str(time))
     #     event.async_track_point_in_time(self.hass, self.constrain_end, time)
         
-# HElpers
+# =====================================================
+#    H E L P E R   F U N C T I O N S
+# =====================================================
 
     def now_is_between(self, start, end, x=datetime.time(datetime.now())):
         today = date.today()
-        self.log.debug(str(isinstance(start, datetime)))
-        # if isinstance(start, time):
-        #     start = datetime.date(start)
-        # if isinstance(end, datetime.time):
-        #     end = datetime.date(end)
-        # if isinstance(start, time):
         start = datetime.combine(today, start)
         end = datetime.combine(today, end)
         x = datetime.combine(today, x)
@@ -737,12 +793,14 @@ class Model():
             x += timedelta(1) # tomorrow!
         return start <= x <= end
 
-# class Strategy(LightingSM):
-#     def __init__(self, delay, brightness):
-#         self.delay = delay
-#         self.brightness = brightness
+    def call_service(self, entity, service, **kwargs):
+        """ Helper for calling HA services with the correct parameters """
+        domain, e = entity.split('.')
+        params = {}
+        if kwargs is not None:
+            params = kwargs
 
-#     def start(self):
-#         raise NotImplementedError
+        params['entity_id'] = entity
 
-
+        self.hass.services.call(domain, service, kwargs)
+        self.update(service_data=kwargs)
