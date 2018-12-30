@@ -23,7 +23,7 @@ The application was converted to a native Home Assistant component. Appdaemon is
 The app is quite configurable. In its most basic form, you can define the following.
 
 ## Basic Configuration
-`MotionLight` needs a `binary_sensor` to monitor as well as an entity to control.
+`MotionLight` needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
 
 ```yaml
 lightingsm:
@@ -32,18 +32,20 @@ lightingsm:
     entity: light.table_lamp                  # required, [entity,entities,entity_on]
     delay: 300                                # optional, overwrites default delay of 180s
 ```
+**Note:** The top-level domain key `lightingsm` will be omitted in the following examples.
 
-### Using AppDaemon Constraints (not supported yet in v2.0.0)
-You may wish to constrain at what time of day your motion lights are activated. You can use AppDaemon's constraint mechanism for this.
+### Using Time Constraints
+You may wish to constrain at what time of day your motion lights are activated. You can use the `start_time` and `end_time` parameters for this.
 ```yaml
 motion_light:
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
-  start_time: sunset - 00:00:00                # Not supported yet in v2.0.0
-  end_time: sunrise + 00:30:00                 # Not supported yet in v2.0.0
+  start_time: 00:00:00                # required
+  end_time: 00:30:00                 # required
 ```
+Note that time values relative to sunset/sunrise are not yet supported.
 
-### Home Assistant State Entities
+### Home Assistant State Entities (not supported yet in v2)
 Since `v1.1.0`, the app creates and updates entities representing the motion light itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
 
 ![HASS Entity](images/hass_entity.png)
@@ -54,8 +56,6 @@ These can be referenced in various `sensor` and `automation` configurations.
 You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
 ```yaml
 override_example:
-  module: lighting_sm
-  class: LightingSM
   sensors: 
     - input_boolean.motion_detected
   entities:
@@ -74,8 +74,6 @@ Night mode allows you to use slightly different parameters at night. The use cas
 
 ```yaml
 motion_light:
-  module: lighting_sm
-  class: LightingSM
   sensor: binary_sensor.living_room_motion
   entity_on: light.tv_led
   delay: 300
@@ -155,7 +153,7 @@ Note: This can have unexpected consequences. For example, if you `state_entities
 
 These parameters are advanced and should be used with caution.
 
-### Drawing State Machine Diagrams
+### Drawing State Machine Diagrams (not supported yet in `v2`)
 
 You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
 ```yaml
