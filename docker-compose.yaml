@@ -12,20 +12,25 @@ services:
       context: .
       dockerfile: Dockerfile.component 
     container_name: component-test
-    # command: [ "ptw","--","-sv" ]
-    restart: unless-stopped
-    # networks:
-    #     - "local"
-    #     - "public"
-    # links:
-    #     - db
-    # external_links:
-    #     - mqtt
-    # ports:
-    #     - 8111:8123
-    # volumes:
+    command: [ "ptw","--","-sv" ]
+
+    volumes:
         # - G:\Repos\hass-dev:/config
-        # - ${$PWD}/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
-        # - ${$PWD}/pytest.ini:/usr/src/app/pytest.ini
+      - ./custom_components/lightingsm.py:/usr/src/app/components/lightingsm.py
+      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
+      - ./pytest.ini:/usr/src/app/pytest.ini
+        # - ${PWD}:/usr/src/app
+  component-test-ci:
+    build: 
+      context: .
+      dockerfile: Dockerfile.component 
+    container_name: component-test-ci
+    command: [ "pytest" ]
+
+    volumes:
+        # - G:\Repos\hass-dev:/config
+      - ./custom_components/lightingsm.py:/usr/src/app/components/lightingsm.py
+      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
+      - ./pytest.ini:/usr/src/app/pytest.ini
         # - ${PWD}:/usr/src/app
 

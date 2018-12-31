@@ -1,4 +1,4 @@
-"""The tests for the MQTT switch platform."""
+"""The tests for the MQTT lightingsm platform."""
 import json
 from unittest.mock import patch
 import pytest
@@ -7,13 +7,11 @@ from homeassistant.core import callback
 from homeassistant import setup
 from homeassistant.const import STATE_UNAVAILABLE, ATTR_ASSUMED_STATE
 import homeassistant.core as ha
-from homeassistant.components import switch, mqtt
 from homeassistant.components.mqtt.discovery import async_start
 from homeassistant.components import light
 from tests.common import (
     get_test_home_assistant, assert_setup_component,
     async_fire_time_changed)
-from tests.components.switch import common
 from freezegun import freeze_time
 
 CONTROL_ENTITY = 'light.test_light';
@@ -51,18 +49,28 @@ class TestLightingSM:
     def teardown_method(self, method):
         """Stop everything that was started."""
         self.hass.stop()
-    def test_basic_config(self):
+
+    def test_demo(self):
+        with assert_setup_component(1, 'lightingsm'):
+            assert setup.setup_component(self.hass, 'lightingsm', {
+                'lightingsm': {
+                    'test': {
+                        'entity': CONTROL_ENTITY,
+                        'sensor': SENSOR_ENTITY,
+                        'delay': 2
+                    }
+                }
+            })
+        
+    def basic_config(self):
         """Test the controlling state via topic."""
-        with assert_setup_component(1, 'switch'):
-            assert setup.setup_component(self.hass, switch.DOMAIN, {
-                'switch': {
-                    'platform': 'lightingsm',
-                    'entities': {
-                        'test': {
-                            'entity': CONTROL_ENTITY,
-                            'sensor': SENSOR_ENTITY,
-                            'delay': 2
-                        }
+        with assert_setup_component(1, 'lightingsm'):
+            assert setup.setup_component(self.hass, 'lightingsm', {
+                'lightingsm': {
+                    'test': {
+                        'entity': CONTROL_ENTITY,
+                        'sensor': SENSOR_ENTITY,
+                        'delay': 2
                     }
                 }
             })
@@ -71,11 +79,11 @@ class TestLightingSM:
 
         self.hass.states.set(CONTROL_ENTITY, 'off')
         self.hass.block_till_done()
-        assert self.hass.states.get('switch.test').state == STATE_IDLE
+        assert self.hass.states.get('lightingsm.test').state == STATE_IDLE
 
         self.hass.states.set(SENSOR_ENTITY, 'on')
         self.hass.block_till_done()
-        assert self.hass.states.get('switch.test').state == STATE_ACTIVE
+        assert self.hass.states.get('lightingsm.test').state == STATE_ACTIVE
         assert light.is_on(CONTROL_ENTITY)
         future = datetime.now() + timedelta(seconds=3)
         async_fire_time_changed(self.hass, future)
@@ -83,4 +91,4 @@ class TestLightingSM:
         self.hass.block_till_done()
 
         assert not light.is_on(CONTROL_ENTITY)
-        assert self.hass.states.get('switch.test').state == STATE_IDLE
+        assert self.hass.states.get('lightingsm.test').state == STATE_IDLE

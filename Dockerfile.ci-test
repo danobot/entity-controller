@@ -12,4 +12,4 @@ ADD . .
 RUN chown root:root -R .
 
 
-CMD [ "pytest", "./tests/test_lighting_sm.py"]
+CMD [ "pytest", "./tests/test_lightingsm.py"]
