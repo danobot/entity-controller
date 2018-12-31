@@ -5,8 +5,18 @@
 FROM homeassistant/home-assistant:dev
 
 
-# COPY tests
 # RUN script/setup
+
+COPY requirements_test_all.txt requirements_test_all.txt
+RUN pip3 install -r requirements_test_all.txt
+
+COPY requirements_test.txt requirements_test.txt
 RUN pip3 install -r requirements_test.txt
-# CMD [ "python", "-m", "homeassistant", "--config", "/config" ]
-CMD [ "ptw" ]
+
+
+COPY custom_components/lightingsm.py components/lightingsm.py
+
+COPY tests/test_lightingsm.py tests/components/test_lightingsm.py
+ADD pytest.ini pytest.ini
+
+CMD [ "ptw","--","-sv" ]

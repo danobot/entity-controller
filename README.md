@@ -192,3 +192,8 @@ custom_updater:
   component_urls:
     - https://raw.githubusercontent.com/danobot/appdaemon-motion-lights/master/tracker.json
 ```
+
+# Contributions
+All contributions are welcome, including raising issues.
+
+

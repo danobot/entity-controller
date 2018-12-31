@@ -23,9 +23,9 @@ services:
     #     - mqtt
     # ports:
     #     - 8111:8123
-    volumes:
+    # volumes:
         # - G:\Repos\hass-dev:/config
-        - ${PWD}/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
-        - ${PWD}/pytest.ini:/usr/src/app/pytest.ini
+        # - ${$PWD}/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
+        # - ${$PWD}/pytest.ini:/usr/src/app/pytest.ini
         # - ${PWD}:/usr/src/app
 

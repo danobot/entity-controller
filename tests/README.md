@@ -13,7 +13,7 @@ To run test suite, run the following command from root of repository:
  2. runs `pytest-watch` using `pytest.ini` options
 
  `docker-compose up -d hass-test
- docker exec -it container-test /bin/bash
+ docker exec -it component-test /bin/bash
 
 
 
