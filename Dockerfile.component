@@ -13,10 +13,10 @@ RUN pip3 install -r requirements_test_all.txt
 COPY requirements_test.txt requirements_test.txt
 RUN pip3 install -r requirements_test.txt
 
+# RUN apt install -y apt-get install python3-pip python3-dev python3-venv autoconf libssl-dev libxml2-dev libxslt1-dev libjpeg-dev libffi-dev libudev-dev zlib1g-dev
+# ADD custom_components/lightingsm.py ./components/lightingsm.py
 
-# COPY custom_components/lightingsm.py components/lightingsm.py
-
-# COPY tests/test_lightingsm.py tests/components/test_lightingsm.py
-# ADD pytest.ini pytest.ini
-
+# ADD tests/test_lightingsm.py ./tests/components/test_lightingsm.py
+ADD pytest.ini ./pytest.ini
+# RUN chown root:root -R ./tests/components/test_lightingsm.py ./components/lightingsm.py
 CMD [ "ptw","--","-sv" ]

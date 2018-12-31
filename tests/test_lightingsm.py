@@ -1,5 +1,6 @@
 """The tests for the MQTT lightingsm platform."""
 import json
+import unittest
 from unittest.mock import patch
 import pytest
 from datetime import timedelta, datetime
@@ -7,8 +8,10 @@ from homeassistant.core import callback
 from homeassistant import setup
 from homeassistant.const import STATE_UNAVAILABLE, ATTR_ASSUMED_STATE
 import homeassistant.core as ha
-from homeassistant.components.mqtt.discovery import async_start
-from homeassistant.components import light
+# from homeassistant.components.mqtt.discovery import async_start
+# from homeassistant.components import light
+import homeassistant.components.lightingsm as lightingsm
+from homeassistant.setup import async_setup_component
 from tests.common import (
     get_test_home_assistant, assert_setup_component,
     async_fire_time_changed)
@@ -28,29 +31,24 @@ STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 STATE_IDLE = 'idle'
 STATE_ACTIVE = 'active'
 
+class TestLightingSM(unittest.TestCase):
+    """Test the sun module."""
 
-class TestLightingSM:
-    hass = None
-    calls = None
-    # pylint: disable=invalid-name
-
-    def setup_method(self, method):
+    def setUp(self):
         """Set up things to be run when tests are started."""
         self.hass = get_test_home_assistant()
-        self.calls = []
 
-        @callback
-        def record_call(service):
-            """Track function calls.."""
-            self.calls.append(service)
-
-        self.hass.services.register('test', 'automation', record_call)
-
-    def teardown_method(self, method):
+    def tearDown(self):
         """Stop everything that was started."""
         self.hass.stop()
 
     def test_demo(self):
+        with assert_setup_component(0):
+            assert not setup_component(self.hass, lightingsm.DOMAIN, {
+                lightingsm.DOMAIN: {
+                    'host1': 'host1'
+                }
+            })
         with assert_setup_component(1, 'lightingsm'):
             assert setup.setup_component(self.hass, 'lightingsm', {
                 'lightingsm': {
@@ -61,7 +59,6 @@ class TestLightingSM:
                     }
                 }
             })
-        
     def basic_config(self):
         """Test the controlling state via topic."""
         with assert_setup_component(1, 'lightingsm'):

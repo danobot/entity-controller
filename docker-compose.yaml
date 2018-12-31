@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/app
     # command: [ "pytest-watch", "--ext=.py,.yaml", "--","-s","--tb=line" ]
-  hass-test:
+  component-test:
     build: 
       context: .
       dockerfile: Dockerfile.component 
@@ -15,11 +15,9 @@ services:
     command: [ "ptw","--","-sv" ]
 
     volumes:
-        # - G:\Repos\hass-dev:/config
-      - ./custom_components/lightingsm.py:/usr/src/app/components/lightingsm.py
+      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py
       - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
       - ./pytest.ini:/usr/src/app/pytest.ini
-        # - ${PWD}:/usr/src/app
   component-test-ci:
     build: 
       context: .
@@ -29,7 +27,7 @@ services:
 
     volumes:
         # - G:\Repos\hass-dev:/config
-      - ./custom_components/lightingsm.py:/usr/src/app/components/lightingsm.py
+      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py
       - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
       - ./pytest.ini:/usr/src/app/pytest.ini
         # - ${PWD}:/usr/src/app
