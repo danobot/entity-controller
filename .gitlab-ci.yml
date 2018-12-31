@@ -8,7 +8,7 @@ before_script:
 test-component:
   script:
     - docker build -t component_test -f Dockerfile.component .
-    - docker run --rm ci_test
+    - docker-compose up component-test-ci
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
