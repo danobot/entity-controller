@@ -15,9 +15,9 @@ services:
     command: [ "ptw","--","-sv" ]
 
     volumes:
-      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py
-      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
-      - ./pytest.ini:/usr/src/app/pytest.ini
+      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro
+      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro
+      - ./pytest.ini:/usr/src/app/pytest.ini:ro
   component-test-ci:
     build: 
       context: .
@@ -27,8 +27,8 @@ services:
 
     volumes:
         # - G:\Repos\hass-dev:/config
-      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py
-      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py
-      - ./pytest.ini:/usr/src/app/pytest.ini
+      - ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro
+      - ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro
+      - ./pytest.ini:/usr/src/app/pytest.ini:ro
         # - ${PWD}:/usr/src/app
 
