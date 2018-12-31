@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.2.2 - Component Rewrite
+Version:          v2.2.3 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.2'
+VERSION = '2.2.3'
 SENSOR_TYPE_DURATION = 1
 SENSOR_TYPE_EVENT = 2
 DEFAULT_DELAY = 180
@@ -101,12 +101,16 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
+    # machine.add_transition(trigger='control',              source='active_timer',      dest='idle')
 
     machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
 
-    #
-    machine.add_transition(trigger='enable',        source='constrained',    dest='idle')
+    # Constrained
+    machine.add_transition(trigger='enable',                source='constrained',    dest='idle')
+    machine.add_transition(trigger='sensor_on',             source='constrained',    dest=None)
+    machine.add_transition(trigger='sensor_off',            source='constrained',    dest=None)
+    machine.add_transition(trigger='control',               source='constrained',    dest=None)
 
 
     for key, config in myconfig.items():
@@ -541,7 +545,7 @@ class Model():
         self.log.debug("Turning off entities, cancelling timer")
         self._cancel_timer() # cancel previous timer
 
-        if self.offEntities is not None:
+        if len(self.offEntities) > 0:
             self.log.info("Turning on special off_entities that were defined, instead of turning off the regular control_entities")
             for e in self.offEntities: 
                 self.log.debug("Turning on {}".format(e))
