@@ -1,0 +1,4 @@
+pytest-watch
+transitions[diagrams]==0.6.9
+pytest-mock
+freezegun

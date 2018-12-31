@@ -1,19 +1,20 @@
 """The tests for the MQTT switch platform."""
 import json
-from asynctest import patch
+from unittest.mock import patch
 import pytest
-
+from datetime import timedelta, datetime
 from homeassistant.core import callback
 from homeassistant import setup
 from homeassistant.const import STATE_UNAVAILABLE, ATTR_ASSUMED_STATE
 import homeassistant.core as ha
 from homeassistant.components import switch, mqtt
 from homeassistant.components.mqtt.discovery import async_start
-
+from homeassistant.components import light
 from tests.common import (
-    get_test_home_assistant, assert_setup_component)
+    get_test_home_assistant, assert_setup_component,
+    async_fire_time_changed)
 from tests.components.switch import common
-
+from freezegun import freeze_time
 
 CONTROL_ENTITY = 'light.test_light';
 CONTROL_ENTITY2 = 'light.test_light2';
@@ -27,7 +28,7 @@ STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 
 # test_flux.py:75 example of mockiong time
 STATE_IDLE = 'idle'
-STATE_ACTIVE = 'active_timer'
+STATE_ACTIVE = 'active'
 
 
 class TestLightingSM:
@@ -68,10 +69,18 @@ class TestLightingSM:
         self.hass.start()
         self.hass.block_till_done()
 
-        state = self.hass.states.set(CONTROL_ENTITY, 'off')
+        self.hass.states.set(CONTROL_ENTITY, 'off')
         self.hass.block_till_done()
         assert self.hass.states.get('switch.test').state == STATE_IDLE
 
         self.hass.states.set(SENSOR_ENTITY, 'on')
         self.hass.block_till_done()
         assert self.hass.states.get('switch.test').state == STATE_ACTIVE
+        assert light.is_on(CONTROL_ENTITY)
+        future = datetime.now() + timedelta(seconds=3)
+        async_fire_time_changed(self.hass, future)
+
+        self.hass.block_till_done()
+
+        assert not light.is_on(CONTROL_ENTITY)
+        assert self.hass.states.get('switch.test').state == STATE_IDLE

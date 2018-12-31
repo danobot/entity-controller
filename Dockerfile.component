@@ -1,0 +1,12 @@
+# Notice:
+# When updating this file, please also update virtualization/Docker/Dockerfile.dev
+# This way, the development image and the production image are kept in sync.
+
+FROM homeassistant/home-assistant:dev
+
+
+# COPY tests
+# RUN script/setup
+RUN pip3 install -r requirements_test.txt
+# CMD [ "python", "-m", "homeassistant", "--config", "/config" ]
+CMD [ "ptw" ]

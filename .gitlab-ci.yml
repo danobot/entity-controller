@@ -5,7 +5,11 @@
 #     - docker run -v .:/app test_container
 before_script:
   - docker info
-test:
+test-component:
   script:
-    - docker build -t ci_test -f Dockerfile.ci-test .
+    - docker build -t component_test -f Dockerfile.component .
     - docker run --rm ci_test
+# test:
+#   script:
+#     - docker build -t ci_test -f Dockerfile.ci-test .
+#     - docker run --rm ci_test

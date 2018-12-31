@@ -75,7 +75,7 @@ async def async_setup(hass, config):
     #     # hass.
 
     machine.add_transition(trigger='constrain',        source='*',    dest='constrained')
-    machine.add_transition(trigger='override',              source='*',                 dest='overridden')
+    machine.add_transition(trigger='override',              source=['idle','active_timer'],                 dest='overridden')
 
     # Idle
     machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
