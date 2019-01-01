@@ -77,7 +77,7 @@ override_example:
 
 
 ### Night Mode
-Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval at night as people are typically asleep and the light may only need to stay on for a minute. Adjusting a custom night brightness is useful as well. (see *Specifying Custom Service Call Parameters* under *Advanced Configuration* for details.)
+Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval or a dimmed `brightness` level at night (see *Specifying Custom Service Call Parameters* under *Advanced Configuration* for details).
 
 ```yaml
 motion_light:
@@ -99,13 +99,15 @@ There are two types of motion sensors:
   1. Sends a signal when motion happens (instantaneous event)
   2. Sends a signal when motion happens, stays on for the duration of motion and sends an `off` signal when motion supposedly ceases. (duration)
 
-By default, the app assumed you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
+By default, the app assumes you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
 
-If your motion sensor emits both `on` and `off` signals, then add `sensor_type_duration: True` to your configuration.
+In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
+
+If your sensor emits both `on` and `off` signals, then add `sensor_type_duration: True` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
 
 Control entities are turned off when the following events occur (whichever happens last)
-  * the timer expires
-  * the sensor is turned off
+  * the timer expires and sensor is off
+  * the sensor state changes to `off` and timer already expired
 
 ## Advanced Configuration
 ### Specifying Custom Service Call Parameters
@@ -157,6 +159,22 @@ mtn_lounge:
 ```
 
 **Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. Use this advanced feature at your own risk. If you have problems, make your state entities the same as your control entities
+
+### Customising State Strings
+The following code extract shows the default state strings that were made to represent the `on` and `off` states. These defaults can be overwritten for all entity types using the configuration keys `state_strings_on` and `state_strings_off`. For more granular control, use the entity specific configuration keys shown in the code extract below.
+
+```python
+DEFAULT_ON = ["on", "playing", "home"]
+DEFAULT_OFF = ["off", "idle", "paused", "away"]
+self.CONTROL_ON_STATE = config.get("control_states_on", DEFAULT_ON)
+self.CONTROL_OFF_STATE = config.get("control_states_off", DEFAULT_OFF)
+self.SENSOR_ON_STATE = config.get("sensor_states_on", DEFAULT_ON)
+self.SENSOR_OFF_STATE = config.get("sensor_states_off", DEFAULT_OFF)
+self.OVERRIDE_ON_STATE = config.get("override_states_on", DEFAULT_ON)
+self.OVERRIDE_OFF_STATE = config.get("override_states_off", DEFAULT_OFF)
+self.STATE_ON_STATE = config.get("state_states_on", DEFAULT_ON)
+self.STATE_OFF_STATE = config.get("state_states_off", DEFAULT_OFF)
+```
 
 ### Drawing State Machine Diagrams (not supported yet in `v2`)
 
