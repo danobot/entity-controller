@@ -541,14 +541,15 @@ class Model():
             self.controlEntities.append( config["entity_on"] )
 
 
-        for control in self.controlEntities:
-          self.log.debug("Registering control: " + str(control))
-          event.async_track_state_change(self.hass, control, self.control_state_change)
+
 
         # If no state entities are defined, use control entites as state
         if len(self.stateEntities) == 0:
             self.stateEntities.extend(self.controlEntities)
             self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
+            # Should be listening to state_entity changes (not control entities).
+            event.async_track_state_change(self.hass, self.stateEntities, self.control_state_change)
+
         else:
             self.log.debug("Using existing state entities: " + str(self.stateEntities))
         self.log.debug("Control Entities: " + str(self.controlEntities))
@@ -562,6 +563,9 @@ class Model():
             self.stateEntities.extend(config.get('state_entities',[]))
             #self.update(state_entities=self.stateEntities, delay=True)
             self.log.info("State Entities: " + str(self.stateEntities))
+            event.async_track_state_change(self.hass, self.stateEntities, self.control_state_change)
+    
+
 
     def config_off_entities(self, config):
     
