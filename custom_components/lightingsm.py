@@ -343,8 +343,12 @@ class Model():
             self.update(delay=self.previous_delay)
 
         expiry_time = datetime.now() + timedelta(seconds=self.previous_delay)
+
+        # not able to use async_call_later because no known way to check whether timer is active.
+        #self.timer_handle = event.async_call_later(self.hass, self.previous_delay, self.timer_expire)
+        #self.log.debug("Timer handle" + str(dir(self.timer_handle)))
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
-        self.log.debug("Delay: " + str(self.previous_delay))
+        # self.log.debug("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
         self.update(expires_at=expiry_time)
     
