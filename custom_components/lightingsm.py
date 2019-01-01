@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.2.3 - Component Rewrite
+Version:          v2.2.4 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,9 +24,9 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.3'
-SENSOR_TYPE_DURATION = 1
-SENSOR_TYPE_EVENT = 2
+VERSION = '2.2.4'
+SENSOR_TYPE_DURATION = 'duration'
+SENSOR_TYPE_EVENT = 'event'
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
 DEFAULT_NAME = 'Motion Light'
@@ -182,7 +182,8 @@ class LightingSM(entity.Entity):
             'control_entities',
             'sensor_entities',
             'override_entities',
-            'delay'
+            'delay',
+            'sensor_type'
 
         ]
         for k,v in self.attributes.items():
@@ -284,7 +285,7 @@ class Model():
             sensor_entities=self.sensorEntities,
             override_entities=self.overrideEntities,
             control_entities=self.controlEntities,
-
+            sensor_type=self.sensor_type
         )
         # def draw(self):
         #     self.update()
@@ -332,7 +333,7 @@ class Model():
             self.log.debug("matches on")
             self.update(last_triggered_by=entity)
             self.sensor_on()
-        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION:
+        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION and self.is_active_timer():
             self.log.debug("matches off")
             self.update(last_triggered_by=entity)
             # We only care about sensor off state changes when the sensor is a duration sensor.

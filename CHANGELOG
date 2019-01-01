@@ -13,3 +13,4 @@ v2.2.0      State attributes and defects
 v2.2.1      Defect state entity
 v2.2.2      Defect constrain times
 v2.2.3      Defects: allow transitions in constrained state and lights would not turn off defect
+v2.2.4      sensor duration type defect
