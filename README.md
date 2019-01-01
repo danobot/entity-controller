@@ -11,8 +11,8 @@ Motion lights have the following requirements (R) that I discussed in detail [on
 
 That last one can be separated into the following two requirements:
 
-3.1 A light that is already on should not be affected by time outs.
-3.2 A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
+* (3.1) A light that is already on should not be affected by time outs.
+* (3.2) A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
 
 This component is by far the most elegant solution I have found for this problem.
 
@@ -28,7 +28,7 @@ The app is quite configurable. In its most basic form, you can define the follow
 ```yaml
 lightingsm:
   motion_light:
-    sensor: binary_sensor.living_room_motion  # required
+    sensor: binary_sensor.living_room_motion  # required, [sensors]
     entity: light.table_lamp                  # required, [entity,entities,entity_on]
     delay: 300                                # optional, overwrites default delay of 180s
 ```
@@ -57,16 +57,18 @@ You can define entities who block the motion light from turning on if those enti
 ```yaml
 override_example:
   sensors: 
-    - input_boolean.motion_detected
+    - binary_sensor.lounge_motion
+    - binary_sensor.lounge_motion_2
   entities:
     - light.tv_led
+    - light.lounge_lamp
   delay: 5
   overrides:
     - media_player.tv
     - input_boolean.bedroom_motion_trigger
 ```
 
-**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations!
+**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `lightingsm/enable` for a specific `entity_id`.
 
 
 ### Night Mode
