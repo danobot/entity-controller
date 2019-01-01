@@ -16,3 +16,4 @@ v2.2.3      Defects: allow transitions in constrained state and lights would not
 v2.2.4      sensor duration type defect
 v2.2.5      override config testing, backoff testing completed
 v2.2.6      observe state entities (not control entities), fix function call typo, go to idle when all state entities switched off while active.
+v2.2.7      night mode to activate on startup, add mode state attribute
