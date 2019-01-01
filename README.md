@@ -21,6 +21,7 @@ The application was converted to a native Home Assistant component. Appdaemon is
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
+
 |Configuration|Description|
 |---|---|
 |`sensor` entities| Used as triggers. When these entities turn on, your `control` entities will be switched on|
