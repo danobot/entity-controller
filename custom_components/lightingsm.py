@@ -63,8 +63,8 @@ async def async_setup(hass, config):
     )
 
     
-    machine.add_transition(trigger='constrain',        source='*',    dest='constrained')
-    machine.add_transition(trigger='override',              source=['idle','active_timer'],                 dest='overridden')
+    machine.add_transition(trigger='constrain',             source='*',    dest='constrained')
+    machine.add_transition(trigger='override',              source=['idle','active_timer','blocked'],                 dest='overridden')
 
     # Idle
     machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
@@ -125,8 +125,10 @@ class LightingSM(entity.Entity):
         self.attributes = {}
         self.model = None
         self.friendly_name = config.get('name', 'Motion Light')
-        self.machine = machine # backwards reference to machine
-        self.model = Model(hass, config, self)
+        if 'friendly_name' in config:
+            self.friendly_name = config.get('friendly_name')
+
+        self.model = Model(hass, config, machine, self)
         event.async_call_later(hass, 1, self.do_update)
 
     @property
@@ -201,7 +203,7 @@ class Model():
     """ Represents the transitions state machine model """
 
        
-    def __init__(self, hass, config, entity):
+    def __init__(self, hass, config, machine, entity):
         self.hass = hass # backwards reference to hass object
         self.entity = entity # backwards reference to entity containing this model
 
@@ -218,7 +220,6 @@ class Model():
         self.light_params_day = {}
         self.light_params_night = {}
         self.name = None
-        self.machine = None
         self.delay = None
         self.stay = False
         self.start = None
@@ -230,11 +231,12 @@ class Model():
         self.name = config.get('name', 'Unnamed Motion Light')
         self.log.debug("Name: " + str(self.name))
 
-        entity.machine.add_model(self) # add here because machine generated methods are being used in methods below.
+        machine.add_model(self) # add here because machine generated methods are being used in methods below.
         self.config_static_strings(config)
         self.config_state_entities(config)
-        self.config_control_entities(config) # must come after config_state_entities
+        self.config_control_entities(config) # must come after config_state_entities (overwrites state entities if not set)
         self.config_sensor_entities(config)
+        self.config_override_entities(config)
         self.config_off_entities(config)
         self.config_normal_mode(config) 
         self.config_night_mode(config) #must come after normal_mode
@@ -283,7 +285,8 @@ class Model():
             self.log.debug("matches on")
             self.update(last_triggered_by=entity)
             self.sensor_on()
-        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION and self.is_active_timer():
+
+        if self.matches(new.state, self.SENSOR_OFF_STATE) and self.is_duration_sensor() and self.is_active_timer():
             self.log.debug("matches off")
             self.update(last_triggered_by=entity, sensor_turned_off_at=datetime.now())
             # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
@@ -297,7 +300,7 @@ class Model():
             self.update(overridden_by=entity)
             self.override()
             self.update(overridden_at=str(datetime.now()))
-        if self.matches(new.state, self.OVERRIDE_OFF_STATE) and not self._override_entity_state():
+        if self.matches(new.state, self.OVERRIDE_OFF_STATE) and self.is_override_state_off() and self.is_overridden():
             self.enable()
 
 
@@ -368,7 +371,12 @@ class Model():
 
         return True
 
-       
+    def timer_expire(self):
+        # self.log.debug("Timer expired")
+        if self.is_duration_sensor() and self.is_sensor_on(): # Ignore timer expiry because duration sensor overwrites timer
+            self.update(expires_at="pending sensor")
+        else:    
+            self.timer_expires()
 
     # =====================================================
     # S T A T E   M A C H I N E   C O N D I T I O N S
@@ -382,6 +390,12 @@ class Model():
                 return True
         self.log.debug("Override entities are OFF.")
         return False
+
+    def is_override_state_off(self):
+        return self._override_entity_state() == False
+        
+    def is_override_state_on(self):
+        return self._override_entity_state()
 
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
@@ -399,6 +413,7 @@ class Model():
     def is_sensor_on(self):
         return self._sensor_entity_state()
         
+
     def _state_entity_state(self):
         for e in self.stateEntities:
             s = self.hass.states.get(e)
@@ -415,6 +430,7 @@ class Model():
 
     def is_state_entities_on(self):
         return self._state_entity_state()
+    
     
     def will_stay_on(self):
         return self.stay
@@ -444,17 +460,7 @@ class Model():
         self.log.debug("is_timer_expired -> " + str(expired))
         return expired
     
-    def timer_expire(self):
-        # self.log.debug("Timer expired")
-        if self.is_duration_sensor():
-            self.log.debug("It's a DURATION sensor")
-            if self.is_sensor_off():
-                self.log.debug("Sensor entities are OFF.")
-                self.timer_expires()
-            else:
-                self.update(expires_at="duration sensor")
-        else:    
-            self.timer_expires()
+
 
 
     # =====================================================
@@ -676,6 +682,20 @@ class Model():
                 event.async_call_later(self.hass, 1, self.constrain_fake)
 
     
+    def config_override_entities(self, config):
+        self.overrideEntities = []
+        if 'override' in config:
+            self.overrideEntities.append(config.get('override'))
+
+        if 'overrides' in config:
+            self.overrideEntities.extend(config.get('overrides'))
+
+        self.log.debug("Override Entities: " + str(self.overrideEntities))
+        if len(self.overrideEntities) > 0:
+            for e in self.overrideEntities:
+                self.log.info("Setting override callback/s: " + str(e))
+                event.async_track_state_change(self.hass, e, self.override_state_change)
+
     def config_other(self, config):
         self.log.debug("Config other")
 
@@ -697,19 +717,7 @@ class Model():
         self.stay = config.get("stay", False)
    
 
-        self.overrideEntities = []
-        if 'override' in config:
-            self.overrideEntities.append(config.get('override'))
-
-        if 'overrides' in config:
-            self.overrideEntities.extend(config.get('overrides'))
-
-        self.log.debug("Override Entities: " + str(self.overrideEntities))
-        if len(self.overrideEntities) > 0:
-            for e in self.overrideEntities:
-                self.log.info("Setting override callback/s: " + str(e))
-                event.async_track_state_change(self.hass, e, self.override_state_change)
-                # self.listen_state(self.override_state_change, e)
+        
         if config.get("sensor_type_duration"):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
