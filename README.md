@@ -192,8 +192,8 @@ diagram_test:
 ```
 # State Meaning
 
-|---|---|
 |State|Description|
+|---|---|
 |idle|Entity observing states, nothing else.|
 |active|Momentary, intermediate state to `active_timer`. You won't see this state much as all.|
 |active_timer|Control entities have been switched on and timer is running|
