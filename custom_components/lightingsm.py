@@ -167,10 +167,11 @@ class LightingSM(entity.Entity):
     @property
     def state_attributes(self):
         """Return the state of the entity."""
-        return self.attributes
+        return self.attributes.copy()
 
     def reset_state(self):
         """ Reset state attributes by removing any state specific attributes when returning to idle state """
+        self.model.log.debug("Restting state")
         att = {}
 
         PERSIST_STATE_ATTRIBUTES = [
@@ -195,46 +196,18 @@ class LightingSM(entity.Entity):
         self.do_update()
 
     def do_update(self, wait=False,**kwargs):
-        # self._state_attributes = kwargs
-
-
-        # if 'reset_count' in kwargs:
-        #     attributes["reset_count"] = kwargs.get('reset_count')
-            
-        # attributes["reset_at"] = self.model.reset_at
-        # attributes["expires_at"] = self.model.expires_at
-        # attributes["delay"] = self.model.delay
-        
-
-        # attributes["overridden_by"] = None
-        # attributes["overridden_at"] = None
-        
-        # if 'last_triggered_by' in kwargs: attributes["last_triggered_by"] = kwargs.get('last_triggered_by')
-        # if 'last_triggered_at' in kwargs: attributes["last_triggered_at"] = kwargs.get('last_triggered_at')
-
-        # attributes["last_blocked_by"] = kwargs.get('last_blocked_by')
-        # attributes["last_blocked_at"] = kwargs.get('last_blocked_at')
-
-        # attributes["last_overridden_by"] = kwargs.get('last_overridden_by')
-        # attributes["last_overridden_at"] = kwargs.get('last_overridden_at')
-
-        # if 'control_entities' in kwargs:
-        #     attributes["controlEntities"] = kwargs.get('control_entities')
-        # if 'sensor_entities' in kwargs:
-        #     attributes["sensorEntities"] = kwargs.get('sensor_entities')
-        # if 'state_entities' in kwargs:
-        #     attributes["state_entities"] = kwargs.get('state_entities')
-        # if 'override_entities' in kwargs:
-        #     attributes["overrideEntities"] = kwargs.get('override_entities')
-
-        # _LOGGER.debug("state: " + str(attributes))
-
-
-        if wait == False:
-            self.async_schedule_update_ha_state(True)
+        """ Schedules an entity state update with HASS """
+        _LOGGER.debug("Scheduled update with HASS")
+        self.async_schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
-        self.attributes[k] = v
+        _LOGGER.debug("Setting state attribute {} to {}".format(k, v))
+        
+        if k in self.attributes:
+            del self.attributes[k]
+        self.attributes.update({k: v})
+        # self.do_update()
+        _LOGGER.debug("State attributes: " + str(self.attributes))
 
 class Model():
     """ Represents the transitions state machine model """
@@ -279,6 +252,7 @@ class Model():
         self.config_night_mode(config) #must come after normal_mode
         self.config_constrain_times(config)
         self.config_other(config)
+        
         self.update(wait=True, 
             delay=self.light_params_day['delay'], 
             state_entities=self.stateEntities, 
@@ -293,32 +267,20 @@ class Model():
         #         self.log.debug("Updating graph in state: " + self.state)
         #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
 
-    def update(self, wait=False, reset=False, **kwargs):
+    def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
+        # self.log.debug("Update called with {}".format(str(kwargs)))
         for k,v in kwargs.items():
             if v is not None:
                 self.entity.set_attr(k,v)
         
-        self.entity.do_update(wait, **kwargs)
-
-        # if delay == False:
-        #     self.async_schedule_update_ha_state(True)
-        # self.set_state("{}.{}".format(DOMAIN,str(self.name)), state=self.state, attributes=kwargs)
+        if wait == False:
+            self.entity.do_update()
 
     def finalize(self):
         self.log.debug("state: " + self.state)
-        self.update()
+        self.entity.do_update()
 
-    # def clear_state_attributes(self):
-    #     kwargs = {}
-    #     kwargs["reset_count"] = None
-    #     kwargs["reset_at"] = None
-    #     kwargs["expires_at"] = None
-    #     kwargs["delay"] = None
-    #     kwargs["overridden_by"] = None
-    #     kwargs["overridden_at"] = None
-    #     kwargs["service_data"] = None
-    #     self.update(**kwargs)
 
    
     # =====================================================
@@ -411,7 +373,7 @@ class Model():
             self.backoff_count += 1
             self.update(backoff_count=self.backoff_count)
         self._start_timer()
-        # self.log.debug(str(self.timer_handle))
+
         return True
 
        
@@ -497,6 +459,8 @@ class Model():
             if self.is_sensor_off():
                 self.log.debug("Sensor entities are OFF.")
                 self.timer_expires()
+            else:
+                self.update(expires_at="duration sensor")
         else:    
             self.timer_expires()
 
@@ -799,13 +763,13 @@ class Model():
         today = date.today()
         t = datetime.combine(today, time)
         x = datetime.combine(today, datetime.time(datetime.now()))
-        self.log.debug("if_time_passed --- input time: " + str(t))
-        self.log.debug("if_time_passed --- current time: " + str(x))
+        # self.log.debug("if_time_passed --- input time: " + str(t))
+        # self.log.debug("if_time_passed --- current time: " + str(x))
         if t <= x:
             t += timedelta(1) # tomorrow!
-            self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
-        else:
-            self.log.debug("if_time_passed --- Time still happening today. " + str(t))
+            # self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
+        # else:
+            # self.log.debug("if_time_passed --- Time still happening today. " + str(t))
 
         return t
 
