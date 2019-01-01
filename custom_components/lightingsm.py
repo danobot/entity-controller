@@ -309,7 +309,7 @@ class Model():
         if self.is_active():
             self.control()
 
-        if self.is_blocked() and self.is_state_entities_off:
+        if self.is_blocked() and self.is_state_entities_off():
             self.enable()
 
     def time_event_handler(self, event):
