@@ -27,9 +27,13 @@ DOMAIN = 'lightingsm'
 VERSION = '2.2.6'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
+MODE_DAY = 'day'
+MODE_NIGHT = 'night'
+
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
-DEFAULT_NAME = 'Motion Light'
+DEFAULT_NAME = 'Entity Timer'
+
 CONF_NAME = 'name'
 CONF_CONTROL = 'entities'
 CONF_SENSORS = 'sensors'
@@ -441,10 +445,8 @@ class Model():
     def is_night(self):
         if self.night_mode is None:
             self.log.debug("(night mode disabled): " + str(self.night_mode))
-            self.update(night_mode='on')
             return False
         else:
-            self.update(night_mode='off')
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             start=  dt.parse_time(self.night_mode['start_time'])
             end=  dt.parse_time(self.night_mode['end_time'])
@@ -485,9 +487,11 @@ class Model():
         self.backoff_count = 0
         if self.is_night():
             self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
+            self.update(mode=MODE_NIGHT)
             self.lightParams = self.light_params_night
         else:
             self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
+            self.update(mode=MODE_DAY)
             self.lightParams = self.light_params_day
 
         
