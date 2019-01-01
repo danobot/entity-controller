@@ -51,10 +51,8 @@ async def async_setup(hass, config):
     # logging.basicConfig(level=logging.DEBUG)
     # logging.getLogger('transitions').setLevel(logging.DEBUG)
     myconfig = config[DOMAIN]
-    _LOGGER.info("The {} component is ready! {}".format(DOMAIN, config))
-    _LOGGER.info("The {} component is ready! {}".format(DOMAIN, myconfig))
 
-    _LOGGER.info("Config: "  + str(myconfig))
+    _LOGGER.info("Component Configuration: "  + str(myconfig))
     
     machine = Machine(states=STATES, 
         initial='idle',
@@ -65,15 +63,6 @@ async def async_setup(hass, config):
     )
 
     
-    # for key, config in myconfig.items():
-    #     _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
-    #     config["name"] = key
-    #     m = LightingSM(hass, config, machine)
-    #     # machine.add_model(m.model)
-    #     # m.model.after_model(config)
-    #     devices.append(m)
-    #     # hass.
-
     machine.add_transition(trigger='constrain',        source='*',    dest='constrained')
     machine.add_transition(trigger='override',              source=['idle','active_timer'],                 dest='overridden')
 
@@ -123,6 +112,9 @@ async def async_setup(hass, config):
         devices.append(m)
 
     await component.async_add_entities(devices)
+
+    _LOGGER.info("The {} component is ready!".format(DOMAIN))
+
     return True
 
 
@@ -133,7 +125,6 @@ class LightingSM(entity.Entity):
         self.attributes = {}
         self.model = None
         self.friendly_name = config.get('name', 'Motion Light')
-        # StateMachine.__init__(self, config)
         self.machine = machine # backwards reference to machine
         self.model = Model(hass, config, self)
         event.async_call_later(hass, 1, self.do_update)
@@ -171,10 +162,10 @@ class LightingSM(entity.Entity):
 
     def reset_state(self):
         """ Reset state attributes by removing any state specific attributes when returning to idle state """
-        self.model.log.debug("Restting state")
+        self.model.log.debug("Resetting state")
         att = {}
 
-        PERSIST_STATE_ATTRIBUTES = [
+        PERSISTED_STATE_ATTRIBUTES = [
             'last_overridden_by',
             'last_overridden_at',
             'last_triggered_by',
@@ -185,29 +176,26 @@ class LightingSM(entity.Entity):
             'override_entities',
             'delay',
             'sensor_type'
-
         ]
         for k,v in self.attributes.items():
-            if k in PERSIST_STATE_ATTRIBUTES:
+            if k in PERSISTED_STATE_ATTRIBUTES:
                 att[k] = v
-
 
         self.attributes = att
         self.do_update()
 
     def do_update(self, wait=False,**kwargs):
         """ Schedules an entity state update with HASS """
-        _LOGGER.debug("Scheduled update with HASS")
+        # _LOGGER.debug("Scheduled update with HASS")
         self.async_schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
-        _LOGGER.debug("Setting state attribute {} to {}".format(k, v))
-        
-        if k in self.attributes:
-            del self.attributes[k]
-        self.attributes.update({k: v})
+        # _LOGGER.debug("Setting state attribute {} to {}".format(k, v))
+        if k == 'delay':
+            v = str(v) + 's'
+        self.attributes[k] = v
         # self.do_update()
-        _LOGGER.debug("State attributes: " + str(self.attributes))
+        # _LOGGER.debug("State attributes: " + str(self.attributes))
 
 class Model():
     """ Represents the transitions state machine model """
@@ -255,12 +243,13 @@ class Model():
         
         self.update(wait=True, 
             delay=self.light_params_day['delay'], 
-            state_entities=self.stateEntities, 
-            sensor_entities=self.sensorEntities,
-            override_entities=self.overrideEntities,
             control_entities=self.controlEntities,
+            sensor_entities=self.sensorEntities,
+            state_entities=self.stateEntities, 
             sensor_type=self.sensor_type
         )
+        if len(self.overrideEntities) > 0:
+            self.update(wait=True, override_entities=self.overrideEntities)
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -278,7 +267,6 @@ class Model():
             self.entity.do_update()
 
     def finalize(self):
-        self.log.debug("state: " + self.state)
         self.entity.do_update()
 
 
@@ -297,8 +285,8 @@ class Model():
             self.sensor_on()
         if self.matches(new.state, self.SENSOR_OFF_STATE) and self.sensor_type == SENSOR_TYPE_DURATION and self.is_active_timer():
             self.log.debug("matches off")
-            self.update(last_triggered_by=entity)
-            # We only care about sensor off state changes when the sensor is a duration sensor.
+            self.update(last_triggered_by=entity, sensor_turned_off_at=datetime.now())
+            # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
             self.sensor_off_duration()
                 
 
@@ -352,12 +340,12 @@ class Model():
             if self.previous_delay > self.backoff_max:
                 self.log.debug("Max backoff reached. Will not increase further.")
                 self.previous_delay = self.backoff_max
-            self.update(backoff_delay=self.previous_delay)
+            self.update(delay=self.previous_delay)
 
+        expiry_time = datetime.now() + timedelta(seconds=self.previous_delay)
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
         self.log.debug("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
-        expiry_time = str(datetime.now() + timedelta(seconds=self.previous_delay))
         self.update(expires_at=expiry_time)
     
     def _cancel_timer(self):
@@ -367,7 +355,7 @@ class Model():
     def _reset_timer(self):
         self.log.debug("Resetting timer" + str(self.backoff))
         self._cancel_timer()
-        self.update(reset_at=str(datetime.now()))
+        self.update(reset_at=datetime.now())
         if self.backoff:
             self.log.debug("inc backoff")
             self.backoff_count += 1
