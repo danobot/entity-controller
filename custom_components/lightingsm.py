@@ -278,6 +278,7 @@ class Model():
     # =====================================================
 
     def sensor_state_change(self, entity, old, new):
+        """ State change callback for sensor entities """
         self.log.debug("Sensor state change: " + new.state)
         self.log.debug("state: " + self.state)
 
@@ -295,6 +296,7 @@ class Model():
 
 
     def override_state_change(self, entity, old, new):
+        """ State change callback for override entities """
         self.log.debug("Override state change")
         if self.matches(new.state, self.OVERRIDE_ON_STATE):
             self.update(overridden_by=entity)
@@ -304,7 +306,8 @@ class Model():
             self.enable()
 
 
-    def control_state_change(self, entity, old, new):
+    def state_entity_state_change(self, entity, old, new):
+        """ State change callback for state entities """
         self.log.debug(self.is_active())
         if self.is_active():
             self.control()
@@ -548,7 +551,7 @@ class Model():
             self.stateEntities.extend(self.controlEntities)
             self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
             # Should be listening to state_entity changes (not control entities).
-            event.async_track_state_change(self.hass, self.stateEntities, self.control_state_change)
+            event.async_track_state_change(self.hass, self.stateEntities, self.state_entity_state_change)
 
         else:
             self.log.debug("Using existing state entities: " + str(self.stateEntities))
@@ -563,7 +566,7 @@ class Model():
             self.stateEntities.extend(config.get('state_entities',[]))
             #self.update(state_entities=self.stateEntities, delay=True)
             self.log.info("State Entities: " + str(self.stateEntities))
-            event.async_track_state_change(self.hass, self.stateEntities, self.control_state_change)
+            event.async_track_state_change(self.hass, self.stateEntities, self.state_entity_state_change)
     
 
 

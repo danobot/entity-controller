@@ -21,7 +21,12 @@ The application was converted to a native Home Assistant component. Appdaemon is
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
-
+|Configuration|Description|
+|---|---|
+|`sensor` entities| Used as triggers. When these entities turn on, your `control` entities will be switched on|
+|`control` entities| The entities you wish to switch on and off depending on `sensor` entity states.|
+|`state` entities|Unless you wish to use scenes, you need not worry about `state` entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where `control` entities do not supply a usable state*. Optional.|
+|`override` entities| The entities used to override the entire lightingsm logic. Optional.|
 ## Basic Configuration
 `MotionLight` needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
 
@@ -129,31 +134,29 @@ motion_light:
   
 ```
 ### State Entities
-It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by the application. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (If the light already on, you dont want to start a timer and turn it off). The notion of separate state entities allows you to keep the entity tat is being controlled separate from the one that is being observed.
+It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by LightingSM. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
 
-Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define. I did not remove the feature, just in case it provides some people with some additional flexibility.
+The notion of separate `state entities` allows you to keep the entity that is being controlled separate from the one that is being observed.
 
-You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`.
+Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define.
 
 
+You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`. The `control` entity is a `scene` which does not provide useful state information as it is in `scening` state at all times.
+
+(This is the only use case for `state_entities` I have found so far. Please let me know if there are more.)
 
 ```yaml
 mtn_lounge:
   sensors:
-    - binary_sensor.living_room_motion
-    - binary_sensor.hallway_motion
-  state_entities:
-    - light.living_room_floor_lamp
-    - binary_sensor.tv_on
+    - binary_sensor.cooking
   entities:
-    - light.tv_led
-    - light.living_room_floor_lamp
+    - scene.cooking
+  state_entities:
+    - light.kitchen_led_strip
   delay: 300
 ```
 
-Note: This can have unexpected consequences. For example, if you `state_entities` do not overlap with control `entities` then your light might never turn off unless you intervene. (This is because the motion light does not turn off the light.) Use this advanced feature at your own risk.
-
-These parameters are advanced and should be used with caution.
+**Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. Use this advanced feature at your own risk. If you have problems, make your state entities the same as your control entities
 
 ### Drawing State Machine Diagrams (not supported yet in `v2`)
 
@@ -177,8 +180,11 @@ diagram_test:
 |active|Momentary, intermediate state to `active_timer`. You won't see this state much as all.|
 |active_timer|Control entities have been switched on and timer is running|
 |overridden|Entity is overridden by an `override_entity`|
-|blocked|Entities in this state wanted to turn on but were blocked because one or more `control_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
+|blocked|Entities in this state wanted to turn on but were blocked because one or more `state_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
 |constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
+
+Note that, unless you specifically define `state_entities` in your configuration, that `control_entities == state_entities`.
+
 # About LightingSM 
 
 `LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
