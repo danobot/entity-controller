@@ -19,4 +19,6 @@ RUN pip3 install -r requirements_test.txt
 # ADD tests/test_lightingsm.py ./tests/components/test_lightingsm.py
 ADD pytest.ini ./pytest.ini
 # RUN chown root:root -R ./tests/components/test_lightingsm.py ./components/lightingsm.py
-CMD [ "ptw","--","-sv" ]
+#CMD [ "ptw","--","-sv" ]
+
+CMD ["/bin/bash"]

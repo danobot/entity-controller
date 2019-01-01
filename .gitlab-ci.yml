@@ -8,7 +8,7 @@ before_script:
 test-component:
   script:
     - docker build -t component_test -f Dockerfile.component .
-    - docker-compose up component-test-ci
+    - docker run --rm -v ./custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro       -v ./tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro       -v ./pytest.ini:/usr/src/app/pytest.ini:ro component_test ptw -- -sv
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
