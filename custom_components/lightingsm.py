@@ -1,7 +1,7 @@
 """
 State Machine-based Motion Lighting Implementation (Home Assistant Component)
 Maintainer:       Daniel Mason
-Version:          v2.2.7 - Component Rewrite
+Version:          v2.2.8 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.7'
+VERSION = '2.2.8'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -127,6 +127,7 @@ class LightingSM(entity.Entity):
 
     def __init__(self, hass, config, machine):
         self.attributes = {}
+        self.may_update = False
         self.model = None
         self.friendly_name = config.get('name', 'Motion Light')
         if 'friendly_name' in config:
@@ -193,7 +194,8 @@ class LightingSM(entity.Entity):
     def do_update(self, wait=False,**kwargs):
         """ Schedules an entity state update with HASS """
         # _LOGGER.debug("Scheduled update with HASS")
-        self.async_schedule_update_ha_state(True)
+        if self.may_update:
+            self.async_schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
         # _LOGGER.debug("Setting state attribute {} to {}".format(k, v))
@@ -202,7 +204,10 @@ class LightingSM(entity.Entity):
         self.attributes[k] = v
         # self.do_update()
         # _LOGGER.debug("State attributes: " + str(self.attributes))
-
+    # HA Callbacks
+    async def async_added_to_hass(self):
+        """Register update dispatcher."""
+        self.may_update = True
 class Model():
     """ Represents the transitions state machine model """
 
@@ -223,6 +228,7 @@ class Model():
         self.backoff_count = 0
         self.light_params_day = {}
         self.light_params_night = {}
+        self.lightParams = {}
         self.name = None
         self.stay = False
         self.start = None
@@ -246,15 +252,6 @@ class Model():
         self.config_constrain_times(config)
         self.config_other(config)
         
-        # This update cannot be donw within the config methods because it causes an error.
-        self.update(wait=True, 
-            delay=self.lightParams.get('delay'),
-            control_entities=self.controlEntities,
-            sensor_entities=self.sensorEntities,
-            state_entities=self.stateEntities, 
-            sensor_type=self.sensor_type
-        )
-
         if len(self.overrideEntities) > 0:
             self.update(wait=True, override_entities=self.overrideEntities)
             
@@ -728,7 +725,8 @@ class Model():
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
-        
+
+        self.update(sensor_type=self.sensor_type)
 # =====================================================
 #    E V E N T   C A L L B A C K S
 # =====================================================
@@ -789,11 +787,12 @@ class Model():
         if self.is_night():
             self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
             self.lightParams = self.light_params_night
-            self.update(wait=True, mode=MODE_NIGHT)
+            self.update(mode=MODE_NIGHT)
         else:
             self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
-            self.update(wait=True, mode=MODE_DAY)
+            self.update(mode=MODE_DAY)
+        self.update(delay=self.lightParams.get('delay'))
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
