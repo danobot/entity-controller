@@ -224,7 +224,6 @@ class Model():
         self.light_params_day = {}
         self.light_params_night = {}
         self.name = None
-        self.delay = None
         self.stay = False
         self.start = None
         self.end = None
@@ -247,15 +246,18 @@ class Model():
         self.config_constrain_times(config)
         self.config_other(config)
         
+        # This update cannot be donw within the config methods because it causes an error.
         self.update(wait=True, 
-            delay=self.light_params_day['delay'], 
+            delay=self.lightParams.get('delay'),
             control_entities=self.controlEntities,
             sensor_entities=self.sensorEntities,
             state_entities=self.stateEntities, 
             sensor_type=self.sensor_type
         )
+
         if len(self.overrideEntities) > 0:
             self.update(wait=True, override_entities=self.overrideEntities)
+            
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -444,7 +446,6 @@ class Model():
 
     def is_night(self):
         if self.night_mode is None:
-            self.log.debug("(night mode disabled): " + str(self.night_mode))
             return False
         else:
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
@@ -485,14 +486,7 @@ class Model():
     def on_enter_active(self):
         self.update(last_triggered_at=str(datetime.now()))
         self.backoff_count = 0
-        if self.is_night():
-            self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
-            self.update(mode=MODE_NIGHT)
-            self.lightParams = self.light_params_night
-        else:
-            self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
-            self.update(mode=MODE_DAY)
-            self.lightParams = self.light_params_day
+        self.prepare_service_data()
 
         
         self._start_timer()
@@ -514,7 +508,7 @@ class Model():
     def on_exit_active(self):
         self.log.debug("Turning off entities, cancelling timer")
         self._cancel_timer() # cancel previous timer
-
+        self.update(delay=self.lightParams.get('delay')) # no need to update immediately
         if len(self.offEntities) > 0:
             self.log.info("Turning on special off_entities that were defined, instead of turning off the regular control_entities")
             for e in self.offEntities: 
@@ -654,15 +648,16 @@ class Model():
         if "night_mode" in config:
             self.night_mode = config["night_mode"]
             night_mode = config["night_mode"]
-            self.log.info(night_mode)
             self.light_params_night['delay'] = night_mode.get('delay',config.get("delay", DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get('service_data',self.light_params_day.get('service_data'))
-            self.log.info(self.light_params_night)
+
             if not "start_time" in night_mode:
-                self.log.debug("Night mode requires a start_time parameter !")
+                self.log.error("Night mode requires a start_time parameter !")
 
             if not "end_time" in night_mode:
-                self.log.debug("Night mode requires a end_time parameter !")
+                self.log.error("Night mode requires a end_time parameter !")
+
+            self.prepare_service_data()
             
     def config_normal_mode(self, config):
         params = {}
@@ -757,18 +752,12 @@ class Model():
         self.log.debug("setting new callback in 24h" + str(time))
         event.async_track_point_in_time(self.hass, self.constrain_end, time)
         
-    # def block_poll(self, evt):
-    #     """ When in blocked state, we will poll `is_state_entities_off` periodically. If i"""
-    #     self.log.debug("Constrain End reached. Enabling ML: " + str(evt))
-    #     self.enable()
-    #     # time = datetime.combine(datetime.today(),self.end) + timedelta(seconds=5)
-    #     time = datetime.now() + timedelta(seconds=5)
-    #     self.log.debug("setting new callback in 24h" + str(time))
-    #     event.async_track_point_in_time(self.hass, self.constrain_end, time)
+
         
 # =====================================================
 #    H E L P E R   F U N C T I O N S
 # =====================================================
+
     def if_time_passed_get_tomorrow(self, time):
         """ Returns tomorrows time if time is in the past """
         today = date.today()
@@ -794,6 +783,17 @@ class Model():
         if x <= start:
             x += timedelta(1) # tomorrow!
         return start <= x <= end
+
+    def prepare_service_data(self):
+        """ Called when entering active state and on initial set up to set correct service parameters."""
+        if self.is_night():
+            self.log.debug("Using NIGHT MODE parameters: " + str(self.light_params_night))
+            self.lightParams = self.light_params_night
+            self.update(wait=True, mode=MODE_NIGHT)
+        else:
+            self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
+            self.lightParams = self.light_params_day
+            self.update(wait=True, mode=MODE_DAY)
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
