@@ -90,7 +90,7 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
-    # machine.add_transition(trigger='control',              source='active_timer',      dest='idle')
+    machine.add_transition(trigger='control',              source='active_timer',      dest='idle',            conditions=['is_state_entities_off'])
 
     machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
@@ -309,7 +309,7 @@ class Model():
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
         self.log.debug(self.is_active())
-        if self.is_active():
+        if self.is_active_timer():
             self.control()
 
         if self.is_blocked() and self.is_state_entities_off():
