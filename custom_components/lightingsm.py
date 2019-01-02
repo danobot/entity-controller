@@ -1,7 +1,7 @@
 """
-State Machine-based Motion Lighting Implementation (Home Assistant Component)
+Entity timer component for Home Assistant Component
 Maintainer:       Daniel Mason
-Version:          v2.2.8 - Component Rewrite
+Version:          v2.2.9 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -24,7 +24,7 @@ REQUIREMENTS = ['transitions==0.6.9']
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.8'
+VERSION = '2.2.9'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -71,7 +71,7 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='override',              source=['idle','active_timer','blocked'],                 dest='overridden')
 
     # Idle
-    machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
+    # machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
     machine.add_transition(trigger='sensor_on',            source='idle',              dest='active',          conditions=['is_state_entities_off'])
     machine.add_transition(trigger='sensor_on',            source='idle',              dest='blocked',          conditions=['is_state_entities_on'])
     
@@ -80,30 +80,28 @@ async def async_setup(hass, config):
 
     # Overridden      
     machine.add_transition(trigger='enable',               source='overridden',          dest='idle')
-    machine.add_transition(trigger='sensor_on',            source=['overridden'],          dest=None)
-    
 
-    machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
+    # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
 
     machine.add_transition(trigger='enter',                source='active',            dest='active_timer',    unless='will_stay_on')
     machine.add_transition(trigger='enter',                source='active',            dest='active_stay_on',  conditions='will_stay_on')
 
     # Active Timer
     machine.add_transition(trigger='sensor_on',            source='active_timer',      dest=None,              after='_reset_timer')
-    machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
+    # machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
     machine.add_transition(trigger='sensor_off_duration',  source='active_timer',      dest='idle',            conditions=['is_timer_expired'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_event_sensor'])
     machine.add_transition(trigger='timer_expires',        source='active_timer',      dest='idle',            conditions=['is_duration_sensor', 'is_sensor_off'])
     machine.add_transition(trigger='control',              source='active_timer',      dest='idle',            conditions=['is_state_entities_off'])
 
-    machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
+    # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires',        source='active_stay_on',    dest=None)
 
     # Constrained
     machine.add_transition(trigger='enable',                source='constrained',    dest='idle')
-    machine.add_transition(trigger='sensor_on',             source='constrained',    dest=None)
-    machine.add_transition(trigger='sensor_off',            source='constrained',    dest=None)
-    machine.add_transition(trigger='control',               source='constrained',    dest=None)
+    # machine.add_transition(trigger='sensor_on',             source='constrained',    dest=None)
+    # machine.add_transition(trigger='sensor_off',            source='constrained',    dest=None)
+    # machine.add_transition(trigger='control',               source='constrained',    dest=None)
 
 
     for key, config in myconfig.items():
@@ -236,9 +234,9 @@ class Model():
         self.reset_count = None
         self.log = logging.getLogger(__name__ + '.' + config.get('name'))
         self.log.setLevel(logging.DEBUG)
-        self.log.debug("Init LightingSM with: " + str(config))
+        self.log.debug("Initialising LightingSM entity with this configuration: " + str(config))
         self.name = config.get('name', 'Unnamed Motion Light')
-        self.log.debug("Name: " + str(self.name))
+        self.log.debug("Entity name: " + str(self.name))
 
         machine.add_model(self) # add here because machine generated methods are being used in methods below.
         self.config_static_strings(config)
@@ -285,7 +283,7 @@ class Model():
         self.log.debug("Sensor state change: " + new.state)
         self.log.debug("state: " + self.state)
 
-        if self.matches(new.state, self.SENSOR_ON_STATE):
+        if self.matches(new.state, self.SENSOR_ON_STATE) and (self.is_idle() or self.is_active_timer()):
             self.log.debug("matches on")
             self.update(last_triggered_by=entity)
             self.sensor_on()
@@ -311,15 +309,11 @@ class Model():
 
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
-        self.log.debug(self.is_active())
         if self.is_active_timer():
             self.control()
 
         if self.is_blocked() and self.is_state_entities_off():
             self.enable()
-
-    def time_event_handler(self, event):
-        self.log.debug("Time event: " + str(event))
 
 
     # def event_handler(self,event, data):
@@ -427,15 +421,15 @@ class Model():
             self.log.debug(" * State of {} is {}".format(e, s.state))
             if self.matches(s.state, self.STATE_ON_STATE):
                 self.log.debug("State entities are ON. [{}]".format(e))
-                return True
+                return e
         self.log.debug("State entities are OFF.")
-        return False
+        return None
     
     def is_state_entities_off(self):
-        return self._state_entity_state() == False
+        return self._state_entity_state() is None
 
     def is_state_entities_on(self):
-        return self._state_entity_state()
+        return self._state_entity_state() is not None
     
     
     def will_stay_on(self):
@@ -443,7 +437,7 @@ class Model():
 
     def is_night(self):
         if self.night_mode is None:
-            return False
+            return False # if night mode is undefined, it's never night :)
         else:
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
             start=  dt.parse_time(self.night_mode['start_time'])
@@ -517,6 +511,9 @@ class Model():
                 self.call_service(e, 'turn_off')
 
 
+    def on_enter_blocked(self):
+        self.update(blocked_at=datetime.now())
+        self.update(blocked_by=self._state_entity_state())
     
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
@@ -628,15 +625,7 @@ class Model():
 
     
 
-    def matches(self, value, list):
-        """
-            Checks whether a string is contained in a list (used for matching state strings)
-        """
-        try:
-            index = list.index(value)
-            return True
-        except ValueError:
-            return False
+
 
     def config_night_mode(self, config):
         """
@@ -674,7 +663,6 @@ class Model():
             s = self.if_time_passed_get_tomorrow(start)
             e = self.if_time_passed_get_tomorrow(end)
             # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
-            self.log.debug(type(self.end))
             self.log.debug("Setting time callbacks")
             self.log.debug("Constrain end callback for : " + str(s))
             self.log.debug("Constrain start callback for : " + str(e))
@@ -732,9 +720,15 @@ class Model():
 # =====================================================
 
     def constrain_fake(self, evt):
+        """ 
+            Event callback used on component setup if current time requires entity to start in constrained state.
+        """
         self.constrain()
         
     def constrain_start(self, evt):
+        """
+            Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
+        """
         self.log.debug("Constrain Start reached. Disabling ML: " + str(evt))
         self.constrain()
         time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
@@ -743,6 +737,9 @@ class Model():
         event.async_track_point_in_time(self.hass, self.constrain_start, time)
 
     def constrain_end(self, evt):
+        """
+            Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
+        """
         self.log.debug("Constrain End reached. Enabling ML: " + str(evt))
         self.enable()
         time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
@@ -805,3 +802,13 @@ class Model():
 
         self.hass.services.call(domain, service, kwargs)
         self.update(service_data=kwargs)
+    
+    def matches(self, value, list):
+        """
+            Checks whether a string is contained in a list (used for matching state strings)
+        """
+        try:
+            index = list.index(value)
+            return True
+        except ValueError:
+            return False
