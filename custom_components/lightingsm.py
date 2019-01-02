@@ -77,6 +77,7 @@ async def async_setup(hass, config):
     
     # Blocked
     machine.add_transition(trigger='enable',               source='blocked',              dest='idle')
+    machine.add_transition(trigger='sensor_on',               source='blocked',              dest='blocked') # re-entering self-transition (on_enter callback executed.)
 
     # Overridden      
     machine.add_transition(trigger='enable',               source='overridden',          dest='idle')
@@ -99,9 +100,6 @@ async def async_setup(hass, config):
 
     # Constrained
     machine.add_transition(trigger='enable',                source='constrained',    dest='idle')
-    # machine.add_transition(trigger='sensor_on',             source='constrained',    dest=None)
-    # machine.add_transition(trigger='sensor_off',            source='constrained',    dest=None)
-    # machine.add_transition(trigger='control',               source='constrained',    dest=None)
 
 
     for key, config in myconfig.items():
@@ -171,8 +169,6 @@ class LightingSM(entity.Entity):
         att = {}
 
         PERSISTED_STATE_ATTRIBUTES = [
-            'last_overridden_by',
-            'last_overridden_at',
             'last_triggered_by',
             'last_triggered_at',
             'state_entities',
@@ -180,7 +176,8 @@ class LightingSM(entity.Entity):
             'sensor_entities',
             'override_entities',
             'delay',
-            'sensor_type'
+            'sensor_type',
+            'mode'
         ]
         for k,v in self.attributes.items():
             if k in PERSISTED_STATE_ATTRIBUTES:
@@ -240,19 +237,16 @@ class Model():
 
         machine.add_model(self) # add here because machine generated methods are being used in methods below.
         self.config_static_strings(config)
-        self.config_state_entities(config)
-        self.config_control_entities(config) # must come after config_state_entities (overwrites state entities if not set)
+        self.config_control_entities(config) 
+        self.config_state_entities(config) # must come after config_control_entities (uses control entities if not set)
         self.config_sensor_entities(config)
         self.config_override_entities(config)
         self.config_off_entities(config)
         self.config_normal_mode(config) 
-        self.config_night_mode(config) #must come after normal_mode
+        self.config_night_mode(config) #must come after normal_mode (uses normal mode parameters if not set)
         self.config_constrain_times(config)
         self.config_other(config)
         
-        if len(self.overrideEntities) > 0:
-            self.update(wait=True, override_entities=self.overrideEntities)
-            
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -283,13 +277,11 @@ class Model():
         self.log.debug("Sensor state change: " + new.state)
         self.log.debug("state: " + self.state)
 
-        if self.matches(new.state, self.SENSOR_ON_STATE) and (self.is_idle() or self.is_active_timer()):
-            self.log.debug("matches on")
+        if self.matches(new.state, self.SENSOR_ON_STATE) and (self.is_idle() or self.is_active_timer() or self.is_blocked()):
             self.update(last_triggered_by=entity)
             self.sensor_on()
 
         if self.matches(new.state, self.SENSOR_OFF_STATE) and self.is_duration_sensor() and self.is_active_timer():
-            self.log.debug("matches off")
             self.update(last_triggered_by=entity, sensor_turned_off_at=datetime.now())
             # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
             self.sensor_off_duration()
@@ -384,41 +376,38 @@ class Model():
     def _override_entity_state(self):
         for e in self.overrideEntities:
             s = self.hass.states.get(e)
-            self.log.debug(" * State of {} is {}".format(e, s.state))
             if self.matches(s.state, self.OVERRIDE_ON_STATE):
                 self.log.debug("Override entities are ON. [{}]".format(e))
-                return True
+                return e
         self.log.debug("Override entities are OFF.")
-        return False
+        return None
 
     def is_override_state_off(self):
-        return self._override_entity_state() == False
+        return self._override_entity_state() is None
         
     def is_override_state_on(self):
-        return self._override_entity_state()
+        return self._override_entity_state() is not None
 
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
             s = self.hass.states.get(e)
-            self.log.debug(" * State of {} is {}".format(e, s.state))
             if self.matches(s.state, self.SENSOR_ON_STATE):
                 self.log.debug("Sensor entities are ON. [{}]".format(e))
-                return True
+                return e
         self.log.debug("Sensor entities are OFF.")
-        return False
+        return None
 
     def is_sensor_off(self):
-        return self._sensor_entity_state() == False
+        return self._sensor_entity_state() is None
 
     def is_sensor_on(self):
-        return self._sensor_entity_state()
+        return self._sensor_entity_state() is not None
         
 
     def _state_entity_state(self):
         for e in self.stateEntities:
             s = self.hass.states.get(e)
             self.log.info(s)
-            self.log.debug(" * State of {} is {}".format(e, s.state))
             if self.matches(s.state, self.STATE_ON_STATE):
                 self.log.debug("State entities are ON. [{}]".format(e))
                 return e
@@ -523,7 +512,6 @@ class Model():
 
     def config_control_entities(self, config):
     
-        self.log.debug("Setting up control entities")
         self.controlEntities = []
 
         if "entity" in config:
@@ -536,30 +524,25 @@ class Model():
             self.controlEntities.append( config["entity_on"] )
 
 
-
-
-        # If no state entities are defined, use control entites as state
-        if len(self.stateEntities) == 0:
-            self.stateEntities.extend(self.controlEntities)
-            self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
-            # Should be listening to state_entity changes (not control entities).
-            event.async_track_state_change(self.hass, self.stateEntities, self.state_entity_state_change)
-
-        else:
-            self.log.debug("Using existing state entities: " + str(self.stateEntities))
         self.log.debug("Control Entities: " + str(self.controlEntities))
+
+
+        
 
 
     def config_state_entities(self, config):
         self.stateEntities = []
-        self.log.info("Setting up state entities")
-        if config.get('state_entities',False):
-            self.log.debug("State entitity config defined")
-            self.stateEntities.extend(config.get('state_entities',[]))
-            #self.update(state_entities=self.stateEntities, delay=True)
-            self.log.info("State Entities: " + str(self.stateEntities))
+        if config.get('state_entities', False):
+            self.stateEntities.extend(config.get('state_entities', []))
+            self.log.info("State Entities (explicitly defined): " + str(self.stateEntities))
             event.async_track_state_change(self.hass, self.stateEntities, self.state_entity_state_change)
-    
+
+        # If no state entities are defined, use control entites as state
+        if len(self.stateEntities) == 0:
+            self.stateEntities = self.controlEntities.copy()
+            self.log.debug("Added Control Entities as state entities: " + str(self.stateEntities))
+            event.async_track_state_change(self.hass, self.stateEntities, self.state_entity_state_change)
+
 
 
     def config_off_entities(self, config):
@@ -587,14 +570,11 @@ class Model():
             self.sensorEntities.extend(temp)
 
         if len(self.sensorEntities) == 0:
-            self.log.debug("No sensor specified, doing nothing")
+            self.log.error("No sensor entities defined. You must define at least one sensor entity.")
 
         self.log.debug("Sensor Entities: " + str(self.sensorEntities))
-        #self.update(sensor_entities=self.sensorEntities)
 
-        for sensor in self.sensorEntities:
-            self.log.debug("Registering sensor: " + str(sensor))
-            event.async_track_state_change(self.hass, sensor, self.sensor_state_change)
+        event.async_track_state_change(self.hass, self.sensorEntities, self.sensor_state_change)
 
     def config_static_strings(self, config):
         DEFAULT_ON = ["on","playing","home"]
@@ -681,11 +661,9 @@ class Model():
         if 'overrides' in config:
             self.overrideEntities.extend(config.get('overrides'))
 
-        self.log.debug("Override Entities: " + str(self.overrideEntities))
         if len(self.overrideEntities) > 0:
-            for e in self.overrideEntities:
-                self.log.info("Setting override callback/s: " + str(e))
-                event.async_track_state_change(self.hass, e, self.override_state_change)
+            self.log.debug("Override Entities: " + str(self.overrideEntities))
+            event.async_track_state_change(self.hass, self.overrideEntities, self.override_state_change)
 
     def config_other(self, config):
         self.log.debug("Config other")
