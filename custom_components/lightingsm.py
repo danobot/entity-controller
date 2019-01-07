@@ -291,7 +291,7 @@ class Model():
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
         self.log.debug("Override state change")
-        if self.matches(new.state, self.OVERRIDE_ON_STATE):
+        if self.matches(new.state, self.OVERRIDE_ON_STATE) and (self.is_active() or self.is_active_timer() or self.is_idle() or self.is_blocked()):
             self.update(overridden_by=entity)
             self.override()
             self.update(overridden_at=str(datetime.now()))
