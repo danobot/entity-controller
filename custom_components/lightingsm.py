@@ -635,8 +635,8 @@ class Model():
     def config_constrain_times(self, config):
         start = dt.parse_time(config.get('start_time'))
         end = dt.parse_time(config.get('end_time'))
-        self.log.debug("SEtting time callbacks  " + str(start) + "   " + str(end))
         if end and start:
+            self.log.debug("Setting up constrain times. Start: " + str(start) + ", End: " + str(end))
             self.start = start # Time object
             self.end = end # Time object
             # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
