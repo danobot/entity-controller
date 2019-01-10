@@ -1,7 +1,7 @@
 """
 Entity timer component for Home Assistant Component
 Maintainer:       Daniel Mason
-Version:          v2.2.10 - Component Rewrite
+Version:          v2.3.0 - Component Rewrite
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -10,6 +10,8 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity, service, event
+from homeassistant.const import (
+    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE)
 from homeassistant.util import dt
 from homeassistant.helpers.entity_component import EntityComponent
 import logging
@@ -17,14 +19,15 @@ from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
 from datetime import datetime,  timedelta, date, time
-
+import re
+from homeassistant.helpers.sun import get_astral_event_date
 DEPENDENCIES = ['light','sensor','binary_sensor','cover','fan','media_player']
 REQUIREMENTS = ['transitions==0.6.9']
 
 DOMAIN = 'lightingsm'
 
 
-VERSION = '2.2.10'
+VERSION = '2.3.0'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -633,26 +636,48 @@ class Model():
         self.light_params_day = params
 
     def config_constrain_times(self, config):
-        start = dt.parse_time(config.get('start_time'))
-        end = dt.parse_time(config.get('end_time'))
-        if end and start:
-            self.log.debug("Setting up constrain times. Start: " + str(start) + ", End: " + str(end))
-            self.start = start # Time object
-            self.end = end # Time object
-            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-            s = self.if_time_passed_get_tomorrow(start)
-            e = self.if_time_passed_get_tomorrow(end)
-            # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
-            self.log.debug("Setting time callbacks")
-            self.log.debug("Constrain end callback for : " + str(s))
-            self.log.debug("Constrain start callback for : " + str(e))
-            self.constrain_end_hook = event.async_track_point_in_time(self.hass, self.constrain_end, s) # dt.now()+timedelta(seconds=3)) # s
-            self.constrain_start_hook = event.async_track_point_in_time(self.hass, self.constrain_start, e) # dt.now()+timedelta(seconds=1)) # e
-            if not self.now_is_between(start, end):
-                self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
-                event.async_call_later(self.hass, 1, self.constrain_fake)
 
-    
+        self.constrain_start_hook, start_abs = self.setup_time_callback_please(config.get('start_time'), self.constrain_start)
+        self.constrain_end_hook, end_abs = self.setup_time_callback_please(config.get('end_time'), self.constrain_end)
+
+        self.log.debug("start_abs: " + str(start_abs))
+        self.log.debug("end_abs: " + str(end_abs))
+        # if end and start:
+            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
+            # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
+            # self.log.debug("Setting time callbacks")
+
+        # We now have to constrain the entity if we are currently within the
+        # constrain period. To do this, we must convert sun-relative time 
+        # to absolute time
+        s = self.if_time_passed_get_tomorrow(start_abs)
+        e = self.if_time_passed_get_tomorrow(end_abs)
+        if not self.now_is_between(s.time() , e.time()):
+            self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
+            event.async_call_later(self.hass, 1, self.constrain_fake)
+
+    def setup_time_callback_please(self,time, callback):
+        sun, time_or_offset = self.parse_time_sun(time)
+        if sun is not None:
+            self.log.debug("Sun: {}, time_or_offset: {}".format(sun, time_or_offset))
+            self.log.debug("Start time contains sun reference")
+   
+            if time_or_offset is None:
+                delta = timedelta(0)
+            else:
+                delta = time_or_offset
+
+            if sun == 'sunrise':
+                return event.async_track_sunrise(self.hass, callback, delta), get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now())
+            else: 
+                return event.async_track_sunset(self.hass, callback, delta), get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now())
+        else:
+            self.start = time_or_offset 
+            s = self.if_time_passed_get_tomorrow(time_or_offset)
+            self.log.debug("Constrain callback for : " + str(s))
+            return event.async_track_point_in_time(self.hass, self.constrain_start, s), None
+
+
     def config_override_entities(self, config):
         self.overrideEntities = []
         if 'override' in config:
@@ -730,7 +755,43 @@ class Model():
 # =====================================================
 #    H E L P E R   F U N C T I O N S
 # =====================================================
+# use homeassistant.util.dt.find_next_time_expression_time where appropriate
 
+
+    def parse_time_sun(self, time):
+                
+        if 'sun' in time:
+            self.log.debug("Time contains sunset/sunrise relative time.")
+
+            regex = r"(sunset|sunrise) ?(\+|\-) ?(\d\d\:\d\d\:\d\d)"
+
+            matches = re.finditer(regex, time, re.MULTILINE)
+
+            for matchNum, match in enumerate(matches, start=1):
+                
+                self.log.debug("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
+                
+                for groupNum in range(0, len(match.groups())):
+                    groupNum = groupNum + 1
+                    
+                    self.log.debug("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+
+            self.log.debug(match.group(2)+match.group(3))
+
+            t = datetime.strptime(match.group(3),"%H:%M:%S")
+# ...and use datetime's hour, min and sec properties to build a timedelta
+            d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+            if match.group(2) == '-':
+
+                t = timedelta(0) - d
+            else:
+                t = d
+
+            self.log.debug(t)
+            return match.group(1), t 
+        else:
+            return None, dt.parse_time(time)
+            
     def if_time_passed_get_tomorrow(self, time):
         """ Returns tomorrows time if time is in the past """
         today = date.today()
