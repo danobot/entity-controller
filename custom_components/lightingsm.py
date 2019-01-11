@@ -154,7 +154,7 @@ class LightingSM(entity.Entity):
     def icon(self):
         """Return the entity icon."""
         if self.model.state == 'idle':
-            return 'mdi:timer-sand'
+            return 'mdi:circle-outline'
         if self.model.state == 'active':
             return 'mdi:check-circle'
         if self.model.state == 'active_timer':
