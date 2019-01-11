@@ -1,7 +1,7 @@
 """
 Entity timer component for Home Assistant Component
 Maintainer:       Daniel Mason
-Version:          v2.3.0 - Component Rewrite
+Version:          v2.3.0-beta
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -20,14 +20,20 @@ from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
 from datetime import datetime,  timedelta, date, time
 import re
+from homeassistant.core import callback
 from homeassistant.helpers.sun import get_astral_event_date
+
+DEBUG_CONSTRAINED = False
+DEBUG_NOT_CONSTRAINED = False
+
 DEPENDENCIES = ['light','sensor','binary_sensor','cover','fan','media_player']
 REQUIREMENTS = ['transitions==0.6.9']
 
 DOMAIN = 'lightingsm'
+CONSTRAIN_START = 1
+CONSTRAIN_END = 2
 
-
-VERSION = '2.3.0'
+VERSION = '2.3.0-beta'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -636,12 +642,14 @@ class Model():
         self.light_params_day = params
 
     def config_constrain_times(self, config):
+        self._start_time = config.get('start_time')
+        self._end_time = config.get('end_time')
 
-        self.constrain_start_hook, start_abs = self.setup_time_callback_please(config.get('start_time'), self.constrain_start)
-        self.constrain_end_hook, end_abs = self.setup_time_callback_please(config.get('end_time'), self.constrain_end)
-
-        self.log.debug("start_abs: " + str(start_abs))
-        self.log.debug("end_abs: " + str(end_abs))
+        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_START)
+        self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_END)
+        
+        self.log.debug("Constrains - Entity active from: " + str(constrain_start_abs))
+        self.log.debug("Constrains - Entity active until: " + str(constrain_end_abs))
         # if end and start:
             # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
             # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
@@ -650,14 +658,70 @@ class Model():
         # We now have to constrain the entity if we are currently within the
         # constrain period. To do this, we must convert sun-relative time 
         # to absolute time
-        s = self.if_time_passed_get_tomorrow(start_abs)
-        e = self.if_time_passed_get_tomorrow(end_abs)
-        if not self.now_is_between(s.time() , e.time()):
+        if not self.now_is_between(constrain_start_abs.time(), constrain_end_abs.time()):
             self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
             event.async_call_later(self.hass, 1, self.constrain_fake)
+            
 
-    def setup_time_callback_please(self,time, callback):
+    def setup_time_callback_please(self,time, callback_const):
+        """
+            Handles parsing of time input string and setting up an appropriate call back time. 
+
+            Should be called on start up and in each call back method to set the next callback.
+        """
         sun, time_or_offset = self.parse_time_sun(time)
+
+        @callback
+        def constrain_start():
+            """
+                Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
+            """
+            self.log.debug("Constrain Start reached. Disabling ML: ")
+            self.constrain()
+            #   time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
+            self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
+            self.update(constrain_start=constrain_start_abs)
+            self.log.debug("setting new START callback in ~24h" + str(constrain_start_abs))
+
+        @callback
+        def constrain_end():
+            """
+                Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
+            """
+            self.log.debug("Constrain End reached. Enabling ML: ")
+            self.enable()
+            #        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
+            self.constrain_start_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
+            self.log.debug("setting new END callback in ~24h" + str(constrain_end_abs))
+            self.update(constrain_end=constrain_end_abs)
+
+        if callback_const == CONSTRAIN_START:
+            callbacks = constrain_start
+        else:
+            callbacks = constrain_end    
+
+        
+        # Sets up event callbacks in such a way to enable quick time 
+        # related testing.
+        
+
+        if DEBUG_CONSTRAINED: # starts in constrained mode going to idle
+
+            if callback_const == CONSTRAIN_END:
+                time_or_offset = self.five_seconds_from_now(sun)
+            else:
+                time_or_offset = self.five_minutes_ago(sun)
+        if DEBUG_NOT_CONSTRAINED: # Starts in Idle mode going to constrained
+            # Sets up event callbacks in such a way to enable quick time 
+            if callback_const == CONSTRAIN_START:
+                time_or_offset = self.five_seconds_from_now(sun)
+            else:
+                time_or_offset = self.five_minutes_ago(sun)
+    
+        
+
+        self.log.debug("Next sunrise: " + str(get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now())))
+        self.log.debug("Next sunset: " + str(get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now())))
         if sun is not None:
             self.log.debug("Sun: {}, time_or_offset: {}".format(sun, time_or_offset))
             self.log.debug("Start time contains sun reference")
@@ -666,17 +730,24 @@ class Model():
                 delta = timedelta(0)
             else:
                 delta = time_or_offset
-
+            
             if sun == 'sunrise':
-                return event.async_track_sunrise(self.hass, callback, delta), get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now())
+                return event.async_track_sunrise(self.hass, callbacks, delta), self.delta_from_sunrise(delta)
             else: 
-                return event.async_track_sunset(self.hass, callback, delta), get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now())
+                return event.async_track_sunset(self.hass, callbacks, delta), self.delta_from_sunset(delta)
         else:
             self.start = time_or_offset 
             s = self.if_time_passed_get_tomorrow(time_or_offset)
             self.log.debug("Constrain callback for : " + str(s))
-            return event.async_track_point_in_time(self.hass, self.constrain_start, s), None
 
+            return event.async_track_point_in_time(self.hass, callbacks, s), s
+
+    def delta_from_sunrise(self, delta):
+        """ Returns absolute time sunrise + delta """
+        return get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, dt.now()) + delta
+    def delta_from_sunset(self, delta):
+        """ Returns absolute time sunset + delta """
+        return get_astral_event_date(self.hass, SUN_EVENT_SUNSET, dt.now()) + delta
 
     def config_override_entities(self, config):
         self.overrideEntities = []
@@ -728,30 +799,7 @@ class Model():
         """
         self.constrain()
         
-    def constrain_start(self, evt):
-        """
-            Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
-        """
-        self.log.debug("Constrain Start reached. Disabling ML: " + str(evt))
-        self.constrain()
-        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        # time = datetime.now() + timedelta(seconds=5)
-        self.log.debug("setting new callback in 24h" + str(time))
-        event.async_track_point_in_time(self.hass, self.constrain_start, time)
-
-    def constrain_end(self, evt):
-        """
-            Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
-        """
-        self.log.debug("Constrain End reached. Enabling ML: " + str(evt))
-        self.enable()
-        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        # time = datetime.now() + timedelta(seconds=5)
-        self.log.debug("setting new callback in 24h" + str(time))
-        event.async_track_point_in_time(self.hass, self.constrain_end, time)
-        
-
-        
+    
 # =====================================================
 #    H E L P E R   F U N C T I O N S
 # =====================================================
@@ -763,7 +811,7 @@ class Model():
         if 'sun' in time:
             self.log.debug("Time contains sunset/sunrise relative time.")
 
-            regex = r"(sunset|sunrise) ?(\+|\-) ?(\d\d\:\d\d\:\d\d)"
+            regex = r"(sunset|sunrise) ?(\+|\-)? ?(\d\d\:\d\d\:\d\d)?"
 
             matches = re.finditer(regex, time, re.MULTILINE)
 
@@ -775,18 +823,19 @@ class Model():
                     groupNum = groupNum + 1
                     
                     self.log.debug("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+                break
 
-            self.log.debug(match.group(2)+match.group(3))
+            if match.group(2) is not None:
+                self.log.debug(match.group(2)+match.group(3))
+                t = datetime.strptime(match.group(3),"%H:%M:%S")
+                d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+                if match.group(2) == '-':
 
-            t = datetime.strptime(match.group(3),"%H:%M:%S")
-# ...and use datetime's hour, min and sec properties to build a timedelta
-            d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
-            if match.group(2) == '-':
-
-                t = timedelta(0) - d
+                    t = timedelta(0) - d
+                else:
+                    t = d
             else:
-                t = d
-
+                t = timedelta(0)
             self.log.debug(t)
             return match.group(1), t 
         else:
@@ -851,3 +900,16 @@ class Model():
             return True
         except ValueError:
             return False
+
+    
+       
+  
+    def five_seconds_from_now(self, sun):
+        """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
+
+        
+        return dt.now()+timedelta(seconds=5)-get_astral_event_date(self.hass, sun, datetime.now())
+    def five_minutes_ago(self, sun):
+        """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
+        return dt.now() -timedelta(minutes=5)-get_astral_event_date(self.hass, sun, datetime.now())
+
