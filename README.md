@@ -203,7 +203,18 @@ diagram_test:
 |constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
 
 Note that, unless you specifically define `state_entities` in your configuration, that `control_entities == state_entities`.
+# Debugging
+### Time constraint helpers
+You can use `soon` and `soon-after` to make the time equal the current time plus 5 and 10 seconds respectively. THis is for testing.
 
+```yaml
+soon_test_case:
+  sensors:
+    - input_boolean.sense_motion2
+  entity: light.bed_light
+  start_time: soon
+  end_time: soon-after
+```
 # About LightingSM 
 
 `LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
