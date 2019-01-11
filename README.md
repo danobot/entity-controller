@@ -49,7 +49,14 @@ motion_light:
   start_time: 00:00:00                # required
   end_time: 00:30:00                 # required
 ```
-Note that time values relative to sunset/sunrise are not yet supported.
+Time values relative to sunset/sunrise are supported and use the following syntax:
+```yaml
+motion_light_sun:
+  sensor: binary_sensor.living_room_motion
+  entity: light.table_lamp
+  start_time: sunset - 00:30:00                # required
+  end_time: sunrise + 00:30:00                 # required
+```
 
 ### Home Assistant State Entities (not supported yet in v2)
 Since `v1.1.0`, the app creates and updates entities representing the motion light itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
