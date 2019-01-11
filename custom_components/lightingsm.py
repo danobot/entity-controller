@@ -672,7 +672,7 @@ class Model():
         sun, time_or_offset = self.parse_time_sun(time)
 
         @callback
-        def constrain_start():
+        def constrain_start(evt):
             """
                 Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
             """
@@ -684,7 +684,7 @@ class Model():
             self.log.debug("setting new START callback in ~24h" + str(constrain_start_abs))
 
         @callback
-        def constrain_end():
+        def constrain_end(evt):
             """
                 Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
             """
@@ -801,7 +801,16 @@ class Model():
 
 
     def parse_time_sun(self, time):
-                
+        if 'soon-after' in time:
+            t =  datetime.now() + timedelta(seconds=10)
+
+            self.log.debug("DEBUG: Making time happen in 10 seconds!")
+            return None, t.time()
+        elif 'soon' in time:
+            t = datetime.now() + timedelta(seconds=5)
+
+            self.log.debug("DEBUG: Making time happen in 5 seconds!")
+            return None, t.time()
         if 'sun' in time:
             self.log.debug("Time contains sunset/sunrise relative time.")
 
