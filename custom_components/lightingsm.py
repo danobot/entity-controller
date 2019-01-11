@@ -814,7 +814,7 @@ class Model():
         if 'sun' in time:
             self.log.debug("Time contains sunset/sunrise relative time.")
 
-            regex = r"(sunset|sunrise) ?(\+|\-)? ?(\d\d\:\d\d\:\d\d)?"
+            regex = r"(sunset|sunrise) ?(\+|\-)? ?'?(\d\d\:\d\d\:\d\d)?'?"
 
             matches = re.finditer(regex, time, re.MULTILINE)
 
@@ -827,8 +827,8 @@ class Model():
                     
                     self.log.debug("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
                 break
-
-            if match.group(2) is not None:
+            
+            if match.group(2) is not None and match.group(3) is not None:
                 self.log.debug(match.group(2)+match.group(3))
                 t = datetime.strptime(match.group(3),"%H:%M:%S")
                 d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
@@ -837,9 +837,10 @@ class Model():
                     t = timedelta(0) - d
                 else:
                     t = d
+                self.log.debug("Using custom sun offset: " + str(t))
             else:
                 t = timedelta(0)
-            self.log.debug(t)
+                self.log.debug("No sun offset given.")
             return match.group(1), t 
         else:
             return None, dt.parse_time(time)
