@@ -645,8 +645,8 @@ class Model():
         self._start_time = config.get('start_time')
         self._end_time = config.get('end_time')
 
-        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_START)
-        self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_END)
+        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
+        self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
         
         self.log.debug("Constrains - Entity active from: " + str(constrain_start_abs))
         self.log.debug("Constrains - Entity active until: " + str(constrain_end_abs))
@@ -742,12 +742,6 @@ class Model():
 
             return event.async_track_point_in_time(self.hass, callbacks, s), s
 
-    def delta_from_sunrise(self, delta):
-        """ Returns absolute time sunrise + delta """
-        return get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, dt.now()) + delta
-    def delta_from_sunset(self, delta):
-        """ Returns absolute time sunset + delta """
-        return get_astral_event_date(self.hass, SUN_EVENT_SUNSET, dt.now()) + delta
 
     def config_override_entities(self, config):
         self.overrideEntities = []
@@ -913,3 +907,9 @@ class Model():
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
         return dt.now() -timedelta(minutes=5)-get_astral_event_date(self.hass, sun, datetime.now())
 
+    def delta_from_sunrise(self, delta):
+        """ Returns absolute time sunrise + delta """
+        return get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, dt.now()) + delta
+    def delta_from_sunset(self, delta):
+        """ Returns absolute time sunset + delta """
+        return get_astral_event_date(self.hass, SUN_EVENT_SUNSET, dt.now()) + delta
