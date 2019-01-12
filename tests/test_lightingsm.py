@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import pytest
+from unittest.mock import patch
+from datetime import timedelta
 from homeassistant.core import CoreState, State, Context
 from homeassistant import core, const, setup
 from homeassistant.setup import async_setup_component
@@ -10,8 +12,9 @@ from homeassistant.components import light, binary_sensor, async_setup
 from homeassistant.const import (
     STATE_ON, STATE_OFF, ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, ATTR_ICON,
     SERVICE_TOGGLE, SERVICE_TURN_OFF, SERVICE_TURN_ON)
-
-from tests.common import mock_component, mock_restore_cache
+import homeassistant.util.dt as dt
+from tests.common import (
+    mock_component, mock_restore_cache ,async_fire_time_changed)
 
 _LOGGER = logging.getLogger(__name__)
 ENTITY = 'lightingsm.test'
@@ -60,7 +63,6 @@ async def test_config(hass):
         assert not await async_setup_component(hass, 'input_boolean', {'input_boolean': cfg})
 
 
-
 async def test_config_options(hass_et):
     """Test configuration options."""
     hass = hass_et
@@ -78,15 +80,24 @@ async def test_config_options(hass_et):
     hass.states.async_set(SENSOR_ENTITY, 'off')
 
     await hass.async_block_till_done()
-    assert hass.states.get(ENTITY).state == STATE_IDLE
+    
+    assert state(hass) == STATE_IDLE
 
     hass.states.async_set(SENSOR_ENTITY, 'on')
     await hass.async_block_till_done()
 
     assert hass.states.get(ENTITY).state == STATE_ACTIVE
+    
+    # with patch(('threading.timer.dt_util.utcnow'), return_value=future):
+    #     async_fire_time_changed(hass, future)
+    #     await hass.async_block_till_done()
+    # future = dt.utcnow() + timedelta(seconds=300)
+    # async_fire_time_changed(hass, future)
+    # assert state(hass) == STATE_IDLE
 
 
-
+def state(hass):
+    return hass.states.get(ENTITY).state
 async def methods(hass):
     """Test is_on, turn_on, turn_off methods."""
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: {
