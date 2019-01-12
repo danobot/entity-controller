@@ -34,6 +34,7 @@ release:
     - git config --global user.email "gitlab-ci@danielha.tk"
     - git config --global user.name "Gitlab CI"
     - standard-version
+    - git push --follow-tags origin master
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
