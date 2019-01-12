@@ -255,7 +255,7 @@ class Model():
         self.config_night_mode(config) #must come after normal_mode (uses normal mode parameters if not set)
         self.config_constrain_times(config)
         self.config_other(config)
-        
+        self.prepare_service_data()
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -632,7 +632,7 @@ class Model():
             if not "end_time" in night_mode:
                 self.log.error("Night mode requires a end_time parameter !")
 
-            self.prepare_service_data()
+            
             
     def config_normal_mode(self, config):
         params = {}
@@ -644,23 +644,27 @@ class Model():
     def config_constrain_times(self, config):
         self._start_time = config.get('start_time')
         self._end_time = config.get('end_time')
+        # Find XOR function
+        # if self._start_time and self._end_time:
+        #     self.log.error("Must specify both start and end time.")
+        if self._start_time and self._end_time:
 
-        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
-        self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
-        
-        self.log.debug("Constrains - Entity active from: " + str(constrain_start_abs))
-        self.log.debug("Constrains - Entity active until: " + str(constrain_end_abs))
-        # if end and start:
-            # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-            # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
-            # self.log.debug("Setting time callbacks")
+            self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
+            self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
+            
+            self.log.debug("Constrains - Entity active from: " + str(constrain_start_abs))
+            self.log.debug("Constrains - Entity active until: " + str(constrain_end_abs))
+            # if end and start:
+                # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
+                # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
+                # self.log.debug("Setting time callbacks")
 
-        # We now have to constrain the entity if we are currently within the
-        # constrain period. To do this, we must convert sun-relative time 
-        # to absolute time
-        if not self.now_is_between(constrain_start_abs.time(), constrain_end_abs.time()):
-            self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
-            event.async_call_later(self.hass, 1, self.constrain_fake)
+            # We now have to constrain the entity if we are currently within the
+            # constrain period. To do this, we must convert sun-relative time 
+            # to absolute time
+            if not self.now_is_between(constrain_start_abs.time(), constrain_end_abs.time()):
+                self.log.debug("Constrain period active. Scheduling transition to 'constrained'")
+                event.async_call_later(self.hass, 1, self.constrain_fake)
             
 
     def setup_time_callback_please(self,time, callback_const):
@@ -720,8 +724,8 @@ class Model():
     
         
 
-        self.log.debug("Next sunrise: " + str(get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now())))
-        self.log.debug("Next sunset: " + str(get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now())))
+        self.log.debug("Next sunrise: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now()))))
+        self.log.debug("Next sunset: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now()))))
         if sun is not None:
             self.log.debug("Sun: {}, time_or_offset: {}".format(sun, time_or_offset))
             self.log.debug("Start time contains sun reference")
@@ -732,9 +736,9 @@ class Model():
                 delta = time_or_offset
             
             if sun == 'sunrise':
-                return event.async_track_sunrise(self.hass, callbacks, delta), self.delta_from_sunrise(delta)
+                return event.async_track_sunrise(self.hass, callbacks, delta), self.delta_from(delta, sun)
             else: 
-                return event.async_track_sunset(self.hass, callbacks, delta), self.delta_from_sunset(delta)
+                return event.async_track_sunset(self.hass, callbacks, delta), self.delta_from(delta, sun)
         else:
             self.start = time_or_offset 
             s = self.if_time_passed_get_tomorrow(time_or_offset)
@@ -880,7 +884,8 @@ class Model():
         else:
             self.log.debug("Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
-            self.update(mode=MODE_DAY)
+            if self.night_mode is not None:
+                self.update(mode=MODE_DAY) # only show when night mode set up
         self.update(delay=self.lightParams.get('delay'))
 
     def call_service(self, entity, service, **kwargs):
@@ -917,9 +922,8 @@ class Model():
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
         return dt.now() -timedelta(minutes=5)-get_astral_event_date(self.hass, sun, datetime.now())
 
-    def delta_from_sunrise(self, delta):
-        """ Returns absolute time sunrise + delta """
-        return get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, dt.now()) + delta
-    def delta_from_sunset(self, delta):
-        """ Returns absolute time sunset + delta """
-        return get_astral_event_date(self.hass, SUN_EVENT_SUNSET, dt.now()) + delta
+    def delta_from(self, delta, sun):
+        """ Returns absolute time sun + delta """
+        sun_time = get_astral_event_date(self.hass, sun, dt.now())
+        t = dt.as_local(sun_time + delta ).time()
+        return self.if_time_passed_get_tomorrow(t)
