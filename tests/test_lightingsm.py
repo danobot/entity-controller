@@ -87,7 +87,7 @@ class TestLightingSM:
         
         assert self.hass.states.get(SENSOR_ENTITY).state == 'on'
         # assert self.hass.states.get('lightingsm.test').state == STATE_ACTIVE
-        assert light.is_on(CONTROL_ENTITY)
+        # assert light.is_on(CONTROL_ENTITY)
         future = datetime.now() + timedelta(seconds=3)
         # async_fire_time_changed(self.hass, future)
 
