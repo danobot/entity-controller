@@ -2,11 +2,11 @@
 # pylint: disable=protected-access
 import asyncio
 import logging
-
+import pytest
 from homeassistant.core import CoreState, State, Context
+from homeassistant import core, const, setup
 from homeassistant.setup import async_setup_component
-from homeassistant.components.input_boolean import (
-    is_on, CONF_INITIAL, DOMAIN)
+from homeassistant.components import light, binary_sensor, async_setup
 from homeassistant.const import (
     STATE_ON, STATE_OFF, ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, ATTR_ICON,
     SERVICE_TOGGLE, SERVICE_TURN_OFF, SERVICE_TURN_ON)
@@ -14,7 +14,38 @@ from homeassistant.const import (
 from tests.common import mock_component, mock_restore_cache
 
 _LOGGER = logging.getLogger(__name__)
+ENTITY = 'lightingsm.test'
+CONTROL_ENTITY = 'light.kitchen_lights';
+CONTROL_ENTITY2 = 'light.bed_light';
+CONTROL_ENTITIES = [CONTROL_ENTITY, CONTROL_ENTITY2]
+SENSOR_ENTITY = 'binary_sensor.movement_backyard';
+SENSOR_ENTITY2 = 'binary_sensor.basement_floor_wet';
+SENSOR_ENTITIES = [SENSOR_ENTITY, SENSOR_ENTITY2]
+STATE_ENTITY = 'binary_sensor.movement_backyard'
+STATE_ENTITY2 = 'binary_sensor.basement_floor_wet'
+STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
+STATE_IDLE = 'idle'
+STATE_ACTIVE = 'active'
+@pytest.fixture
+def hass_et(loop, hass):
+    """Set up a Home Assistant instance for these tests."""
+    # We need to do this to get access to homeassistant/turn_(on,off)
+    loop.run_until_complete(async_setup(hass, {core.DOMAIN: {}}))
 
+    loop.run_until_complete(
+        setup.async_setup_component(hass, light.DOMAIN, {
+            'light': [{
+                'platform': 'demo'
+            }]
+        }))
+    loop.run_until_complete(
+        setup.async_setup_component(hass, binary_sensor.DOMAIN, {
+            'binary_sensor': [{
+                'platform': 'demo'
+            }]
+        }))
+
+    return hass
 
 async def test_config(hass):
     """Test config."""
@@ -26,10 +57,37 @@ async def test_config(hass):
     ]
 
     for cfg in invalid_configs:
-        assert not await async_setup_component(hass, DOMAIN, {DOMAIN: cfg})
+        assert not await async_setup_component(hass, 'input_boolean', {'input_boolean': cfg})
 
 
-async def test_methods(hass):
+
+async def test_config_options(hass_et):
+    """Test configuration options."""
+    hass = hass_et
+    hass.state = CoreState.starting
+    _LOGGER.debug('ENTITIES @ start: %s', hass.states.async_entity_ids())
+
+    assert await async_setup_component(hass, 'lightingsm', {'lightingsm': {
+        'test': {'entity': CONTROL_ENTITY,
+            'sensor': SENSOR_ENTITY
+        },
+        }})
+
+    _LOGGER.debug('ENTITIES: %s', hass.states.async_entity_ids())
+    hass.states.async_set(CONTROL_ENTITY, 'off')
+    hass.states.async_set(SENSOR_ENTITY, 'off')
+
+    await hass.async_block_till_done()
+    assert hass.states.get(ENTITY).state == STATE_IDLE
+
+    # hass.states.async_set(SENSOR_ENTITY, 'on')
+    # hass.async_block_till_done()
+
+    # assert hass.states.get(ENTITY).state == STATE_ACTIVE
+
+
+
+async def methods(hass):
     """Test is_on, turn_on, turn_off methods."""
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: {
         'test_1': None,
@@ -58,109 +116,3 @@ async def test_methods(hass):
     await hass.async_block_till_done()
 
     assert is_on(hass, entity_id)
-
-
-async def test_config_options(hass):
-    """Test configuration options."""
-    count_start = len(hass.states.async_entity_ids())
-
-    _LOGGER.debug('ENTITIES @ start: %s', hass.states.async_entity_ids())
-
-    assert await async_setup_component(hass, 'lightingsm', {'lightingsm': {
-        'test': {'entity': CONTROL_ENTITY,
-            'sensor': SENSOR_ENTITY,
-            'en': '3',
-        }
-        }})
-
-    _LOGGER.debug('ENTITIES: %s', hass.states.async_entity_ids())
-
-    assert count_start + 2 == len(hass.states.async_entity_ids())
-
-    state_1 = hass.states.get(CONTROL_ENTITY)
-    state_2 = hass.states.get(SENSOR_ENTITY)
-
-    assert state_1 is not None
-    assert state_2 is not None
-
-    assert STATE_OFF == state_1.state
-    assert ATTR_ICON not in state_1.attributes
-    assert ATTR_FRIENDLY_NAME not in state_1.attributes
-
-    assert STATE_ON == state_2.state
-    assert 'Hello World' == \
-        state_2.attributes.get(ATTR_FRIENDLY_NAME)
-    assert 'mdi:work' == state_2.attributes.get(ATTR_ICON)
-
-
-@asyncio.coroutine
-def test_restore_state(hass):
-    """Ensure states are restored on startup."""
-    mock_restore_cache(hass, (
-        State('input_boolean.b1', 'on'),
-        State('input_boolean.b2', 'off'),
-        State('input_boolean.b3', 'on'),
-    ))
-
-    hass.state = CoreState.starting
-    mock_component(hass, 'recorder')
-
-    yield from async_setup_component(hass, DOMAIN, {
-        DOMAIN: {
-            'b1': None,
-            'b2': None,
-        }})
-
-    state = hass.states.get('input_boolean.b1')
-    assert state
-    assert state.state == 'on'
-
-    state = hass.states.get('input_boolean.b2')
-    assert state
-    assert state.state == 'off'
-
-
-@asyncio.coroutine
-def test_initial_state_overrules_restore_state(hass):
-    """Ensure states are restored on startup."""
-    mock_restore_cache(hass, (
-        State('input_boolean.b1', 'on'),
-        State('input_boolean.b2', 'off'),
-    ))
-
-    hass.state = CoreState.starting
-
-    yield from async_setup_component(hass, DOMAIN, {
-        DOMAIN: {
-            'b1': {CONF_INITIAL: False},
-            'b2': {CONF_INITIAL: True},
-        }})
-
-    state = hass.states.get('input_boolean.b1')
-    assert state
-    assert state.state == 'off'
-
-    state = hass.states.get('input_boolean.b2')
-    assert state
-    assert state.state == 'on'
-
-
-async def test_input_boolean_context(hass, hass_admin_user):
-    """Test that input_boolean context works."""
-    assert await async_setup_component(hass, 'input_boolean', {
-        'input_boolean': {
-            'ac': {CONF_INITIAL: True},
-        }
-    })
-
-    state = hass.states.get('input_boolean.ac')
-    assert state is not None
-
-    await hass.services.async_call('input_boolean', 'turn_off', {
-        'entity_id': state.entity_id,
-    }, True, Context(user_id=hass_admin_user.id))
-
-    state2 = hass.states.get('input_boolean.ac')
-    assert state2 is not None
-    assert state.state != state2.state
-    assert state2.context.user_id == hass_admin_user.id
