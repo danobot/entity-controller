@@ -16,8 +16,10 @@ test-component:
     - docker run --rm -v $(pwd):/app:ro ci_test
 
 release:
+  image: node:node:8.15.0-alpine
   script:
     - npm i -g standard-version
+    - standard-version --dry-run
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
