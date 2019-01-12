@@ -67,7 +67,7 @@ class TestLightingSM:
         with assert_setup_component(1, 'lightingsm'):
             assert setup.setup_component(self.hass, 'lightingsm', {
                 'lightingsm': {
-                    'test': {
+                    'test2': {
                         'entity': CONTROL_ENTITY,
                         'sensor': SENSOR_ENTITY,
                         'delay': 2
