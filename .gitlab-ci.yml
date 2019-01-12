@@ -5,7 +5,9 @@
 #     - docker run -v .:/app test_container
 # before_script:
 #   - docker info
-
+stages:
+  - test
+  - release
 test-component-hass-image:
   stage: test
   script:
