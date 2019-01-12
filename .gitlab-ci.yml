@@ -3,8 +3,8 @@
 #   script:
 #     - docker build -t test_container .
 #     - docker run -v .:/app test_container
-before_script:
-  - docker info
+# before_script:
+#   - docker info
 
 # test-component-hass-image:
 #   script:
@@ -13,7 +13,7 @@ before_script:
 test-component:
   script:
     - docker build -t ci_test -f Dockerfile.ci-test .
-    - docker run --rm -v $(pwd):/app:ro ci_test
+    - docker run --rm  ci_test # -v $(pwd):/app:ro
 
 release:
   image: node:8.15.0-alpine
