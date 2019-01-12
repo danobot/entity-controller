@@ -700,9 +700,9 @@ class Model():
             self.update(constrain_end=constrain_end_abs)
 
         if callback_const == CONSTRAIN_START:
-            callbacks = constrain_start
+            callbacks = constrain_end
         else:
-            callbacks = constrain_end    
+            callbacks = constrain_start    
 
         
         # Sets up event callbacks in such a way to enable quick time 
@@ -864,7 +864,10 @@ class Model():
 
         return t
 
-    def now_is_between(self, start, end, x=datetime.time(datetime.now())):
+    def now_is_between(self, start, end, x=None):
+        if x is None:
+            x = datetime.time(datetime.now())
+
         today = date.today()
         start = datetime.combine(today, start)
         end = datetime.combine(today, end)
