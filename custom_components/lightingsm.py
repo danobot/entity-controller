@@ -805,49 +805,53 @@ class Model():
 
 
     def parse_time_sun(self, time):
-        if 'soon-after' in time:
-            t =  datetime.now() + timedelta(seconds=10)
+        try:
+            if 'soon-after' in time:
+                t =  datetime.now() + timedelta(seconds=10)
 
-            self.log.debug("DEBUG: Making time happen in 10 seconds!")
-            return None, t.time()
-        elif 'soon' in time:
-            t = datetime.now() + timedelta(seconds=5)
+                self.log.debug("DEBUG: Making time happen in 10 seconds!")
+                return None, t.time()
+            elif 'soon' in time:
+                t = datetime.now() + timedelta(seconds=5)
 
-            self.log.debug("DEBUG: Making time happen in 5 seconds!")
-            return None, t.time()
-        if 'sun' in time:
-            self.log.debug("Time contains sunset/sunrise relative time.")
+                self.log.debug("DEBUG: Making time happen in 5 seconds!")
+                return None, t.time()
+            if 'sun' in time:
+                self.log.debug("Time contains sunset/sunrise relative time.")
 
-            regex = r"(sunset|sunrise) ?(\+|\-)? ?'?(\d\d\:\d\d\:\d\d)?'?"
+                regex = r"(sunset|sunrise) ?(\+|\-)? ?'?(\d\d\:\d\d\:\d\d)?'?"
 
-            matches = re.finditer(regex, time, re.MULTILINE)
+                matches = re.finditer(regex, time, re.MULTILINE)
 
-            for matchNum, match in enumerate(matches, start=1):
-                
-                self.log.debug("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
-                
-                for groupNum in range(0, len(match.groups())):
-                    groupNum = groupNum + 1
+                for matchNum, match in enumerate(matches, start=1):
                     
-                    self.log.debug("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
-                break
-            
-            if match.group(2) is not None and match.group(3) is not None:
-                self.log.debug(match.group(2)+match.group(3))
-                t = datetime.strptime(match.group(3),"%H:%M:%S")
-                d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
-                if match.group(2) == '-':
+                    self.log.debug("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
+                    
+                    for groupNum in range(0, len(match.groups())):
+                        groupNum = groupNum + 1
+                        
+                        self.log.debug("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+                    break
+                
+                if match.group(2) is not None and match.group(3) is not None:
+                    self.log.debug(match.group(2)+match.group(3))
+                    t = datetime.strptime(match.group(3),"%H:%M:%S")
+                    d = timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+                    if match.group(2) == '-':
 
-                    t = timedelta(0) - d
+                        t = timedelta(0) - d
+                    else:
+                        t = d
+                    self.log.debug("Using custom sun offset: " + str(t))
                 else:
-                    t = d
-                self.log.debug("Using custom sun offset: " + str(t))
+                    t = timedelta(0)
+                    self.log.debug("No sun offset given.")
+                return match.group(1), t 
             else:
-                t = timedelta(0)
-                self.log.debug("No sun offset given.")
-            return match.group(1), t 
-        else:
-            return None, dt.parse_time(time)
+                return None, dt.parse_time(time)
+        except TypeError as e:
+            self.log.error("PARSE ERROR: Please put quotes around time fields starting with a number.")
+            return None, None
             
     def if_time_passed_get_tomorrow(self, time):
         """ Returns tomorrows time if time is in the past """
