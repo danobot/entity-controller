@@ -21,7 +21,7 @@ release:
   image: node:8.15.0-alpine
   script:
     - npm i -g standard-version
-    - standard-version --dry-run
+    - standard-version
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
