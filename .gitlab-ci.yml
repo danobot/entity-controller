@@ -18,7 +18,7 @@ test-component-hass-image:
 #     - docker run --rm  ci_test # -v $(pwd):/app:ro
 
 release:
-  image: node:8.15.0-alpine
+  image: tarampampam/node:alpine
   script:
     - npm i -g standard-version
     - standard-version
