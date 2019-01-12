@@ -25,6 +25,8 @@ release:
   when: on_success
   tags: 
     - npm
+  only:
+    - master
   image: tarampampam/node:alpine
   script:
     - npm i -g standard-version
