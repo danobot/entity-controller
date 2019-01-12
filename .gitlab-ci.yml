@@ -18,9 +18,13 @@ test-component-hass-image:
 #     - docker run --rm  ci_test # -v $(pwd):/app:ro
 
 release:
+  tags: 
+    - npm
   image: tarampampam/node:alpine
   script:
     - npm i -g standard-version
+    - git config --global user.email "gitlab-ci@danielha.tk"
+    - git config --global user.name "Gitlab CI"
     - standard-version
 # test:
 #   script:
