@@ -25,7 +25,7 @@ STATE_ENTITY = 'binary_sensor.movement_backyard'
 STATE_ENTITY2 = 'binary_sensor.basement_floor_wet'
 STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 STATE_IDLE = 'idle'
-STATE_ACTIVE = 'active'
+STATE_ACTIVE = 'active_timer'
 @pytest.fixture
 def hass_et(loop, hass):
     """Set up a Home Assistant instance for these tests."""
@@ -80,10 +80,10 @@ async def test_config_options(hass_et):
     await hass.async_block_till_done()
     assert hass.states.get(ENTITY).state == STATE_IDLE
 
-    # hass.states.async_set(SENSOR_ENTITY, 'on')
-    # hass.async_block_till_done()
+    hass.states.async_set(SENSOR_ENTITY, 'on')
+    await hass.async_block_till_done()
 
-    # assert hass.states.get(ENTITY).state == STATE_ACTIVE
+    assert hass.states.get(ENTITY).state == STATE_ACTIVE
 
 
 

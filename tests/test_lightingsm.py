@@ -1,97 +1,118 @@
-"""The tests for the MQTT lightingsm platform."""
-import json
-from unittest.mock import patch
+"""The tests for the input_boolean component."""
+# pylint: disable=protected-access
+import asyncio
+import logging
 import pytest
-from datetime import timedelta, datetime
-from homeassistant.core import callback
-from homeassistant import setup
-from homeassistant.const import STATE_UNAVAILABLE, ATTR_ASSUMED_STATE
-import homeassistant.core as ha
-from homeassistant.components.mqtt.discovery import async_start
-from homeassistant.components import light
-from tests.common import (
-    get_test_home_assistant, assert_setup_component,
-    async_fire_time_changed)
-from freezegun import freeze_time
+from homeassistant.core import CoreState, State, Context
+from homeassistant import core, const, setup
+from homeassistant.setup import async_setup_component
+from homeassistant.components import light, binary_sensor, async_setup
+from homeassistant.const import (
+    STATE_ON, STATE_OFF, ATTR_ENTITY_ID, ATTR_FRIENDLY_NAME, ATTR_ICON,
+    SERVICE_TOGGLE, SERVICE_TURN_OFF, SERVICE_TURN_ON)
 
-CONTROL_ENTITY = 'light.test_light';
-CONTROL_ENTITY2 = 'light.test_light2';
+from tests.common import mock_component, mock_restore_cache
+
+_LOGGER = logging.getLogger(__name__)
+ENTITY = 'lightingsm.test'
+CONTROL_ENTITY = 'light.kitchen_lights';
+CONTROL_ENTITY2 = 'light.bed_light';
 CONTROL_ENTITIES = [CONTROL_ENTITY, CONTROL_ENTITY2]
-SENSOR_ENTITY = 'binary_sensor.test_sensor';
-SENSOR_ENTITY2 = 'binary_sensor.test_sensor2';
+SENSOR_ENTITY = 'binary_sensor.movement_backyard';
+SENSOR_ENTITY2 = 'binary_sensor.basement_floor_wet';
 SENSOR_ENTITIES = [SENSOR_ENTITY, SENSOR_ENTITY2]
-STATE_ENTITY = 'binary_sensor.test_state_entity'
-STATE_ENTITY2 = 'binary_sensor.test_state_entity2'
+STATE_ENTITY = 'binary_sensor.movement_backyard'
+STATE_ENTITY2 = 'binary_sensor.basement_floor_wet'
 STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
-
-# test_flux.py:75 example of mockiong time
 STATE_IDLE = 'idle'
-STATE_ACTIVE = 'active'
+STATE_ACTIVE = 'active_timer'
+@pytest.fixture
+def hass_et(loop, hass):
+    """Set up a Home Assistant instance for these tests."""
+    # We need to do this to get access to homeassistant/turn_(on,off)
+    loop.run_until_complete(async_setup(hass, {core.DOMAIN: {}}))
+
+    loop.run_until_complete(
+        setup.async_setup_component(hass, light.DOMAIN, {
+            'light': [{
+                'platform': 'demo'
+            }]
+        }))
+    loop.run_until_complete(
+        setup.async_setup_component(hass, binary_sensor.DOMAIN, {
+            'binary_sensor': [{
+                'platform': 'demo'
+            }]
+        }))
+
+    return hass
+
+async def test_config(hass):
+    """Test config."""
+    invalid_configs = [
+        None,
+        1,
+        {},
+        {'name with space': None},
+    ]
+
+    for cfg in invalid_configs:
+        assert not await async_setup_component(hass, 'input_boolean', {'input_boolean': cfg})
 
 
-class TestLightingSM:
-    hass = None
-    calls = None
-    # pylint: disable=invalid-name
 
-    def setup_method(self, method):
-        """Set up things to be run when tests are started."""
-        self.hass = get_test_home_assistant()
-        self.calls = []
+async def test_config_options(hass_et):
+    """Test configuration options."""
+    hass = hass_et
+    hass.state = CoreState.starting
+    _LOGGER.debug('ENTITIES @ start: %s', hass.states.async_entity_ids())
 
-        @callback
-        def record_call(service):
-            """Track function calls.."""
-            self.calls.append(service)
+    assert await async_setup_component(hass, 'lightingsm', {'lightingsm': {
+        'test': {'entity': CONTROL_ENTITY,
+            'sensor': SENSOR_ENTITY
+        },
+        }})
 
-        self.hass.services.register('test', 'automation', record_call)
+    _LOGGER.debug('ENTITIES: %s', hass.states.async_entity_ids())
+    hass.states.async_set(CONTROL_ENTITY, 'off')
+    hass.states.async_set(SENSOR_ENTITY, 'off')
 
-    def teardown_method(self, method):
-        """Stop everything that was started."""
-        self.hass.stop()
+    await hass.async_block_till_done()
+    assert hass.states.get(ENTITY).state == STATE_IDLE
 
-    def test_demo(self):
-        with assert_setup_component(1, 'lightingsm'):
-            assert setup.setup_component(self.hass, 'lightingsm', {
-                'lightingsm': {
-                    'test': {
-                        'entity': CONTROL_ENTITY,
-                        'sensor': SENSOR_ENTITY,
-                        'delay': 2
-                    }
-                }
-            })
-        
-    def test_basic_config(self):
-        """Test the controlling state via topic."""
-        with assert_setup_component(1, 'lightingsm'):
-            assert setup.setup_component(self.hass, 'lightingsm', {
-                'lightingsm': {
-                    'test2': {
-                        'entity': CONTROL_ENTITY,
-                        'sensor': SENSOR_ENTITY,
-                        'delay': 2
-                    }
-                }
-            })
-        # self.hass.start()
-        # self.hass.block_till_done()
+    hass.states.async_set(SENSOR_ENTITY, 'on')
+    await hass.async_block_till_done()
 
-        self.hass.states.set(CONTROL_ENTITY, 'off')
-        self.hass.block_till_done()
-        assert self.hass.states.get('lightingsm.test').state == STATE_IDLE
+    assert hass.states.get(ENTITY).state == STATE_ACTIVE
 
-        self.hass.states.set(SENSOR_ENTITY, 'on')
-        self.hass.block_till_done()
-        # how to trigger state change? send event?
-        
-        assert self.hass.states.get(SENSOR_ENTITY).state == 'on'
-        # assert self.hass.states.get('lightingsm.test').state == STATE_ACTIVE
-        # assert light.is_on(CONTROL_ENTITY)
-        future = datetime.now() + timedelta(seconds=3)
-        # async_fire_time_changed(self.hass, future)
 
-        # self.hass.block_till_done()
 
-        # assert not light.is_on(CONTROL_ENTITY)
-        # assert self.hass.states.get('lightingsm.test').state == STATE_IDLE
+async def methods(hass):
+    """Test is_on, turn_on, turn_off methods."""
+    assert await async_setup_component(hass, DOMAIN, {DOMAIN: {
+        'test_1': None,
+    }})
+    entity_id = 'input_boolean.test_1'
+
+    assert not is_on(hass, entity_id)
+
+    await hass.services.async_call(
+        DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: entity_id})
+
+    await hass.async_block_till_done()
+
+    assert is_on(hass, entity_id)
+
+    await hass.services.async_call(
+        DOMAIN, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: entity_id})
+
+    await hass.async_block_till_done()
+
+    assert not is_on(hass, entity_id)
+
+    await hass.services.async_call(
+        DOMAIN, SERVICE_TOGGLE, {ATTR_ENTITY_ID: entity_id})
+
+    await hass.async_block_till_done()
+
+    assert is_on(hass, entity_id)
