@@ -16,7 +16,7 @@ test-component:
     - docker run --rm -v $(pwd):/app:ro ci_test
 
 release:
-  image: node:node:8.15.0-alpine
+  image: node:8.15.0-alpine
   script:
     - npm i -g standard-version
     - standard-version --dry-run
