@@ -6,14 +6,16 @@
 # before_script:
 #   - docker info
 
-# test-component-hass-image:
-#   script:
-#     - docker build -t component_test -f Dockerfile.component .
-#     - docker run --rm -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro -v $(pwd)/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro component_test pytest /usr/src/app/tests/components/test_lightingsm.py
-test-component:
+test-component-hass-image:
   script:
-    - docker build -t ci_test -f Dockerfile.ci-test .
-    - docker run --rm  ci_test # -v $(pwd):/app:ro
+    - docker build -t component_test -f Dockerfile.component .
+    - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
+    # -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro 
+    # -v $(pwd)/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro 
+# test-component:
+#   script:
+#     - docker build -t ci_test -f Dockerfile.ci-test .
+#     - docker run --rm  ci_test # -v $(pwd):/app:ro
 
 release:
   image: node:8.15.0-alpine
