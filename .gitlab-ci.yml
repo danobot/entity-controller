@@ -50,8 +50,6 @@ release:
     - git config receive.advertisePushOptions true
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
-    - git add tracker.json custom_components/lightingsm.py 
-    - git commit -m "version bump"# --amend --no-edit
     - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags $CI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME
 # test:
 #   script:
