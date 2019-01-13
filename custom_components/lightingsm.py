@@ -137,8 +137,10 @@ class LightingSM(entity.Entity):
         self.friendly_name = config.get('name', 'Motion Light')
         if 'friendly_name' in config:
             self.friendly_name = config.get('friendly_name')
-
-        self.model = Model(hass, config, machine, self)
+        try: 
+            self.model = Model(hass, config, machine, self)
+        except AttributeError as e:
+            self.log.error("Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities")
         event.async_call_later(hass, 1, self.do_update)
 
     @property
@@ -523,15 +525,9 @@ class Model():
     
         self.controlEntities = []
 
-        if "entity" in config:
-            self.controlEntities.append( config["entity"])
-
-        if "entities" in config: 
-            self.controlEntities.extend( config['entities'])
-
-        if "entity_on" in config: 
-            self.controlEntities.append( config["entity_on"] )
-
+        self.add(self.controlEntities, config, "entity")
+        self.add(self.controlEntities, config, "entities")
+        self.add(self.controlEntities, config, "entity_on")
 
         self.log.debug("Control Entities: " + str(self.controlEntities))
 
@@ -557,26 +553,15 @@ class Model():
     def config_off_entities(self, config):
     
         self.offEntities = []
-        temp = config.get("entity_off", None)
-        if temp is not None:
-            self.log.debug("Setting up off_entities")
-            if type(temp) == str:
-                self.offEntities.append(temp)
-            else:
-                self.offEntities.extend(temp)
-            #self.update(off_entities=self.offEntities, delay=True)
+        if self.add(self.offEntities, config, "entity_off"):
             self.log.info('Off Entities: ' + str(self.offEntities))
+
 
 
     def config_sensor_entities(self, config):
         self.sensorEntities = []
-        temp = config.get("sensor", None)
-        if temp is not None:
-            self.sensorEntities.append(temp)
-            
-        temp = config.get("sensors", None)
-        if temp is not None:
-            self.sensorEntities.extend(temp)
+        self.add(self.sensorEntities, config, 'sensor')
+        self.add(self.sensorEntities, config, 'sensors')
 
         if len(self.sensorEntities) == 0:
             self.log.error("No sensor entities defined. You must define at least one sensor entity.")
@@ -615,10 +600,11 @@ class Model():
     
 
 
-
     def config_night_mode(self, config):
         """
-            Configured night mode parameters. If no night_mode service parameters are given, the day mode parameters are used instead. If those do not exist, the 
+            Configured night mode parameters. If no night_mode service 
+            parameters are given, the day mode parameters are used instead. 
+            If those do not exist, the 
         """
         if "night_mode" in config:
             self.night_mode = config["night_mode"]
@@ -907,6 +893,7 @@ class Model():
         self.hass.services.call(domain, service, kwargs)
         self.update(service_data=kwargs)
     
+
     def matches(self, value, list):
         """
             Checks whether a string is contained in a list (used for matching state strings)
@@ -917,20 +904,42 @@ class Model():
         except ValueError:
             return False
 
-    
-       
-  
+
     def five_seconds_from_now(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
 
         
         return dt.now()+timedelta(seconds=5)-get_astral_event_date(self.hass, sun, datetime.now())
+
+
     def five_minutes_ago(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
         return dt.now() -timedelta(minutes=5)-get_astral_event_date(self.hass, sun, datetime.now())
+
 
     def delta_from(self, delta, sun):
         """ Returns absolute time sun + delta """
         sun_time = get_astral_event_date(self.hass, sun, dt.now())
         t = dt.as_local(sun_time + delta ).time()
         return self.if_time_passed_get_tomorrow(t)
+
+
+    def add(self, list, e, key=None):
+        """ Adds e (which can be a string or list or config) to the list 
+            if e is defined. 
+        """
+        if e is not None:
+            v = []
+            if key is not None:
+                if key in e: # must be in separate if statement
+                    v = e[key]
+            else:
+                v = e
+
+            if type(v) == str:
+                list.append(v)
+            else:
+                list.extend(v)
+        else:
+            self.log.debug("none")
+        return len(v) > 0
