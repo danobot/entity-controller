@@ -28,12 +28,12 @@ release:
 
   except:
     variables:
-      - $GITLAB_USER_LOGIN == "danobot"
+      - $GITLAB_USER_LOGIN == "GItlab CI"
       
   tags: 
     - npm
   only:
-    - merge_requests
+    - master
     - develop
   image: tarampampam/node:alpine
   script:
