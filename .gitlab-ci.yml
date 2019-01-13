@@ -7,15 +7,14 @@
 #   - docker info
 
 stages:
-  - test
+  #- test
   - release
-test-component-hass-image:
-  stage: test
-  script:
-    - docker build -t component_test -f Dockerfile.component .
-    - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
-    # -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro 
-    # -v $(pwd)/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro 
+# test-component-hass-image:
+#   stage: test
+#   script:
+#     - docker build -t component_test -f Dockerfile.component .
+#     - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
+
 # test-component:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
@@ -23,7 +22,7 @@ test-component-hass-image:
 
 release:
   stage: release
-  when: on_success
+  #when: on_success
   except:
     variables:
       - $GITLAB_USER_LOGIN == "Gitlab CI"
