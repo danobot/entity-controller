@@ -10,8 +10,6 @@ const options = {
 
 var changes = replace.sync(options)
 
-console.log(changes.join())
-
 
 const regex2 = new RegExp('"version": .*', 'i');
 
@@ -22,12 +20,6 @@ const options2 = {
 };
 changes = replace.sync(options2)
 
-console.log(changes.join())
-
-// Header
-
-
-
 const regex3 = new RegExp('Version:          .*', 'i');
 
 const lightingsm_header = {
@@ -37,4 +29,4 @@ const lightingsm_header = {
 };
 changes = replace.sync(lightingsm_header)
 
-console.log(changes.join())
+console.log("chore(release): " + v)
