@@ -13,6 +13,10 @@ stages:
   - release
 test-component-hass-image:
   stage: test
+  except:
+    variables:
+      - $GITLAB_USER_LOGIN == $CI_NAME
+
   script:
     - echo $GITLAB_USER_LOGIN
     - echo $GITLAB_USER_EMAIL
