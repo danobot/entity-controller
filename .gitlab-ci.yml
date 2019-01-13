@@ -35,7 +35,7 @@ release:
     - git config --global user.email "gitlab-ci@danielha.tk"
     - git config --global user.name "Gitlab CI"
     - standard-version
-    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags origin master
+    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags HEAD:master
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
