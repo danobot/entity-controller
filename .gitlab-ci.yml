@@ -43,7 +43,7 @@ release:
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
     - git add tracker.json custom_components/lightingsm.py 
-    - git commit --amend
+    - git commit --amend --no-edit
     - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags develop:develop
 # test:
 #   script:
