@@ -44,7 +44,7 @@ release:
     - npm run release
     - git add tracker.json custom_components/lightingsm.py 
     - git commit -m "version bump"
-    # - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags develop:develop
+    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags develop:develop
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
