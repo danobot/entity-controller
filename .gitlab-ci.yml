@@ -29,8 +29,8 @@ release:
       
   tags: 
     - npm
-  # only:
-  #   - merge_requests
+  only:
+    - merge_requests
   image: tarampampam/node:alpine
   script:
     - npm install
