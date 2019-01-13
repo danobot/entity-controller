@@ -6,7 +6,7 @@
 # before_script:
 #   - docker info
 variables:
-    CI_NAME: "Gitlab CI"
+    CI_NAME: "Gitlab"
     CI_EMAIL: "gitlab-ci@danielha.tk"
 stages:
   - test
