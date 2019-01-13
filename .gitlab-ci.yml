@@ -5,15 +5,18 @@
 #     - docker run -v .:/app test_container
 # before_script:
 #   - docker info
-
+variables:
+    CI_NAME: "Gitlab CI"
+    CI_EMAIL: "gitlab-ci@danielha.tk"
 stages:
   - test
   - release
 test-component-hass-image:
   stage: test
   script:
-    - docker build -t component_test -f Dockerfile.component .
-    - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
+    - echo $GITLAB_USER_LOGIN
+    # - docker build -t component_test -f Dockerfile.component .
+    # - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
     # -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro 
     # -v $(pwd)/tests/test_lightingsm.py:/usr/src/app/tests/components/test_lightingsm.py:ro 
 # test-component:
@@ -24,25 +27,26 @@ test-component-hass-image:
 release:
   stage: release
   when: on_success
+
   except:
     variables:
-      - $GITLAB_USER_LOGIN == "Gitlab CI"
+      - $GITLAB_USER_LOGIN == $CI_NAME
       
   tags: 
     - npm
   only:
-    - merge_requests
+    - master
     - develop
   image: tarampampam/node:alpine
   script:
     - npm install
-    - git config --global user.email "gitlab-ci@danielha.tk"
-    - git config --global user.name "Gitlab CI"
+    - git config --global user.email $CI_EMAIL
+    - git config --global user.name $CI_NAME
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
     - git add tracker.json custom_components/lightingsm.py 
-    - git commit -m "version bump"
-    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags develop:develop
+    - git commit --amend --no-edit
+    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags $CI_COMMIT_REF_NAME:$CI_COMMIT_REF_NAME
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .

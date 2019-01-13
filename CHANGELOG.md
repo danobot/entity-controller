@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.3.12"></a>
+## [2.3.12](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.12) (2019-01-13)
+
+
+
+<a name="2.3.11"></a>
+## [2.3.11](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.11) (2019-01-13)
+
+
+
+<a name="2.3.10"></a>
+## [2.3.10](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.10) (2019-01-13)
+
+
+
+<a name="2.3.9"></a>
+## [2.3.9](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.9) (2019-01-13)
+
+
+
+<a name="2.3.8"></a>
+## [2.3.8](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.8) (2019-01-13)
+
+
+
+<a name="2.3.7"></a>
+## [2.3.7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.7) (2019-01-13)
+
+
+
+<a name="2.3.6"></a>
+## [2.3.6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.6) (2019-01-13)
+
+
+
+<a name="2.3.5"></a>
+## [2.3.5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.5) (2019-01-13)
+
+
+
+<a name="2.3.4"></a>
+## [2.3.4](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.4) (2019-01-13)
+
+
+
 <a name="2.3.3"></a>
 ## [2.3.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.3) (2019-01-13)
 
