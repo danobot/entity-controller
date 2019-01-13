@@ -25,14 +25,12 @@ release:
   stage: release
   when: on_success
   except:
-    changes:
-        - Changelog.md
-        - package.json
+    - tags
+      
   tags: 
     - npm
   only:
-    - master
-    - feature/testing
+    - merge_requests
   image: tarampampam/node:alpine
   script:
     - npm i -g standard-version
