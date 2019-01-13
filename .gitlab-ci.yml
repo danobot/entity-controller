@@ -24,6 +24,10 @@ test-component-hass-image:
 release:
   stage: release
   when: on_success
+  except:
+    changes:
+        - Changelog.md
+        - package.json
   tags: 
     - npm
   only:
