@@ -640,10 +640,6 @@ class Model():
             
             self.log.debug("Constrains - Entity active from: " + str(constrain_start_abs))
             self.log.debug("Constrains - Entity active until: " + str(constrain_end_abs))
-            # if end and start:
-                # self.end = datetime.time(datetime.utcnow()+timedelta(seconds=5))
-                # e = dt.now()+timedelta(seconds=5)#datetime.datetime(end)
-                # self.log.debug("Setting time callbacks")
 
             # We now have to constrain the entity if we are currently within the
             # constrain period. To do this, we must convert sun-relative time 
@@ -661,58 +657,37 @@ class Model():
         """
         sun, time_or_offset = self.parse_time_sun(time)
 
-        @callback
-        def constrain_start(evt):
-            """
-                Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
-            """
-            self.log.debug("Constrain Start reached. Disabling ML: ")
-            self.constrain()
-            #   time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-            self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
-            self.update(constrain_start=constrain_start_abs)
-            self.log.debug("setting new START callback in ~24h" + str(constrain_start_abs))
-
-        @callback
-        def constrain_end(evt):
-            """
-                Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
-            """
-            self.log.debug("Constrain End reached. Enabling ML: ")
-            self.enable()
-            #        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-            self.constrain_start_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
-            self.log.debug("setting new END callback in ~24h" + str(constrain_end_abs))
-            self.update(constrain_end=constrain_end_abs)
 
         if callback_const == CONSTRAIN_START:
-            callbacks = constrain_end
+            callbacks = self.constrain_end
         else:
-            callbacks = constrain_start    
+            callbacks = self.constrain_start    
+        if callback_const == CONSTRAIN_START:
+            callbacks_sun = self.sun_constrain_end
+        else:
+            callbacks_sun = self.sun_constrain_start    
 
         
         # Sets up event callbacks in such a way to enable quick time 
         # related testing.
         
 
-        if DEBUG_CONSTRAINED: # starts in constrained mode going to idle
+        # if DEBUG_CONSTRAINED: # starts in constrained mode going to idle
+        #     sun = 'sunrise'
+        #     if callback_const == CONSTRAIN_END:
+        #         time_or_offset = self.five_seconds_from_now(sun)
+        #     else:
+        #         time_or_offset = self.five_minutes_ago(sun)
+        # if DEBUG_NOT_CONSTRAINED: # Starts in Idle mode going to constrained
+        #     # Sets up event callbacks in such a way to enable quick time 
+        #     if callback_const == CONSTRAIN_START:
+        #         time_or_offset = self.five_seconds_from_now(sun)
+        #     else:
+        #         time_or_offset = self.five_minutes_ago(sun)
 
-            if callback_const == CONSTRAIN_END:
-                time_or_offset = self.five_seconds_from_now(sun)
-            else:
-                time_or_offset = self.five_minutes_ago(sun)
-        if DEBUG_NOT_CONSTRAINED: # Starts in Idle mode going to constrained
-            # Sets up event callbacks in such a way to enable quick time 
-            if callback_const == CONSTRAIN_START:
-                time_or_offset = self.five_seconds_from_now(sun)
-            else:
-                time_or_offset = self.five_minutes_ago(sun)
-    
-        
-
-        self.log.debug("Next sunrise: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now()))))
-        self.log.debug("Next sunset: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now()))))
         if sun is not None:
+            self.log.debug("Next sunrise: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now()))))
+            self.log.debug("Next sunset: " + str(dt.as_local(get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now()))))
             self.log.debug("Sun: {}, time_or_offset: {}".format(sun, time_or_offset))
             self.log.debug("Start time contains sun reference")
    
@@ -783,7 +758,32 @@ class Model():
         """
         self.constrain()
         
-    
+    def sun_constrain_start(self):
+        return self.constrain_start(dt.now())
+
+    def sun_constrain_end(self):
+        return self.constrain_end(dt.now())
+    def constrain_start(self, evt):
+        """
+            Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
+        """
+        self.log.debug("Constrain Start reached. Disabling ML: ")
+        self.constrain()
+        #   time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
+        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
+        self.update(constrain_start=constrain_start_abs)
+        self.log.debug("setting new START callback in ~24h" + str(constrain_start_abs))
+
+    def constrain_end(self, evt):
+        """
+            Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
+        """
+        self.log.debug("Constrain End reached. Enabling ML: ")
+        self.enable()
+        #        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
+        self.constrain_start_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
+        self.log.debug("setting new END callback in ~24h" + str(constrain_end_abs))
+        self.update(constrain_end=constrain_end_abs)
 # =====================================================
 #    H E L P E R   F U N C T I O N S
 # =====================================================
