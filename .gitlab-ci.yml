@@ -30,6 +30,7 @@ release:
   tags: 
     - npm
   only:
+    - master
     - merge_requests
   image: tarampampam/node:alpine
   script:
