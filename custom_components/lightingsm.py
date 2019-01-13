@@ -1,7 +1,7 @@
 """
 Entity timer component for Home Assistant Component
 Maintainer:       Daniel Mason
-Version:          v2.3.15
+Version:          v2.3.16
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
