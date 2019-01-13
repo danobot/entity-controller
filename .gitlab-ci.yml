@@ -35,6 +35,7 @@ release:
     - develop
   image: tarampampam/node:alpine
   script:
+    - echo $GITLAB_USER_LOGIN
     - npm install
     - git config --global user.email "gitlab-ci@danielha.tk"
     - git config --global user.name "Gitlab CI"
