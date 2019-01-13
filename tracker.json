@@ -1,6 +1,6 @@
 {
     "lighting_sm_component": {
-      "version": "2.3.18",
+      "version": "2.3.19",
       "local_location": "custom_components/lightingsm.py",
       "remote_location": "https://raw.githubusercontent.com/danobot/appdaemon-motion-lights/master/custom_components/lightingsm.py",
       "visit_repo": "https://github.com/danobot/appdaemon-motion-lights",
