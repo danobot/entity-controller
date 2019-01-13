@@ -23,8 +23,8 @@
   },
   "standard-version": {
     "scripts": {
-      "postbump": "node postbump.js",
-      "precommit": "git add tracker.json && git add custom_components/lightingsm.py && git commit -m \"version bump\""
+      "postbump": "node postbump.js"
+      
     }
   }
 }
