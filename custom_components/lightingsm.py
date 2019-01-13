@@ -1,7 +1,7 @@
 """
 Entity timer component for Home Assistant Component
 Maintainer:       Daniel Mason
-Version:          v2.3.8
+Version:          v2.3.9
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
 
 """
@@ -33,7 +33,7 @@ DOMAIN = 'lightingsm'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '2.3.8'
+VERSION = '2.3.9'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
