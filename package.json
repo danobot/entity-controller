@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "pytest ./tests/test_lightingsm.py",
-    "release": "standard-version"
+    "release": "standard-version -a"
   },
   "repository": {
     "type": "git",
