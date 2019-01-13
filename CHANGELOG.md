@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.3.10"></a>
+## [2.3.10](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.10) (2019-01-13)
+
+
+
 <a name="2.3.9"></a>
 ## [2.3.9](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.9) (2019-01-13)
 
