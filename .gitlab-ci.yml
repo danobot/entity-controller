@@ -6,7 +6,7 @@
 # before_script:
 #   - docker info
 variables:
-    CI_NAME: "Gitlab"
+    CI_NAME: "gitlab"
     CI_EMAIL: "gitlab-ci@danielha.tk"
 stages:
   - test
@@ -14,9 +14,9 @@ stages:
 test-component-hass-image:
   stage: test
   except:
-    - /^chore(release):.*$/
-    # variables:
-    #   - $GITLAB_USER_LOGIN == $CI_NAME
+    # - /^chore(release):.*$/
+    variables:
+      - $GITLAB_USER_LOGIN == $CI_NAME
 
   script:
     - echo $GITLAB_USER_LOGIN
@@ -37,8 +37,8 @@ release:
 
   except:
     - /^chore(release):.*$/
-    # variables:
-    #   - $GITLAB_USER_LOGIN == $CI_NAME
+    variables:
+      - $GITLAB_USER_LOGIN == $CI_NAME
       
   tags: 
     - npm
