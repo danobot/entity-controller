@@ -1,5 +1,4 @@
 var v = require('./package.json').version
-console.log(v);
 const replace = require('replace-in-file');
 const regex = new RegExp('VERSION = .*', 'i');
 const options = {
