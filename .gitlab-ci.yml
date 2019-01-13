@@ -25,11 +25,10 @@ test-component-hass-image:
 release:
   stage: release
   when: on_success
-  variables:
-    - GITLAB_USER_LOGIN = Gitlab CI
+
   except:
     variables:
-      - $GITLAB_USER_LOGIN == "Gitlab CI"
+      - $GITLAB_USER_LOGIN == "danobot"
       
   tags: 
     - npm
