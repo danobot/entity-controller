@@ -23,9 +23,7 @@ stages:
 release:
   stage: release
   #when: on_success
-  except:
-    variables:
-      - $GITLAB_USER_LOGIN == "Gitlab CI"
+
       
   tags: 
     - npm
