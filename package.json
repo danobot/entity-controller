@@ -8,7 +8,9 @@
   },
   "scripts": {
     "test": "pytest ./tests/test_lightingsm.py",
-    "semantic-release": "semantic-release"
+    "release": "standard-version --dry-run",
+    "postbump": "node postbump.js",
+    "precommit": "git add tracker.json;git add custom_components/lightingsm.py"
   },
   "repository": {
     "type": "git",
@@ -17,6 +19,8 @@
   "author": "Daniel Mason",
   "license": "MIT",
   "devDependencies": {
-    "semantic-release": "^15.13.3"
+    "semantic-release": "^15.13.3",
+    "standard-version": "^4.4.0",
+    "replace-in-file": "^3.4.3"
   }
 }
