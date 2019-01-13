@@ -12,7 +12,7 @@ stages:
 test-component-hass-image:
   stage: test
   script:
-    - echo "hi"
+    - echo $GITLAB_USER_LOGIN
     # - docker build -t component_test -f Dockerfile.component .
     # - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
     # -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro 
