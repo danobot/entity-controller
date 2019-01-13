@@ -14,8 +14,9 @@ stages:
 test-component-hass-image:
   stage: test
   except:
-    variables:
-      - $GITLAB_USER_LOGIN == $CI_NAME
+    - /^chore(release):.*$/
+    # variables:
+    #   - $GITLAB_USER_LOGIN == $CI_NAME
 
   script:
     - echo $GITLAB_USER_LOGIN
@@ -35,8 +36,9 @@ release:
   when: on_success
 
   except:
-    variables:
-      - $GITLAB_USER_LOGIN == $CI_NAME
+    - /^chore(release):.*$/
+    # variables:
+    #   - $GITLAB_USER_LOGIN == $CI_NAME
       
   tags: 
     - npm
