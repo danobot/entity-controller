@@ -5,7 +5,9 @@
 #     - docker run -v .:/app test_container
 # before_script:
 #   - docker info
-
+variables:
+    CI_NAME: "Gitlab CI"
+    CI_EMAIL: "gitlab-ci@danielha.tk"
 stages:
   - test
   - release
@@ -28,7 +30,7 @@ release:
 
   except:
     variables:
-      - $GITLAB_USER_LOGIN == "Gitlab CI"
+      - $GITLAB_USER_LOGIN == $CI_NAME
       
   tags: 
     - npm
@@ -38,8 +40,8 @@ release:
   image: tarampampam/node:alpine
   script:
     - npm install
-    - git config --global user.email "gitlab-ci@danielha.tk"
-    - git config --global user.name "Gitlab CI"
+    - git config --global user.email $CI_EMAIL
+    - git config --global user.name $CI_NAME
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
     - git add tracker.json custom_components/lightingsm.py 
