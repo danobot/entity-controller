@@ -47,6 +47,7 @@ release:
     - npm install
     - git config --global user.email $CI_EMAIL
     - git config --global user.name $CI_NAME
+    - git config receive.advertisePushOptions true
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
     - git add tracker.json custom_components/lightingsm.py 
