@@ -7,8 +7,8 @@
 #   - docker info
 
 stages:
-  #- test
-  - release
+  - release#- test
+  
 # test-component-hass-image:
 #   stage: test
 #   script:
