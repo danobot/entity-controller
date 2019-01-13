@@ -14,7 +14,6 @@ stages:
 test-component-hass-image:
   stage: test
   except:
-    # - /^chore(release):.*$/
     variables:
       - $GITLAB_USER_LOGIN == $CI_NAME
 
@@ -36,7 +35,6 @@ release:
   when: on_success
 
   except:
-    - /^chore(release):.*$/
     variables:
       - $GITLAB_USER_LOGIN == $CI_NAME
       
