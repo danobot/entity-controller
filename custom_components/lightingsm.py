@@ -33,7 +33,7 @@ DOMAIN = 'lightingsm'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '2.3.16'
+VERSION = '2.3.15'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
