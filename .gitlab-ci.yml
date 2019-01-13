@@ -28,7 +28,7 @@ release:
 
   except:
     variables:
-      - $GITLAB_USER_LOGIN == "GItlab CI"
+      - $GITLAB_USER_LOGIN == "Gitlab CI"
       
   tags: 
     - npm
