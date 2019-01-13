@@ -25,9 +25,8 @@ release:
   stage: release
   when: on_success
   except:
-    - tags
     variables:
-      - $GITLAB_USER_LOGIN == "my-bot"
+      - $GITLAB_USER_LOGIN == "Gitlab CI"
       
   tags: 
     - npm
