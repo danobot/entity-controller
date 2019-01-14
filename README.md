@@ -46,8 +46,8 @@ You may wish to constrain at what time of day your motion lights are activated. 
 motion_light:
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
-  start_time: 00:00:00                # required
-  end_time: 00:30:00                 # required
+  start_time: '00:00:00'                # required
+  end_time: '00:30:00'                  # required
 ```
 Time values relative to sunset/sunrise are supported and use the following syntax:
 ```yaml
@@ -74,7 +74,7 @@ override_example:
   sensor: 
     - binary_sensor.lounge_motion
     - binary_sensor.lounge_motion_2
-  entitie:
+  entities:
     - light.tv_led
     - light.lounge_lamp
   delay: 5
