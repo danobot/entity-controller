@@ -653,7 +653,6 @@ class Model():
         self._start_time = config.get('start_time')
         self._end_time = config.get('end_time')
 
-
         # Find XOR function
         # if self._start_time and self._end_time:
         #     self.log.error("Must specify both start and end time.")
@@ -697,7 +696,6 @@ class Model():
             callbacks_sun = self.sun_constrain_end
         else:
             callbacks_sun = self.sun_constrain_start
-
 
         if sun is not None:
             self.log.debug("Next sunrise: " + str(dt.as_local(
@@ -816,10 +814,11 @@ class Model():
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W)
     # =====================================================
+
     def now_is_between(self, start_time_str, end_time_str, name=None):
-        start_time = (await self._parse_time(start_time_str, name))["datetime"]
-        end_time = (await self._parse_time(end_time_str, name))["datetime"]
-        now = (await self.get_now()).astimezone(LocationInfo.time_zone)
+        start_time = (self._parse_time(start_time_str, name))["datetime"]
+        end_time = (self._parse_time(end_time_str, name))["datetime"]
+        now = (self.get_now()).astimezone(LocationInfo.time_zone)
         start_date = now.replace(
             hour=start_time.hour, minute=start_time.minute,
             second=start_time.second
@@ -830,8 +829,8 @@ class Model():
         if end_date < start_date:
             # Spans midnight
             if now < start_date and now < end_date:
-                now = now + datetime.timedelta(days=1)
-            end_date = end_date + datetime.timedelta(days=1)
+                now = now + timedelta(days=1)
+            end_date = end_date + timedelta(days=1)
         return start_date <= now <= end_date
 
     def sunset(self, aware):
@@ -850,19 +849,19 @@ class Model():
 
     def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
-            return (await self._parse_time(time_str, name))[
+            return (self._parse_time(time_str, name))[
                 "datetime"].astimezone(LocationInfo.time_zone).time()
         else:
             return self.make_naive(
-                (await self._parse_time(time_str, name))["datetime"]).time()
+                (self._parse_time(time_str, name))["datetime"]).time()
 
     def parse_datetime(self, time_str, name=None, aware=False):
         if aware is True:
-            return (await self._parse_time(time_str, name))[
+            return (self._parse_time(time_str, name))[
                 "datetime"].astimezone(LocationInfo.time_zone)
         else:
             return self.make_naive(
-                (await self._parse_time(time_str, name))["datetime"])
+                (self._parse_time(time_str, name))["datetime"])
 
     def _parse_time(self, time_str, name=None):
         parsed_time = None
@@ -880,7 +879,7 @@ class Model():
         else:
             parts = re.search('^(\d+):(\d+):(\d+)$', time_str)
             if parts:
-                today = (await self.get_now()).astimezone(
+                today = (self.get_now()).astimezone(
                     LocationInfo.time_zone)
                 time = datetime.time(
                     int(parts.group(1)), int(parts.group(2)),
@@ -891,11 +890,11 @@ class Model():
 
             else:
                 if time_str == "sunrise":
-                    parsed_time = await self.sunrise(True)
+                    parsed_time = self.sunrise(True)
                     sun = "sunrise"
                     offset = 0
                 elif time_str == "sunset":
-                    parsed_time = await self.sunset(True)
+                    parsed_time = self.sunset(True)
                     sun = "sunset"
                     offset = 0
                 else:
@@ -905,21 +904,21 @@ class Model():
                     if parts:
                         sun = "sunrise"
                         if parts.group(1) == "+":
-                            td = datetime.timedelta(
+                            td = timedelta(
                                 hours=int(parts.group(2)),
                                 minutes=int(parts.group(3)),
                                 seconds=int(parts.group(4))
                             )
                             offset = td.total_seconds()
-                            parsed_time = (await self.sunrise(True) + td)
+                            parsed_time = (self.sunrise(True) + td)
                         else:
-                            td = datetime.timedelta(
+                            td = timedelta(
                                 hours=int(parts.group(2)),
                                 minutes=int(parts.group(3)),
                                 seconds=int(parts.group(4))
                             )
                             offset = td.total_seconds() * -1
-                            parsed_time = (await self.sunrise(True) - td)
+                            parsed_time = (self.sunrise(True) - td)
                     else:
                         parts = re.search(
                             '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$', time_str
@@ -927,21 +926,21 @@ class Model():
                         if parts:
                             sun = "sunset"
                             if parts.group(1) == "+":
-                                td = datetime.timedelta(
+                                td = timedelta(
                                     hours=int(parts.group(2)),
                                     minutes=int(parts.group(3)),
                                     seconds=int(parts.group(4))
                                 )
                                 offset = td.total_seconds()
-                                parsed_time = (await self.sunset(True) + td)
+                                parsed_time = (self.sunset(True) + td)
                             else:
-                                td = datetime.timedelta(
+                                td = timedelta(
                                     hours=int(parts.group(2)),
                                     minutes=int(parts.group(3)),
                                     seconds=int(parts.group(4))
                                 )
                                 offset = td.total_seconds() * -1
-                                parsed_time = (await self.sunset(True) - td)
+                                parsed_time = (self.sunset(True) - td)
         if parsed_time is None:
             if name is not None:
                 raise ValueError(
@@ -949,6 +948,43 @@ class Model():
             else:
                 raise ValueError("invalid time string: %s", time_str)
         return {"datetime": parsed_time, "sun": sun, "offset": offset}
+
+    def make_naive(self, dt):
+        local = dt.astimezone(LocationInfo.time_zone)
+        return datetime(local.year, local.month, local.day,
+                        local.hour, local.minute, local.second,
+                        local.microsecond)
+
+    def next_sunrise(self, offset=0):
+        mod = offset
+        while True:
+            try:
+                next_rising_dt = get_astral_event_date(self.hass,
+                                                       SUN_EVENT_SUNRISE,
+                                                       datetime.now())
+                if next_rising_dt > self.now:
+                    break
+            except astral.AstralError:
+                pass
+            mod += 1
+
+        return next_rising_dt
+
+    def next_sunset(self, offset=0):
+        mod = offset
+        while True:
+            try:
+                next_rising_dt = get_astral_event_date(self.hass,
+                                                       SUN_EVENT_SUNSET,
+                                                       datetime.now())
+
+                if next_setting_dt > self.now:
+                    break
+            except astral.AstralError:
+                pass
+            mod += 1
+
+        return next_setting_dt
 
     #
     # Diagnostics
