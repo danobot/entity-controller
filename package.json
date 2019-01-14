@@ -1,6 +1,6 @@
 {
   "name": "entity-timer",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup.",
   "main": "index.js",
   "directories": {
