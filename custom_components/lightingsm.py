@@ -785,7 +785,140 @@ class Model():
         self.log.debug("setting new END callback in ~24h" + str(constrain_end_abs))
         self.update(constrain_end=constrain_end_abs)
 # =====================================================
-#    H E L P E R   F U N C T I O N S
+#    H E L P E R   F U N C T I O N S        ( N E W)
+# =====================================================
+    async def now_is_between(self, start_time_str, end_time_str, name=None):
+        start_time = (await self._parse_time(start_time_str, name))["datetime"]
+        end_time = (await self._parse_time(end_time_str, name))["datetime"]
+        now = (await self.get_now()).astimezone(self.AD.tz)
+        start_date = now.replace(
+            hour=start_time.hour, minute=start_time.minute,
+            second=start_time.second
+        )
+        end_date = now.replace(
+            hour=end_time.hour, minute=end_time.minute, second=end_time.second
+        )
+        if end_date < start_date:
+            # Spans midnight
+            if now < start_date and now < end_date:
+                now = now + datetime.timedelta(days=1)
+            end_date = end_date + datetime.timedelta(days=1)
+        return start_date <= now <= end_date
+
+    async def sunset(self, aware):
+        if aware is True:
+            return self.next_sunset().astimezone(self.AD.tz)
+        else:
+            return self.make_naive(self.next_sunset().astimezone(self.AD.tz))
+
+    async def sunrise(self, aware):
+        if aware is True:
+            return self.next_sunrise().astimezone(self.AD.tz)
+        else:
+            return self.make_naive(self.next_sunrise().astimezone(self.AD.tz))
+
+    async def parse_time(self, time_str, name=None, aware=False):
+        if aware is True:
+            return (await self._parse_time(time_str, name))["datetime"].astimezone(self.AD.tz).time()
+        else:
+            return self.make_naive((await self._parse_time(time_str, name))["datetime"]).time()
+
+    async def parse_datetime(self, time_str, name=None, aware=False):
+        if aware is True:
+            return (await self._parse_time(time_str, name))["datetime"].astimezone(self.AD.tz)
+        else:
+            return self.make_naive((await self._parse_time(time_str, name))["datetime"])
+
+
+    async def _parse_time(self, time_str, name=None):
+        parsed_time = None
+        sun = None
+        offset = 0
+        parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$', time_str)
+        if parts:
+            this_time = datetime.datetime(int(parts.group(1)), int(parts.group(2)), int(parts.group(3)), int(parts.group(4)), int(parts.group(5)), int(parts.group(6)), 0)
+            parsed_time = self.AD.tz.localize(this_time)
+        else:
+            parts = re.search('^(\d+):(\d+):(\d+)$', time_str)
+            if parts:
+                today = (await self.get_now()).astimezone(self.AD.tz)
+                time = datetime.time(
+                    int(parts.group(1)), int(parts.group(2)), int(parts.group(3)), 0
+                )
+                parsed_time = today.replace(hour=time.hour, minute=time.minute, second=time.second, microsecond=0)
+
+            else:
+                if time_str == "sunrise":
+                    parsed_time = await self.sunrise(True)
+                    sun = "sunrise"
+                    offset = 0
+                elif time_str == "sunset":
+                    parsed_time = await self.sunset(True)
+                    sun = "sunset"
+                    offset = 0
+                else:
+                    parts = re.search(
+                        '^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$', time_str
+                    )
+                    if parts:
+                        sun = "sunrise"
+                        if parts.group(1) == "+":
+                            td = datetime.timedelta(
+                                hours=int(parts.group(2)), minutes=int(parts.group(3)),
+                                seconds=int(parts.group(4))
+                            )
+                            offset = td.total_seconds()
+                            parsed_time = (await self.sunrise(True) + td)
+                        else:
+                            td = datetime.timedelta(
+                                hours=int(parts.group(2)), minutes=int(parts.group(3)),
+                                seconds=int(parts.group(4))
+                            )
+                            offset = td.total_seconds() * -1
+                            parsed_time = (await self.sunrise(True) - td)
+                    else:
+                        parts = re.search(
+                            '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$', time_str
+                        )
+                        if parts:
+                            sun = "sunset"
+                            if parts.group(1) == "+":
+                                td = datetime.timedelta(
+                                    hours=int(parts.group(2)), minutes=int(parts.group(3)),
+                                    seconds=int(parts.group(4))
+                                )
+                                offset = td.total_seconds()
+                                parsed_time = (await self.sunset(True) + td)
+                            else:
+                                td = datetime.timedelta(
+                                    hours=int(parts.group(2)), minutes=int(parts.group(3)),
+                                    seconds=int(parts.group(4))
+                                )
+                                offset = td.total_seconds() * -1
+                                parsed_time = (await self.sunset(True) - td)
+        if parsed_time is None:
+            if name is not None:
+                raise ValueError(
+                    "%s: invalid time string: %s", name, time_str)
+            else:
+                raise ValueError("invalid time string: %s", time_str)
+        return {"datetime": parsed_time, "sun": sun, "offset": offset}
+
+    #
+    # Diagnostics
+    #
+
+    async def dump_sun(self):
+        self.diag.info("--------------------------------------------------")
+        self.diag.info("Sun")
+        self.diag.info("--------------------------------------------------")
+        self.diag.info("Next Sunrise: %s", self.next_sunrise())
+        self.diag.info("Next Sunset: %s", self.next_sunset())
+        self.diag.info("--------------------------------------------------")
+
+        
+# =====================================================
+#    H E L P E R   F U N C T I O N S     ( EXISTING )
 # =====================================================
 # use homeassistant.util.dt.find_next_time_expression_time where appropriate
 
@@ -923,6 +1056,7 @@ class Model():
 
         
         return dt.now()+timedelta(seconds=5)-get_astral_event_date(self.hass, sun, datetime.now())
+
 
 
     def five_minutes_ago(self, sun):
