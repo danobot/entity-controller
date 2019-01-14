@@ -20,12 +20,8 @@ from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
 from datetime import datetime, timedelta, date, time
 import re
-from homeassistant.core import callback
-from homeassistant.util.location import LocationInfo
 from homeassistant.helpers.sun import get_astral_event_date
 
-DEBUG_CONSTRAINED = False
-DEBUG_NOT_CONSTRAINED = False
 
 DEPENDENCIES = ['light', 'sensor', 'binary_sensor', 'cover', 'fan',
                 'media_player']
@@ -66,8 +62,6 @@ async def async_setup(hass, config):
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
 
-    # logging.basicConfig(level=logging.DEBUG)
-    # logging.getLogger('transitions').setLevel(logging.DEBUG)
     myconfig = config[DOMAIN]
 
     _LOGGER.info("Component Configuration: " + str(myconfig))
@@ -659,22 +653,39 @@ class Model():
         #     self.log.error("Must specify both start and end time.")
         if self._start_time and self._end_time:
             parsed_start = self.parse_datetime(self._start_time)
-            parsed_end = self.parse_datetime(self._start_time)
-
-            self.log.debug("parsed start time %s", parsed_start)
-            self.log.debug("parsed start time %s", parsed_end)
+            parsed_end = self.parse_datetime(self._end_time)
+            self.update(start=self._start_time)
+            self.update(end=self._end_time)
 
             # set callbacks
+            self.log.debug("Parsed start time (unadjusted) %s", parsed_start)
+            self.log.debug("Parsed end time (unadjusted) %s", parsed_end)
 
             # set start_time callback: if time passed, use tomorrow
+            # --------s--------n----|12am|--s(new)--------
+            #         \_________>>>________/
+
+            if parsed_start <= self.make_naive(dt.now()):
+                parsed_start += timedelta(1)  # start time is tomorrow!
+
+            # we now need parsed_end to come after the new parse_start
+            # (1) ---s---e---now
+            # (2) ---e---s---now
+            if parsed_end <= parsed_start:
+                parsed_end += timedelta(1) # (1)
+                if parsed_end <= parsed_start:
+                    # bump again because its still before s
+                    parsed_end += timedelta(1) # (2)
+            self.log.debug("Setting next START callback for %s", parsed_start)
+            self.log.debug("Setting next END callback for %s", parsed_end)
+
             self.start_time_event_hook = event.async_track_point_in_time(self.hass, self.start_time_callback, parsed_start)
             self.end_time_event_hook = event.async_track_point_in_time(self.hass, self.end_time_callback, parsed_end)
 
-            if not self.now_is_between(self.parse_time(self._start_time),
-                                       self.parse_time(self._end_time)):
+            if not self.now_is_between(self._start_time, self._end_time):
                 self.log.debug(
                     "Constrain period active. Scheduling transition to 'constrained'")
-                event.async_call_later(self.hass, 1, self.constrain_fake)
+                event.async_call_later(self.hass, 1, self.constrain_entity)
 
     def config_override_entities(self, config):
         self.overrideEntities = []
@@ -721,28 +732,22 @@ class Model():
     #    E V E N T   C A L L B A C K S
     # =====================================================
 
-    def constrain_fake(self, evt):
+    def constrain_entity(self, evt):
         """ 
             Event callback used on component setup if current time requires entity to start in constrained state.
         """
         self.constrain()
 
-    def sun_constrain_start(self):
-        return self.end_time_callback(dt.now())
-
-    def sun_constrain_end(self):
-        return self.start_time_callback(dt.now())
-
     def end_time_callback(self, evt):
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
         """
-        self.log.debug("Constrain Start reached. Disabling ML: ")
+        self.log.debug("End time callback. Disabling ML: ")
         self.constrain()
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_end = self.parse_time(self._end_time)
+        parsed_end = self.parse_datetime(self._end_time)
         self.end_time_event_hook = event.async_track_point_in_time(self.hass,
-                                                                     self.start_time_callback,
+                                                                     self.end_time_callback,
                                                                      parsed_end)
         self.update(end_time=parsed_end)
         self.log.debug("setting new START callback in ~24h" +
@@ -752,11 +757,11 @@ class Model():
         """
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
-        self.log.debug("Constrain End reached. Enabling ML: ")
+        self.log.debug("Start time callback. Enabling ML: ")
         self.enable()
 
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_start = self.parse_time(self._start_time)
+        parsed_start = self.parse_datetime(self._start_time)
         self.start_time_event_hook = event.async_track_point_in_time(self.hass,
                                                                      self.start_time_callback,
                                                                      parsed_start)
@@ -765,7 +770,7 @@ class Model():
         self.update(start_time=parsed_start)
 
     # =====================================================
-    #    H E L P E R   F U N C T I O N S        ( N E W)
+    #    H E L P E R   F U N C T I O N S        ( N E W )
     # =====================================================
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
@@ -784,6 +789,9 @@ class Model():
             if now < start_date and now < end_date:
                 now = now + timedelta(days=1)
             end_date = end_date + timedelta(days=1)
+
+        self.log.debug("now_is_between start time %s", start_date)
+        self.log.debug("now_is_between end time %s", end_date)
         return start_date <= now <= end_date
 
     def sunset(self, aware):
@@ -953,90 +961,46 @@ class Model():
     # =====================================================
     #    H E L P E R   F U N C T I O N S     ( EXISTING )
     # =====================================================
-    # use homeassistant.util.dt.find_next_time_expression_time where appropriate
 
-    def parse_time_sun(self, time):
-        try:
-            if 'soon-after' in time:
-                t = datetime.now() + timedelta(seconds=10)
-
-                self.log.debug("DEBUG: Making time happen in 10 seconds!")
-                return None, t.time()
-            elif 'soon-sunset' in time:
-                time = dt.now() + timedelta(
-                    seconds=10) - get_astral_event_date(self.hass,
-                                                        SUN_EVENT_SUNSET,
-                                                        datetime.now())
-
-                self.log.debug(
-                    "DEBUG: Making time happen in 5 seconds (sunset offset)!")
-                return 'sunset', time
-            elif 'soon-sunrise' in time:
-
-                time = dt.now() + timedelta(
-                    seconds=10) - get_astral_event_date(self.hass,
-                                                        SUN_EVENT_SUNRISE,
-                                                        datetime.now())
-
-                self.log.debug(
-                    "DEBUG: Making time happen in 5 seconds (sunrise offset)!")
-                return 'sunrise', time
-            elif 'soon' in time:
-                t = datetime.now() + timedelta(seconds=5)
-
-                self.log.debug("DEBUG: Making time happen in 5 seconds!")
-                return None, t.time()
-
-            if 'sun' in time:
-                self.log.debug("Time contains sunset/sunrise relative time.")
-
-                regex = r"(sunset|sunrise) ?(\+|\-)? ?'?(\d\d\:\d\d\:\d\d)?'?"
-
-                matches = re.finditer(regex, time, re.MULTILINE)
-
-                for matchNum, match in enumerate(matches, start=1):
-
-                    self.log.debug(
-                        "Match {matchNum} was found at {start}-{end}: {match}".format(
-                            matchNum=matchNum, start=match.start(),
-                            end=match.end(), match=match.group()))
-
-                    for groupNum in range(0, len(match.groups())):
-                        groupNum = groupNum + 1
-
-                        self.log.debug(
-                            "Group {groupNum} found at {start}-{end}: {group}".format(
-                                groupNum=groupNum, start=match.start(groupNum),
-                                end=match.end(groupNum),
-                                group=match.group(groupNum)))
-                    break
-
-                if match.group(2) is not None and match.group(3) is not None:
-                    self.log.debug(match.group(2) + match.group(3))
-                    t = datetime.strptime(match.group(3), "%H:%M:%S")
-                    d = timedelta(hours=t.hour, minutes=t.minute,
-                                  seconds=t.second)
-                    if match.group(2) == '-':
-
-                        t = timedelta(0) - d
-                    else:
-                        t = d
-                    self.log.debug("Using custom sun offset: " + str(t))
-                else:
-                    t = timedelta(0)
-                    self.log.debug("No sun offset given.")
-                return match.group(1), t
-            else:
-                return None, dt.parse_time(time)
-        except TypeError as e:
-            self.log.error(
-                "PARSE ERROR: Please put quotes around time fields starting with a number.")
-            return None, None
+    # def parse_time_sun(self, time):
+    #         if 'soon-after' in time:
+    #             t = datetime.now() + timedelta(seconds=10)
+    #
+    #             self.log.debug("DEBUG: Making time happen in 10 seconds!")
+    #             return None, t.time()
+    #         elif 'soon-sunset' in time:
+    #             time = dt.now() + timedelta(
+    #                 seconds=10) - get_astral_event_date(self.hass,
+    #                                                     SUN_EVENT_SUNSET,
+    #                                                     datetime.now())
+    #
+    #             self.log.debug(
+    #                 "DEBUG: Making time happen in 5 seconds (sunset offset)!")
+    #             return 'sunset', time
+    #         elif 'soon-sunrise' in time:
+    #
+    #             time = dt.now() + timedelta(
+    #                 seconds=10) - get_astral_event_date(self.hass,
+    #                                                     SUN_EVENT_SUNRISE,
+    #                                                     datetime.now())
+    #
+    #             self.log.debug(
+    #                 "DEBUG: Making time happen in 5 seconds (sunrise offset)!")
+    #             return 'sunrise', time
+    #         elif 'soon' in time:
+    #             t = datetime.now() + timedelta(seconds=5)
+    #
+    #             self.log.debug("DEBUG: Making time happen in 5 seconds!")
+    #             return None, t.time()
+    #
 
     def if_time_passed_get_tomorrow(self, time):
         """ Returns tomorrows time if time is in the past """
         today = date.today()
-        t = datetime.combine(today, time)
+        try:
+            t = datetime.combine(today, time)
+        except TypeError as e:
+            t = time
         x = datetime.combine(today, datetime.time(datetime.now()))
         # self.log.debug("if_time_passed --- input time: " + str(t))
         # self.log.debug("if_time_passed --- current time: " + str(x))
@@ -1110,11 +1074,6 @@ class Model():
         return dt.now() - timedelta(minutes=5) - get_astral_event_date(
             self.hass, sun, datetime.now())
 
-    def delta_from(self, delta, sun):
-        """ Returns absolute time sun + delta """
-        sun_time = get_astral_event_date(self.hass, sun, dt.now())
-        t = dt.as_local(sun_time + delta).time()
-        return self.if_time_passed_get_tomorrow(t)
 
     def add(self, list, e, key=None):
         """ Adds e (which can be a string or list or config) to the list 
