@@ -697,9 +697,9 @@ class Model():
                 delta = time_or_offset
             
             if sun == 'sunrise':
-                return event.async_track_sunrise(self.hass, callbacks, delta), self.delta_from(delta, sun)
+                return event.async_track_sunrise(self.hass, callbacks_sun, delta), self.delta_from(delta, sun)
             else: 
-                return event.async_track_sunset(self.hass, callbacks, delta), self.delta_from(delta, sun)
+                return event.async_track_sunset(self.hass, callbacks_sun, delta), self.delta_from(delta, sun)
         else:
             self.start = time_or_offset 
             s = self.if_time_passed_get_tomorrow(time_or_offset)
@@ -797,11 +797,24 @@ class Model():
 
                 self.log.debug("DEBUG: Making time happen in 10 seconds!")
                 return None, t.time()
+            elif 'soon-sunset' in time:
+                time = dt.now() + timedelta(seconds=10) - get_astral_event_date(self.hass, SUN_EVENT_SUNSET, datetime.now())
+
+                self.log.debug("DEBUG: Making time happen in 5 seconds (sunset offset)!")
+                return 'sunset', time
+            elif 'soon-sunrise' in time:
+
+                time = dt.now() + timedelta(seconds=10) - get_astral_event_date(self.hass, SUN_EVENT_SUNRISE, datetime.now())
+
+                self.log.debug("DEBUG: Making time happen in 5 seconds (sunrise offset)!")
+                return 'sunrise', time
             elif 'soon' in time:
                 t = datetime.now() + timedelta(seconds=5)
 
                 self.log.debug("DEBUG: Making time happen in 5 seconds!")
                 return None, t.time()
+
+
             if 'sun' in time:
                 self.log.debug("Time contains sunset/sunrise relative time.")
 
