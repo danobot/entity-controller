@@ -14,7 +14,7 @@ from homeassistant.const import (
     SERVICE_TOGGLE, SERVICE_TURN_OFF, SERVICE_TURN_ON)
 import homeassistant.util.dt as dt
 from tests.common import (
-    mock_component, mock_restore_cache ,async_fire_time_changed)
+    mock_component, mock_restore_cache, async_fire_time_changed)
 
 _LOGGER = logging.getLogger(__name__)
 ENTITY = 'lightingsm.test'
@@ -29,6 +29,8 @@ STATE_ENTITY2 = 'binary_sensor.basement_floor_wet'
 STATE_ENTITIES = [STATE_ENTITY, STATE_ENTITY2]
 STATE_IDLE = 'idle'
 STATE_ACTIVE = 'active_timer'
+
+
 @pytest.fixture
 def hass_et(loop, hass):
     """Set up a Home Assistant instance for these tests."""
@@ -50,6 +52,7 @@ def hass_et(loop, hass):
 
     return hass
 
+
 async def test_config(hass):
     """Test config."""
     invalid_configs = [
@@ -60,7 +63,8 @@ async def test_config(hass):
     ]
 
     for cfg in invalid_configs:
-        assert not await async_setup_component(hass, 'input_boolean', {'input_boolean': cfg})
+        assert not await async_setup_component(hass, 'input_boolean',
+                                               {'input_boolean': cfg})
 
 
 async def test_config_options(hass_et):
@@ -71,23 +75,23 @@ async def test_config_options(hass_et):
 
     assert await async_setup_component(hass, 'lightingsm', {'lightingsm': {
         'test': {'entity': CONTROL_ENTITY,
-            'sensor': SENSOR_ENTITY
-        },
-        }})
+                 'sensor': SENSOR_ENTITY
+                 },
+    }})
 
     _LOGGER.debug('ENTITIES: %s', hass.states.async_entity_ids())
     hass.states.async_set(CONTROL_ENTITY, 'off')
     hass.states.async_set(SENSOR_ENTITY, 'off')
 
     await hass.async_block_till_done()
-    
+
     assert state(hass) == STATE_IDLE
 
     hass.states.async_set(SENSOR_ENTITY, 'on')
     await hass.async_block_till_done()
 
     assert hass.states.get(ENTITY).state == STATE_ACTIVE
-    
+
     # with patch(('threading.timer.dt_util.utcnow'), return_value=future):
     #     async_fire_time_changed(hass, future)
     #     await hass.async_block_till_done()
@@ -98,6 +102,8 @@ async def test_config_options(hass_et):
 
 def state(hass):
     return hass.states.get(ENTITY).state
+
+
 async def methods(hass):
     """Test is_on, turn_on, turn_off methods."""
     assert await async_setup_component(hass, DOMAIN, {DOMAIN: {
