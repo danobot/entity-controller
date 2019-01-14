@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.4.0"></a>
+# [2.4.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.0...v2.4.0) (2019-01-14)
+
+
+### Bug Fixes
+
+* **config:** make override config plural insensitive ([db5ac63](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/db5ac63))
+* **constrains:** sunset/sunrise callbacks would not fire ([673250f](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/673250f))
+* **constraints:** Some edge case defect fixes ([9af3def](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/9af3def))
+
+
+### Features
+
+* **constraints:** Add sunset / sunrise expressions to night_mode ([1bc74e6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/1bc74e6))
+
+
+
 <a name="2.3.0"></a>
 # [2.3.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.2.10...v2.3.0) (2019-01-14)
 
