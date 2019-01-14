@@ -652,29 +652,34 @@ class Model():
     def config_constrain_times(self, config):
         self._start_time = config.get('start_time')
         self._end_time = config.get('end_time')
+
+
         # Find XOR function
         # if self._start_time and self._end_time:
         #     self.log.error("Must specify both start and end time.")
         if self._start_time and self._end_time:
+            parsed_start = self.parse_time(self._start_time)
 
-            self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(
-                self._start_time, CONSTRAIN_START)
-            self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(
-                self._end_time, CONSTRAIN_END)
+            self.log.debug("parsed start time %s", parsed_start)
+            #
+            # self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(
+            #     self._start_time, CONSTRAIN_START)
+            # self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(
+            #     self._end_time, CONSTRAIN_END)
 
-            self.log.debug(
-                "Constrains - Entity active from: " + str(constrain_start_abs))
-            self.log.debug(
-                "Constrains - Entity active until: " + str(constrain_end_abs))
-
-            # We now have to constrain the entity if we are currently within the
-            # constrain period. To do this, we must convert sun-relative time 
-            # to absolute time
-            if not self.now_is_between(constrain_start_abs.time(),
-                                       constrain_end_abs.time()):
-                self.log.debug(
-                    "Constrain period active. Scheduling transition to 'constrained'")
-                event.async_call_later(self.hass, 1, self.constrain_fake)
+            # self.log.debug(
+            #     "Constrains - Entity active from: " + str(constrain_start_abs))
+            # self.log.debug(
+            #     "Constrains - Entity active until: " + str(constrain_end_abs))
+            #
+            # # We now have to constrain the entity if we are currently within the
+            # # constrain period. To do this, we must convert sun-relative time
+            # # to absolute time
+            # if not self.now_is_between(constrain_start_abs.time(),
+            #                            constrain_end_abs.time()):
+            #     self.log.debug(
+            #         "Constrain period active. Scheduling transition to 'constrained'")
+            #     event.async_call_later(self.hass, 1, self.constrain_fake)
 
     def setup_time_callback_please(self, time, callback_const):
         """
@@ -693,21 +698,6 @@ class Model():
         else:
             callbacks_sun = self.sun_constrain_start
 
-            # Sets up event callbacks in such a way to enable quick time
-        # related testing.
-
-        # if DEBUG_CONSTRAINED: # starts in constrained mode going to idle
-        #     sun = 'sunrise'
-        #     if callback_const == CONSTRAIN_END:
-        #         time_or_offset = self.five_seconds_from_now(sun)
-        #     else:
-        #         time_or_offset = self.five_minutes_ago(sun)
-        # if DEBUG_NOT_CONSTRAINED: # Starts in Idle mode going to constrained
-        #     # Sets up event callbacks in such a way to enable quick time 
-        #     if callback_const == CONSTRAIN_START:
-        #         time_or_offset = self.five_seconds_from_now(sun)
-        #     else:
-        #         time_or_offset = self.five_minutes_ago(sun)
 
         if sun is not None:
             self.log.debug("Next sunrise: " + str(dt.as_local(
@@ -826,7 +816,7 @@ class Model():
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W)
     # =====================================================
-    async def now_is_between(self, start_time_str, end_time_str, name=None):
+    def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (await self._parse_time(start_time_str, name))["datetime"]
         end_time = (await self._parse_time(end_time_str, name))["datetime"]
         now = (await self.get_now()).astimezone(LocationInfo.time_zone)
@@ -844,21 +834,21 @@ class Model():
             end_date = end_date + datetime.timedelta(days=1)
         return start_date <= now <= end_date
 
-    async def sunset(self, aware):
+    def sunset(self, aware):
         if aware is True:
             return self.next_sunset().astimezone(LocationInfo.time_zone)
         else:
             return self.make_naive(self.next_sunset().astimezone(
                 LocationInfo.time_zone))
 
-    async def sunrise(self, aware):
+    def sunrise(self, aware):
         if aware is True:
             return self.next_sunrise().astimezone(LocationInfo.time_zone)
         else:
             return self.make_naive(
                 self.next_sunrise().astimezone(LocationInfo.time_zone))
 
-    async def parse_time(self, time_str, name=None, aware=False):
+    def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
             return (await self._parse_time(time_str, name))[
                 "datetime"].astimezone(LocationInfo.time_zone).time()
@@ -866,7 +856,7 @@ class Model():
             return self.make_naive(
                 (await self._parse_time(time_str, name))["datetime"]).time()
 
-    async def parse_datetime(self, time_str, name=None, aware=False):
+    def parse_datetime(self, time_str, name=None, aware=False):
         if aware is True:
             return (await self._parse_time(time_str, name))[
                 "datetime"].astimezone(LocationInfo.time_zone)
@@ -874,7 +864,7 @@ class Model():
             return self.make_naive(
                 (await self._parse_time(time_str, name))["datetime"])
 
-    async def _parse_time(self, time_str, name=None):
+    def _parse_time(self, time_str, name=None):
         parsed_time = None
         sun = None
         offset = 0
@@ -964,7 +954,7 @@ class Model():
     # Diagnostics
     #
 
-    async def dump_sun(self):
+    def dump_sun(self):
         self.diag.info("--------------------------------------------------")
         self.diag.info("Sun")
         self.diag.info("--------------------------------------------------")
