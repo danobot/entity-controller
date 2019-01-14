@@ -790,7 +790,7 @@ class Model():
     async def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (await self._parse_time(start_time_str, name))["datetime"]
         end_time = (await self._parse_time(end_time_str, name))["datetime"]
-        now = (await self.get_now()).astimezone(self.AD.tz)
+        now = (await self.get_now()).astimezone(LocationInfo.time_zone)
         start_date = now.replace(
             hour=start_time.hour, minute=start_time.minute,
             second=start_time.second
@@ -807,25 +807,25 @@ class Model():
 
     async def sunset(self, aware):
         if aware is True:
-            return self.next_sunset().astimezone(self.AD.tz)
+            return self.next_sunset().astimezone(LocationInfo.time_zone)
         else:
-            return self.make_naive(self.next_sunset().astimezone(self.AD.tz))
+            return self.make_naive(self.next_sunset().astimezone(LocationInfo.time_zone))
 
     async def sunrise(self, aware):
         if aware is True:
-            return self.next_sunrise().astimezone(self.AD.tz)
+            return self.next_sunrise().astimezone(LocationInfo.time_zone)
         else:
-            return self.make_naive(self.next_sunrise().astimezone(self.AD.tz))
+            return self.make_naive(self.next_sunrise().astimezone(LocationInfo.time_zone))
 
     async def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
-            return (await self._parse_time(time_str, name))["datetime"].astimezone(self.AD.tz).time()
+            return (await self._parse_time(time_str, name))["datetime"].astimezone(LocationInfo.time_zone).time()
         else:
             return self.make_naive((await self._parse_time(time_str, name))["datetime"]).time()
 
     async def parse_datetime(self, time_str, name=None, aware=False):
         if aware is True:
-            return (await self._parse_time(time_str, name))["datetime"].astimezone(self.AD.tz)
+            return (await self._parse_time(time_str, name))["datetime"].astimezone(LocationInfo.time_zone)
         else:
             return self.make_naive((await self._parse_time(time_str, name))["datetime"])
 
@@ -837,11 +837,11 @@ class Model():
         parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$', time_str)
         if parts:
             this_time = datetime.datetime(int(parts.group(1)), int(parts.group(2)), int(parts.group(3)), int(parts.group(4)), int(parts.group(5)), int(parts.group(6)), 0)
-            parsed_time = self.AD.tz.localize(this_time)
+            parsed_time = LocationInfo.time_zone.localize(this_time)
         else:
             parts = re.search('^(\d+):(\d+):(\d+)$', time_str)
             if parts:
-                today = (await self.get_now()).astimezone(self.AD.tz)
+                today = (await self.get_now()).astimezone(LocationInfo.time_zone)
                 time = datetime.time(
                     int(parts.group(1)), int(parts.group(2)), int(parts.group(3)), 0
                 )
@@ -1000,19 +1000,19 @@ class Model():
 
         return t
 
-    def now_is_between(self, start, end, x=None):
-        if x is None:
-            x = datetime.time(datetime.now())
-
-        today = date.today()
-        start = datetime.combine(today, start)
-        end = datetime.combine(today, end)
-        x = datetime.combine(today, x)
-        if end <= start:
-            end += timedelta(1) # tomorrow!
-        if x <= start:
-            x += timedelta(1) # tomorrow!
-        return start <= x <= end
+    # def now_is_between(self, start, end, x=None):
+    #     if x is None:
+    #         x = datetime.time(datetime.now())
+    #
+    #     today = date.today()
+    #     start = datetime.combine(today, start)
+    #     end = datetime.combine(today, end)
+    #     x = datetime.combine(today, x)
+    #     if end <= start:
+    #         end += timedelta(1) # tomorrow!
+    #     if x <= start:
+    #         x += timedelta(1) # tomorrow!
+    #     return start <= x <= end
 
     def prepare_service_data(self):
         """ Called when entering active state and on initial set up to set correct service parameters."""
@@ -1039,7 +1039,6 @@ class Model():
         self.hass.services.call(domain, service, kwargs)
         self.update(service_data=kwargs)
     
-
     def matches(self, value, list):
         """
             Checks whether a string is contained in a list (used for matching state strings)
@@ -1050,7 +1049,6 @@ class Model():
         except ValueError:
             return False
 
-
     def five_seconds_from_now(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
 
@@ -1058,18 +1056,15 @@ class Model():
         return dt.now()+timedelta(seconds=5)-get_astral_event_date(self.hass, sun, datetime.now())
 
 
-
     def five_minutes_ago(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
         return dt.now() -timedelta(minutes=5)-get_astral_event_date(self.hass, sun, datetime.now())
-
 
     def delta_from(self, delta, sun):
         """ Returns absolute time sun + delta """
         sun_time = get_astral_event_date(self.hass, sun, dt.now())
         t = dt.as_local(sun_time + delta ).time()
         return self.if_time_passed_get_tomorrow(t)
-
 
     def add(self, list, e, key=None):
         """ Adds e (which can be a string or list or config) to the list 
