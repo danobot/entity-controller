@@ -21,6 +21,7 @@ from threading import Timer
 from datetime import datetime,  timedelta, date, time
 import re
 from homeassistant.core import callback
+from homeassistant.util.location import LocationInfo
 from homeassistant.helpers.sun import get_astral_event_date
 
 DEBUG_CONSTRAINED = False
@@ -770,9 +771,11 @@ class Model():
         self.log.debug("Constrain Start reached. Disabling ML: ")
         self.constrain()
         #   time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
+        self.constrain_start_hook, constrain_start_abs = \
+            self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
         self.update(constrain_start=constrain_start_abs)
-        self.log.debug("setting new START callback in ~24h" + str(constrain_start_abs))
+        self.log.debug("setting new START callback in ~24h" +
+                       str(constrain_start_abs))
 
     def constrain_end(self, evt):
         """
@@ -781,8 +784,10 @@ class Model():
         self.log.debug("Constrain End reached. Enabling ML: ")
         self.enable()
         #        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        self.constrain_start_hook, constrain_end_abs = self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
-        self.log.debug("setting new END callback in ~24h" + str(constrain_end_abs))
+        self.constrain_start_hook, constrain_end_abs = \
+            self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
+        self.log.debug("setting new END callback in ~24h" +
+                       str(constrain_end_abs))
         self.update(constrain_end=constrain_end_abs)
 # =====================================================
 #    H E L P E R   F U N C T I O N S        ( N E W)
@@ -809,7 +814,8 @@ class Model():
         if aware is True:
             return self.next_sunset().astimezone(LocationInfo.time_zone)
         else:
-            return self.make_naive(self.next_sunset().astimezone(LocationInfo.time_zone))
+            return self.make_naive(self.next_sunset().astimezone(
+                LocationInfo.time_zone))
 
     async def sunrise(self, aware):
         if aware is True:
