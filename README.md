@@ -58,10 +58,12 @@ motion_light_sun:
   end_time: sunrise + 00:30:00                 # required
 ```
 
-### Home Assistant State Entities (not supported yet in v2)
+### Home Assistant State Entities
 Since `v1.1.0`, the app creates and updates entities representing the motion light itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
 
-![HASS Entity](images/hass_entity.png)
+![HASS Entity State Attributes 1](images/state_attributes_1.png)
+![HASS Entity State Attributes 2](images/state_attributes_2.png)
+![HASS Entity State Attributes 3](images/state_attributes_3.png)
 
 These can be referenced in various `sensor` and `automation` configurations.
 
@@ -69,10 +71,10 @@ These can be referenced in various `sensor` and `automation` configurations.
 You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
 ```yaml
 override_example:
-  sensors: 
+  sensor: 
     - binary_sensor.lounge_motion
     - binary_sensor.lounge_motion_2
-  entities:
+  entitie:
     - light.tv_led
     - light.lounge_lamp
   delay: 5
