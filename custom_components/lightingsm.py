@@ -236,6 +236,7 @@ class LightingSM(entity.Entity):
         self.may_update = True
 
 
+
 class Model():
     """ Represents the transitions state machine model """
 
@@ -657,76 +658,23 @@ class Model():
         # if self._start_time and self._end_time:
         #     self.log.error("Must specify both start and end time.")
         if self._start_time and self._end_time:
-            parsed_start = self.parse_time(self._start_time)
+            parsed_start = self.parse_datetime(self._start_time)
+            parsed_end = self.parse_datetime(self._start_time)
 
             self.log.debug("parsed start time %s", parsed_start)
-            #
-            # self.constrain_start_hook, constrain_start_abs = self.setup_time_callback_please(
-            #     self._start_time, CONSTRAIN_START)
-            # self.constrain_end_hook, constrain_end_abs = self.setup_time_callback_please(
-            #     self._end_time, CONSTRAIN_END)
+            self.log.debug("parsed start time %s", parsed_end)
 
-            # self.log.debug(
-            #     "Constrains - Entity active from: " + str(constrain_start_abs))
-            # self.log.debug(
-            #     "Constrains - Entity active until: " + str(constrain_end_abs))
-            #
-            # # We now have to constrain the entity if we are currently within the
-            # # constrain period. To do this, we must convert sun-relative time
-            # # to absolute time
-            # if not self.now_is_between(constrain_start_abs.time(),
-            #                            constrain_end_abs.time()):
-            #     self.log.debug(
-            #         "Constrain period active. Scheduling transition to 'constrained'")
-            #     event.async_call_later(self.hass, 1, self.constrain_fake)
+            # set callbacks
 
-    def setup_time_callback_please(self, time, callback_const):
-        """
-            Handles parsing of time input string and setting up an appropriate call back time. 
+            # set start_time callback: if time passed, use tomorrow
+            self.start_time_event_hook = event.async_track_point_in_time(self.hass, self.start_time_callback, parsed_start)
+            self.end_time_event_hook = event.async_track_point_in_time(self.hass, self.end_time_callback, parsed_end)
 
-            Should be called on start up and in each call back method to set the next callback.
-        """
-        sun, time_or_offset = self.parse_time_sun(time)
-
-        if callback_const == CONSTRAIN_START:
-            callbacks = self.constrain_end
-        else:
-            callbacks = self.constrain_start
-        if callback_const == CONSTRAIN_START:
-            callbacks_sun = self.sun_constrain_end
-        else:
-            callbacks_sun = self.sun_constrain_start
-
-        if sun is not None:
-            self.log.debug("Next sunrise: " + str(dt.as_local(
-                get_astral_event_date(self.hass, SUN_EVENT_SUNRISE,
-                                      datetime.now()))))
-            self.log.debug("Next sunset: " + str(dt.as_local(
-                get_astral_event_date(self.hass, SUN_EVENT_SUNSET,
-                                      datetime.now()))))
-            self.log.debug(
-                "Sun: {}, time_or_offset: {}".format(sun, time_or_offset))
-            self.log.debug("Start time contains sun reference")
-
-            if time_or_offset is None:
-                delta = timedelta(0)
-            else:
-                delta = time_or_offset
-
-            if sun == 'sunrise':
-                return event.async_track_sunrise(self.hass, callbacks_sun,
-                                                 delta), self.delta_from(delta,
-                                                                         sun)
-            else:
-                return event.async_track_sunset(self.hass, callbacks_sun,
-                                                delta), self.delta_from(delta,
-                                                                        sun)
-        else:
-            self.start = time_or_offset
-            s = self.if_time_passed_get_tomorrow(time_or_offset)
-            self.log.debug("Constrain callback for : " + str(s))
-
-            return event.async_track_point_in_time(self.hass, callbacks, s), s
+            if not self.now_is_between(self.parse_time(self._start_time),
+                                       self.parse_time(self._end_time)):
+                self.log.debug(
+                    "Constrain period active. Scheduling transition to 'constrained'")
+                event.async_call_later(self.hass, 1, self.constrain_fake)
 
     def config_override_entities(self, config):
         self.overrideEntities = []
@@ -780,36 +728,41 @@ class Model():
         self.constrain()
 
     def sun_constrain_start(self):
-        return self.constrain_start(dt.now())
+        return self.end_time_callback(dt.now())
 
     def sun_constrain_end(self):
-        return self.constrain_end(dt.now())
+        return self.start_time_callback(dt.now())
 
-    def constrain_start(self, evt):
+    def end_time_callback(self, evt):
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
         """
         self.log.debug("Constrain Start reached. Disabling ML: ")
         self.constrain()
-        #   time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        self.constrain_start_hook, constrain_start_abs = \
-            self.setup_time_callback_please(self._start_time, CONSTRAIN_START)
-        self.update(constrain_start=constrain_start_abs)
+        # must be reparsed to get up to date sunset/sunrise times
+        parsed_end = self.parse_time(self._end_time)
+        self.end_time_event_hook = event.async_track_point_in_time(self.hass,
+                                                                     self.start_time_callback,
+                                                                     parsed_end)
+        self.update(end_time=parsed_end)
         self.log.debug("setting new START callback in ~24h" +
-                       str(constrain_start_abs))
+                       str(parsed_end))
 
-    def constrain_end(self, evt):
+    def start_time_callback(self, evt):
         """
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
         self.log.debug("Constrain End reached. Enabling ML: ")
         self.enable()
-        #        time = datetime.combine(datetime.today(), self.end) + timedelta(hours=24)
-        self.constrain_start_hook, constrain_end_abs = \
-            self.setup_time_callback_please(self._end_time, CONSTRAIN_END)
+
+        # must be reparsed to get up to date sunset/sunrise times
+        parsed_start = self.parse_time(self._start_time)
+        self.start_time_event_hook = event.async_track_point_in_time(self.hass,
+                                                                     self.start_time_callback,
+                                                                     parsed_start)
         self.log.debug("setting new END callback in ~24h" +
-                       str(constrain_end_abs))
-        self.update(constrain_end=constrain_end_abs)
+                       str(parsed_start))
+        self.update(start_time=parsed_start)
 
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W)
@@ -818,7 +771,7 @@ class Model():
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
         end_time = (self._parse_time(end_time_str, name))["datetime"]
-        now = dt.as_local(self.get_now())
+        now = dt.as_local(dt.now())
         start_date = now.replace(
             hour=start_time.hour, minute=start_time.minute,
             second=start_time.second
@@ -866,9 +819,9 @@ class Model():
         parsed_time = None
         sun = None
         offset = 0
-        parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$', time_str)
+        parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$', str(time_str))
         if parts:
-            this_time = datetime.datetime(int(parts.group(1)),
+            this_time = datetime(int(parts.group(1)),
                                           int(parts.group(2)),
                                           int(parts.group(3)),
                                           int(parts.group(4)),
@@ -876,15 +829,15 @@ class Model():
                                           int(parts.group(6)), 0)
             parsed_time = dt.as_local(this_time)
         else:
-            parts = re.search('^(\d+):(\d+):(\d+)$', time_str)
+            parts = re.search('^(\d+):(\d+):(\d+)$', str(time_str))
             if parts:
-                today = dt.as_local(self.get_now())
-                time = datetime.time(
+                today = dt.as_local(dt.now())
+                time_temp = time(
                     int(parts.group(1)), int(parts.group(2)),
                     int(parts.group(3)), 0
                 )
-                parsed_time = today.replace(hour=time.hour, minute=time.minute,
-                                            second=time.second, microsecond=0)
+                parsed_time = today.replace(hour=time_temp.hour, minute=time_temp.minute,
+                                            second=time_temp.second, microsecond=0)
 
             else:
                 if time_str == "sunrise":
@@ -897,7 +850,7 @@ class Model():
                     offset = 0
                 else:
                     parts = re.search(
-                        '^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$', time_str
+                        '^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$', str(time_str)
                     )
                     if parts:
                         sun = "sunrise"
@@ -919,7 +872,7 @@ class Model():
                             parsed_time = (self.sunrise(True) - td)
                     else:
                         parts = re.search(
-                            '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$', time_str
+                            '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$', str(time_str)
                         )
                         if parts:
                             sun = "sunset"
@@ -945,6 +898,7 @@ class Model():
                     "%s: invalid time string: %s", name, time_str)
             else:
                 raise ValueError("invalid time string: %s", time_str)
+        self.log.debug("Result of parsing: %s", {"datetime": parsed_time, "sun": sun, "offset": offset})
         return {"datetime": parsed_time, "sun": sun, "offset": offset}
 
     def make_naive(self, dts):
