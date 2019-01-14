@@ -818,7 +818,7 @@ class Model():
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
         end_time = (self._parse_time(end_time_str, name))["datetime"]
-        now = (self.get_now()).astimezone(LocationInfo.time_zone)
+        now = dt.as_local(self.get_now())
         start_date = now.replace(
             hour=start_time.hour, minute=start_time.minute,
             second=start_time.second
@@ -835,33 +835,32 @@ class Model():
 
     def sunset(self, aware):
         if aware is True:
-            return self.next_sunset().astimezone(LocationInfo.time_zone)
+            return dt.as_local(self.next_sunset())
         else:
-            return self.make_naive(self.next_sunset().astimezone(
-                LocationInfo.time_zone))
+            return self.make_naive(dt.as_local(self.next_sunset()))
 
     def sunrise(self, aware):
         if aware is True:
-            return self.next_sunrise().astimezone(LocationInfo.time_zone)
+            return dt.as_local(self.next_sunrise())
         else:
-            return self.make_naive(
-                self.next_sunrise().astimezone(LocationInfo.time_zone))
+            return self.make_naive(dt.as_local(
+                self.next_sunrise()))
 
     def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
-            return (self._parse_time(time_str, name))[
-                "datetime"].astimezone(LocationInfo.time_zone).time()
+            return dt.as_local(self._parse_time(time_str, name)[
+                "datetime"]).time()
         else:
             return self.make_naive(
                 (self._parse_time(time_str, name))["datetime"]).time()
 
     def parse_datetime(self, time_str, name=None, aware=False):
         if aware is True:
-            return (self._parse_time(time_str, name))[
-                "datetime"].astimezone(LocationInfo.time_zone)
+            return dt.as_local(self._parse_time(time_str, name)[
+                "datetime"])
         else:
-            return self.make_naive(
-                (self._parse_time(time_str, name))["datetime"])
+            return self.make_naive(dt.as_local(
+                self._parse_time(time_str, name)["datetime"]))
 
     def _parse_time(self, time_str, name=None):
         parsed_time = None
@@ -875,12 +874,11 @@ class Model():
                                           int(parts.group(4)),
                                           int(parts.group(5)),
                                           int(parts.group(6)), 0)
-            parsed_time = LocationInfo.time_zone.localize(this_time)
+            parsed_time = dt.as_local(this_time)
         else:
             parts = re.search('^(\d+):(\d+):(\d+)$', time_str)
             if parts:
-                today = (self.get_now()).astimezone(
-                    LocationInfo.time_zone)
+                today = dt.as_local(self.get_now())
                 time = datetime.time(
                     int(parts.group(1)), int(parts.group(2)),
                     int(parts.group(3)), 0
@@ -949,8 +947,8 @@ class Model():
                 raise ValueError("invalid time string: %s", time_str)
         return {"datetime": parsed_time, "sun": sun, "offset": offset}
 
-    def make_naive(self, dt):
-        local = dt.astimezone(LocationInfo.time_zone)
+    def make_naive(self, dts):
+        local = dt.as_local(dts)
         return datetime(local.year, local.month, local.day,
                         local.hour, local.minute, local.second,
                         local.microsecond)
@@ -962,7 +960,7 @@ class Model():
                 next_rising_dt = get_astral_event_date(self.hass,
                                                        SUN_EVENT_SUNRISE,
                                                        datetime.now())
-                if next_rising_dt > self.now:
+                if next_rising_dt > dt.now():
                     break
             except astral.AstralError:
                 pass
@@ -974,11 +972,11 @@ class Model():
         mod = offset
         while True:
             try:
-                next_rising_dt = get_astral_event_date(self.hass,
-                                                       SUN_EVENT_SUNSET,
-                                                       datetime.now())
+                next_setting_dt = get_astral_event_date(self.hass,
+                                                        SUN_EVENT_SUNSET,
+                                                        datetime.now())
 
-                if next_setting_dt > self.now:
+                if next_setting_dt > dt.now():
                     break
             except astral.AstralError:
                 pass
