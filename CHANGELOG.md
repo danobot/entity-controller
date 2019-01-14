@@ -40,183 +40,28 @@ All notable changes to this project will be documented in this file. See [standa
 * **constraints:** Add support for sunset and sunrise expressions ([91f80f3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/91f80f3))
 
 
-
-<a name="2.3.2"></a>
-## [2.3.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.1...v2.3.2) (2019-01-13)
-
-
-### Bug Fixes
-
-* **constrains:** Catch TypeError when times start with number. Fixes [#17](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/17). ([beef4f5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/beef4f5))
-
-
-
-<a name="2.3.7"></a>
-## [2.3.7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.6...v2.3.7) (2019-01-13)
-
-
-
-<a name="2.3.6"></a>
-## [2.3.6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.4...v2.3.6) (2019-01-13)
-
-
-
-<a name="2.3.5"></a>
-## [2.3.5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.4...v2.3.5) (2019-01-13)
-
-
-
-<a name="2.3.4"></a>
-## [2.3.4](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.1...v2.3.4) (2019-01-13)
-
-
-### Bug Fixes
-
-* **constrains:** Catch TypeError when times start with number. Fixes [#17](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/17). ([beef4f5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/beef4f5))
-
-
-
-<a name="2.3.3"></a>
-## [2.3.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.1...v2.3.3) (2019-01-13)
-
-
-### Bug Fixes
-
-* **constrains:** Catch TypeError when times start with number. Fixes [#17](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/17). ([beef4f5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/beef4f5))
-
-
-
-<a name="2.3.24"></a>
-## [2.3.24](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.24) (2019-01-13)
-
-
-
-<a name="2.3.23"></a>
-## [2.3.23](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.23) (2019-01-13)
-
-
-
-<a name="2.3.22"></a>
-## [2.3.22](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.22) (2019-01-13)
-
-
-
-<a name="2.3.21"></a>
-## [2.3.21](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.21) (2019-01-13)
-
-
-
-<a name="2.3.20"></a>
-## [2.3.20](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.20) (2019-01-13)
-
-
-
-<a name="2.3.19"></a>
-## [2.3.19](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.19) (2019-01-13)
-
-
-
-<a name="2.3.18"></a>
-## [2.3.18](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.18) (2019-01-13)
-
-
-
-<a name="2.3.17"></a>
-## [2.3.17](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.3...v2.3.17) (2019-01-13)
-
-
-
-<a name="2.3.16"></a>
-## [2.3.16](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.16) (2019-01-13)
-
-
-
-<a name="2.3.15"></a>
-## [2.3.15](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.15) (2019-01-13)
-
-
-
-<a name="2.3.14"></a>
-## [2.3.14](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.14) (2019-01-13)
-
-
-
-<a name="2.3.13"></a>
-## [2.3.13](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.13) (2019-01-13)
-
-
-
-<a name="2.3.12"></a>
-## [2.3.12](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.12) (2019-01-13)
-
-
-
-<a name="2.3.11"></a>
-## [2.3.11](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.11) (2019-01-13)
-
-
-
-<a name="2.3.10"></a>
-## [2.3.10](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.10) (2019-01-13)
-
-
-
-<a name="2.3.9"></a>
-## [2.3.9](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.9) (2019-01-13)
-
-
-
-<a name="2.3.8"></a>
-## [2.3.8](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.8) (2019-01-13)
-
-
-
-<a name="2.3.7"></a>
-## [2.3.7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.7) (2019-01-13)
-
-
-
-<a name="2.3.6"></a>
-## [2.3.6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.6) (2019-01-13)
-
-
-
-<a name="2.3.5"></a>
-## [2.3.5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.5) (2019-01-13)
-
-
-
-<a name="2.3.4"></a>
-## [2.3.4](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.4) (2019-01-13)
-
-
-
-<a name="2.3.3"></a>
-## [2.3.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.2...v2.3.3) (2019-01-13)
-
-
-
-<a name="2.3.2"></a>
-## [2.3.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.1...v2.3.2) (2019-01-13)
-
-
-### Bug Fixes
-
-* **constrains:** Catch TypeError when times start with number. Fixes [#17](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/17). ([beef4f5](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/beef4f5))
-
-
-
-<a name="2.3.1"></a>
-## [2.3.1](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.3.0...v2.3.1) (2019-01-12)
-
-
-### Bug Fixes
-
-* **constrains:** fixes [#15](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/15) constrain end callback and start callback mixed up ([668b375](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/668b375))
-* **test:** entity id already exists ([6646b41](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/6646b41))
-
-
-
-# Change Log
-
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+# Old Changelog
+v0.1.0      First formal Release
+v0.2.0      Added customizable state strings, fixes defect
+v0.3.0      Add override switch functionality
+v0.4.0      Add entities and state_entities configuration (experimental)
+
+v1.0.0      Major rewrite using state machine implementation and more configuration options
+v1.0.1      Fix typos in readme, update module reference in test suite
+v1.1.0      Implements Home Assistant state entities including state attributes
+v1.1.1      Add more information to state attributes
+
+v2.0.0      HA component rewrite
+v2.1.0      Implement time constraints and entity icons
+v2.2.0      State attributes and defects
+v2.2.1      Defect state entity
+v2.2.2      Defect constrain times
+v2.2.3      Defects: allow transitions in constrained state and lights would not turn off defect
+v2.2.4      sensor duration type defect
+v2.2.5      override config testing, backoff testing completed
+v2.2.6      observe state entities (not control entities), fix function call typo, go to idle when all state entities switched off while active.
+v2.2.7      night mode to activate on startup, add mode state attribute
+v2.2.8      Error fix: calling entity update before Entity is added to hass
+v2.2.9      Improved trigger and event handling, added blocked_by and blocked_at state attributes
+v2.2.10     Defect fix #9, #12
+v2.3.0      Feature: Sunset/sunrise support in start_time and end_time
