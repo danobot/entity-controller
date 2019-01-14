@@ -670,11 +670,8 @@ class Model():
 
     def config_override_entities(self, config):
         self.overrideEntities = []
-        if 'override' in config:
-            self.overrideEntities.append(config.get('override'))
-
-        if 'overrides' in config:
-            self.overrideEntities.extend(config.get('overrides'))
+        self.add(self.overrideEntities, config, 'override')
+        self.add(self.overrideEntities, config, 'overrides')
 
         if len(self.overrideEntities) > 0:
             self.log.debug("Override Entities: " + str(self.overrideEntities))
