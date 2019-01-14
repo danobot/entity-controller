@@ -22,7 +22,6 @@ from datetime import datetime, timedelta, date, time
 import re
 from homeassistant.helpers.sun import get_astral_event_date
 
-
 DEPENDENCIES = ['light', 'sensor', 'binary_sensor', 'cover', 'fan',
                 'media_player']
 REQUIREMENTS = ['transitions==0.6.9']
@@ -124,7 +123,7 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='enable', source='constrained', dest='idle')
 
     for key, config in myconfig.items():
-        _LOGGER.info("Config Item {}: {}".format(str(key), str(config)))
+        _LOGGER.info("Config Item %s: %s", str(key), str(config))
         config["name"] = key
         m = None
         m = LightingSM(hass, config, machine)
@@ -134,7 +133,7 @@ async def async_setup(hass, config):
 
     await component.async_add_entities(devices)
 
-    _LOGGER.info("The {} component is ready!".format(DOMAIN))
+    _LOGGER.info("The %s component is ready!", DOMAIN)
 
     return True
 
@@ -217,18 +216,14 @@ class LightingSM(entity.Entity):
             self.async_schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
-        # _LOGGER.debug("Setting state attribute {} to {}".format(k, v))
         if k == 'delay':
             v = str(v) + 's'
         self.attributes[k] = v
-        # self.do_update()
-        # _LOGGER.debug("State attributes: " + str(self.attributes))
 
     # HA Callbacks
     async def async_added_to_hass(self):
         """Register update dispatcher."""
         self.may_update = True
-
 
 
 class Model():
@@ -360,10 +355,10 @@ class Model():
             self.previous_delay = self.lightParams.get('delay', DEFAULT_DELAY)
         else:
             self.log.debug(
-                "Backoff: {},  count: {}, delay{}, factor: {}".format(
-                    self.backoff, self.backoff_count,
-                    self.lightParams.get('delay', DEFAULT_DELAY),
-                    self.backoff_factor))
+                "Backoff: %s,  count: %s, delay%s, factor: %s",
+                self.backoff, self.backoff_count,
+                self.lightParams.get('delay', DEFAULT_DELAY),
+                self.backoff_factor)
             self.previous_delay = round(
                 self.previous_delay * self.backoff_factor, 2)
             if self.previous_delay > self.backoff_max:
@@ -412,7 +407,7 @@ class Model():
         for e in self.overrideEntities:
             s = self.hass.states.get(e)
             if self.matches(s.state, self.OVERRIDE_ON_STATE):
-                self.log.debug("Override entities are ON. [{}]".format(e))
+                self.log.debug("Override entities are ON. [%s]", e)
                 return e
         self.log.debug("Override entities are OFF.")
         return None
@@ -427,7 +422,7 @@ class Model():
         for e in self.sensorEntities:
             s = self.hass.states.get(e)
             if self.matches(s.state, self.SENSOR_ON_STATE):
-                self.log.debug("Sensor entities are ON. [{}]".format(e))
+                self.log.debug("Sensor entities are ON. [%s]", e)
                 return e
         self.log.debug("Sensor entities are OFF.")
         return None
@@ -443,7 +438,7 @@ class Model():
             s = self.hass.states.get(e)
             self.log.info(s)
             if self.matches(s.state, self.STATE_ON_STATE):
-                self.log.debug("State entities are ON. [{}]".format(e))
+                self.log.debug("State entities are ON. [%s]", e)
                 return e
         self.log.debug("State entities are OFF.")
         return None
@@ -462,9 +457,8 @@ class Model():
             return False  # if night mode is undefined, it's never night :)
         else:
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
-            start = dt.parse_time(self.night_mode['start_time'])
-            end = dt.parse_time(self.night_mode['end_time'])
-            return self.now_is_between(start, end)
+            return self.now_is_between(self.night_mode['start_time'],
+                                       self.night_mode['end_time'])
 
     def is_event_sensor(self):
         return self.sensor_type == SENSOR_TYPE_EVENT
@@ -504,15 +498,15 @@ class Model():
             # self.log.debug("brightness value" + str(self.lightParams.get('brightness')))
             if self.lightParams.get('service_data') is not None:
                 self.log.debug(
-                    "Turning on {} with service parameters {}".format(e,
-                                                                      self.lightParams.get(
-                                                                          'service_data')))
+                    "Turning on %s with service parameters %s", e,
+                    self.lightParams.get(
+                        'service_data'))
                 self.call_service(e, 'turn_on',
                                   **self.lightParams.get('service_data'))
             else:
                 self.log.debug(
-                    "Turning on {} (no parameters passed to service call)".format(
-                        e))
+                    "Turning on %s (no parameters passed to service call)",
+                    e)
                 self.call_service(e, 'turn_on')
         self.enter()
 
@@ -523,13 +517,14 @@ class Model():
             'delay'))  # no need to update immediately
         if len(self.offEntities) > 0:
             self.log.info(
-                "Turning on special off_entities that were defined, instead of turning off the regular control_entities")
+                "Turning on special off_entities that were defined, "
+                "instead of turning off the regular control_entities")
             for e in self.offEntities:
-                self.log.debug("Turning on {}".format(e))
+                self.log.debug("Turning on %s", e)
                 self.call_service(e, 'turn_on')
         else:
             for e in self.controlEntities:
-                self.log.debug("Turning off {}".format(e))
+                self.log.debug("Turning off %s", e)
                 self.call_service(e, 'turn_off')
 
     def on_enter_blocked(self):
@@ -658,29 +653,15 @@ class Model():
             self.update(end=self._end_time)
 
             # set callbacks
-            self.log.debug("Parsed start time (unadjusted) %s", parsed_start)
-            self.log.debug("Parsed end time (unadjusted) %s", parsed_end)
-
-            # set start_time callback: if time passed, use tomorrow
-            # --------s--------n----|12am|--s(new)--------
-            #         \_________>>>________/
-
-            if parsed_start <= self.make_naive(dt.now()):
-                parsed_start += timedelta(1)  # start time is tomorrow!
-
-            # we now need parsed_end to come after the new parse_start
-            # (1) ---s---e---now
-            # (2) ---e---s---now
-            if parsed_end <= parsed_start:
-                parsed_end += timedelta(1) # (1)
-                if parsed_end <= parsed_start:
-                    # bump again because its still before s
-                    parsed_end += timedelta(1) # (2)
+            parsed_start, parsed_end = self.adjust_times(parsed_start,
+                                                         parsed_end)
             self.log.debug("Setting next START callback for %s", parsed_start)
             self.log.debug("Setting next END callback for %s", parsed_end)
 
-            self.start_time_event_hook = event.async_track_point_in_time(self.hass, self.start_time_callback, parsed_start)
-            self.end_time_event_hook = event.async_track_point_in_time(self.hass, self.end_time_callback, parsed_end)
+            self.start_time_event_hook = event.async_track_point_in_time(
+                self.hass, self.start_time_callback, parsed_start)
+            self.end_time_event_hook = event.async_track_point_in_time(
+                self.hass, self.end_time_callback, parsed_end)
 
             if not self.now_is_between(self._start_time, self._end_time):
                 self.log.debug(
@@ -747,8 +728,8 @@ class Model():
         # must be reparsed to get up to date sunset/sunrise times
         parsed_end = self.parse_datetime(self._end_time)
         self.end_time_event_hook = event.async_track_point_in_time(self.hass,
-                                                                     self.end_time_callback,
-                                                                     parsed_end)
+                                                                   self.end_time_callback,
+                                                                   parsed_end)
         self.update(end_time=parsed_end)
         self.log.debug("setting new START callback in ~24h" +
                        str(parsed_end))
@@ -810,7 +791,7 @@ class Model():
     def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
             return dt.as_local(self._parse_time(time_str, name)[
-                "datetime"]).time()
+                                   "datetime"]).time()
         else:
             return self.make_naive(
                 (self._parse_time(time_str, name))["datetime"]).time()
@@ -818,7 +799,7 @@ class Model():
     def parse_datetime(self, time_str, name=None, aware=False):
         if aware is True:
             return dt.as_local(self._parse_time(time_str, name)[
-                "datetime"])
+                                   "datetime"])
         else:
             return self.make_naive(dt.as_local(
                 self._parse_time(time_str, name)["datetime"]))
@@ -827,14 +808,15 @@ class Model():
         parsed_time = None
         sun = None
         offset = 0
-        parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$', str(time_str))
+        parts = re.search('^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$',
+                          str(time_str))
         if parts:
             this_time = datetime(int(parts.group(1)),
-                                          int(parts.group(2)),
-                                          int(parts.group(3)),
-                                          int(parts.group(4)),
-                                          int(parts.group(5)),
-                                          int(parts.group(6)), 0)
+                                 int(parts.group(2)),
+                                 int(parts.group(3)),
+                                 int(parts.group(4)),
+                                 int(parts.group(5)),
+                                 int(parts.group(6)), 0)
             parsed_time = dt.as_local(this_time)
         else:
             parts = re.search('^(\d+):(\d+):(\d+)$', str(time_str))
@@ -844,8 +826,10 @@ class Model():
                     int(parts.group(1)), int(parts.group(2)),
                     int(parts.group(3)), 0
                 )
-                parsed_time = today.replace(hour=time_temp.hour, minute=time_temp.minute,
-                                            second=time_temp.second, microsecond=0)
+                parsed_time = today.replace(hour=time_temp.hour,
+                                            minute=time_temp.minute,
+                                            second=time_temp.second,
+                                            microsecond=0)
 
             else:
                 if time_str == "sunrise":
@@ -880,7 +864,8 @@ class Model():
                             parsed_time = (self.sunrise(True) - td)
                     else:
                         parts = re.search(
-                            '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$', str(time_str)
+                            '^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$',
+                            str(time_str)
                         )
                         if parts:
                             sun = "sunset"
@@ -906,7 +891,8 @@ class Model():
                     "%s: invalid time string: %s", name, time_str)
             else:
                 raise ValueError("invalid time string: %s", time_str)
-        self.log.debug("Result of parsing: %s", {"datetime": parsed_time, "sun": sun, "offset": offset})
+        self.log.debug("Result of parsing: %s",
+                       {"datetime": parsed_time, "sun": sun, "offset": offset})
         return {"datetime": parsed_time, "sun": sun, "offset": offset}
 
     def make_naive(self, dts):
@@ -946,20 +932,8 @@ class Model():
 
         return next_setting_dt
 
-    #
-    # Diagnostics
-    #
-
-    def dump_sun(self):
-        self.diag.info("--------------------------------------------------")
-        self.diag.info("Sun")
-        self.diag.info("--------------------------------------------------")
-        self.diag.info("Next Sunrise: %s", self.next_sunrise())
-        self.diag.info("Next Sunset: %s", self.next_sunset())
-        self.diag.info("--------------------------------------------------")
-
     # =====================================================
-    #    H E L P E R   F U N C T I O N S     ( EXISTING )
+    #    H E L P E R   F U N C T I O N S    ( C U S T O M )
     # =====================================================
 
     # def parse_time_sun(self, time):
@@ -994,37 +968,28 @@ class Model():
     #             return None, t.time()
     #
 
-    def if_time_passed_get_tomorrow(self, time):
-        """ Returns tomorrows time if time is in the past """
-        today = date.today()
-        try:
-            t = datetime.combine(today, time)
-        except TypeError as e:
-            t = time
-        x = datetime.combine(today, datetime.time(datetime.now()))
-        # self.log.debug("if_time_passed --- input time: " + str(t))
-        # self.log.debug("if_time_passed --- current time: " + str(x))
-        if t <= x:
-            t += timedelta(1)  # tomorrow!
-            # self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
-        # else:
-        # self.log.debug("if_time_passed --- Time still happening today. " + str(t))
 
-        return t
+    def adjust_times(self, start, end):
+        """ Makes sure that a time period is in the future. """
+        self.log.debug("Parsed start time (unadjusted) %s", start)
+        self.log.debug("Parsed end time (unadjusted) %s", end)
 
-    # def now_is_between(self, start, end, x=None):
-    #     if x is None:
-    #         x = datetime.time(datetime.now())
-    #
-    #     today = date.today()
-    #     start = datetime.combine(today, start)
-    #     end = datetime.combine(today, end)
-    #     x = datetime.combine(today, x)
-    #     if end <= start:
-    #         end += timedelta(1) # tomorrow!
-    #     if x <= start:
-    #         x += timedelta(1) # tomorrow!
-    #     return start <= x <= end
+        # set start_time callback: if time passed, use tomorrow
+        # --------s--------n----|12am|--s(new)--------
+        #         \_________>>>________/
+
+        if start <= self.make_naive(dt.now()):
+            start += timedelta(1)  # start time is tomorrow!
+
+        # we now need parsed_end to come after the new parse_start
+        # (1) ---s---e---now
+        # (2) ---e---s---now
+        if end <= start:
+            end += timedelta(1)  # (1)
+            if end <= start:
+                # bump again because its still before s
+                end += timedelta(1)  # (2)
+        return start, end
 
     def prepare_service_data(self):
         """ Called when entering active state and on initial set up to set correct service parameters."""
@@ -1073,7 +1038,6 @@ class Model():
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
         return dt.now() - timedelta(minutes=5) - get_astral_event_date(
             self.hass, sun, datetime.now())
-
 
     def add(self, list, e, key=None):
         """ Adds e (which can be a string or list or config) to the list 
