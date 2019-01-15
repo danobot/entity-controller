@@ -643,54 +643,35 @@ class Model():
     @property
     def start_time(self):
         """ Wrapper for _start_time_private """
-        return self.config_time(self._start_time_private)
+        return self.debug_time_wrapper(self._start_time_private)
 
     @property
     def end_time(self):
         """ Wrapper for _end_time_private """
-        return self.config_time(self._end_time_private)
-
-    def config_time(self, timet):
-        """ Injects some debugging capability """
-        s = timet
-        parts = re.search(
-            '^now\s*([+-])\s*(\d+)$', timet
-        )
-        if parts:
-            self.log.debug("Group 1: %s", parts.group(1))
-            self.log.debug("Group 2: %s", parts.group(2))
-            now = dt.now()
-            self.log.debug("now %s", now)
-            delta = timedelta(seconds=int(parts.group(2)))
-            if parts.group(1) == '-':
-                now = now - delta
-            else:
-                now = now + delta
-            self.log.debug("now + delta %s", now)
-
-            s = str(self.make_naive(now).time().replace(microsecond=0))
-
-        self.log.debug("config time s %s", s)
-        return s
+        return self.debug_time_wrapper(self._end_time_private)
 
     def config_constrain_times(self, config):
         if CONFIG_START_TIME in config and CONFIG_END_TIME in config:
+            # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONFIG_START_TIME)
             self._end_time_private = config.get(CONFIG_END_TIME)
 
-            # Find XOR function
-            # if self.start_time and self.end_time:
-            #     self.log.error("Must specify both start and end time.")
-
             parsed_start = self.parse_datetime(self.start_time)
             parsed_end = self.parse_datetime(self.end_time)
+
+            # FOR OPTIONAL DEBUGGING: subsequently use normal delay
+            self._start_time_private = re.search(
+                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME)).group(1)
+            self._end_time_private = re.search(
+                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME)).group(1)
+
             self.update(start=self.start_time)
             self.update(end=self.end_time)
 
             parsed_start, parsed_end = self.adjust_times(parsed_start,
                                                          parsed_end)
-            self.log.debug("Setting next START callback for %s", parsed_start)
-            self.log.debug("Setting next END callback for %s", parsed_end)
+            self.log.debug("Setting FIRST START callback for %s", parsed_start)
+            self.log.debug("Setting FIRST END callback for %s", parsed_end)
 
             self.start_time_event_hook = event.async_track_point_in_time(
                 self.hass, self.start_time_callback, parsed_start)
@@ -965,38 +946,6 @@ class Model():
     #    H E L P E R   F U N C T I O N S    ( C U S T O M )
     # =====================================================
 
-    # def parse_time_sun(self, time):
-    #         if 'soon-after' in time:
-    #             t = datetime.now() + timedelta(seconds=10)
-    #
-    #             self.log.debug("DEBUG: Making time happen in 10 seconds!")
-    #             return None, t.time()
-    #         elif 'soon-sunset' in time:
-    #             time = dt.now() + timedelta(
-    #                 seconds=10) - get_astral_event_date(self.hass,
-    #                                                     SUN_EVENT_SUNSET,
-    #                                                     datetime.now())
-    #
-    #             self.log.debug(
-    #                 "DEBUG: Making time happen in 5 seconds (sunset offset)!")
-    #             return 'sunset', time
-    #         elif 'soon-sunrise' in time:
-    #
-    #             time = dt.now() + timedelta(
-    #                 seconds=10) - get_astral_event_date(self.hass,
-    #                                                     SUN_EVENT_SUNRISE,
-    #                                                     datetime.now())
-    #
-    #             self.log.debug(
-    #                 "DEBUG: Making time happen in 5 seconds (sunrise offset)!")
-    #             return 'sunrise', time
-    #         elif 'soon' in time:
-    #             t = datetime.now() + timedelta(seconds=5)
-    #
-    #             self.log.debug("DEBUG: Making time happen in 5 seconds!")
-    #             return None, t.time()
-    #
-
     def adjust_times(self, start, end):
         """ Makes sure that a time period is in the future. """
         self.log.debug("Parsed start time (unadjusted) %s", start)
@@ -1020,7 +969,10 @@ class Model():
         return start, end
 
     def prepare_service_data(self):
-        """ Called when entering active state and on initial set up to set correct service parameters."""
+        """
+            Called when entering active state and on initial set up to set
+            correct service parameters.
+        """
         if self.is_night():
             self.log.debug(
                 "Using NIGHT MODE parameters: " + str(self.light_params_night))
@@ -1086,3 +1038,50 @@ class Model():
         else:
             self.log.debug("none")
         return len(v) > 0
+
+    def debug_time_wrapper(self, timet):
+        """
+            Injects some debugging capability. Number is parenthesis is the
+            first delay used on initial component setup. (This creates a time
+            difference between start and end time callbacks.)
+
+            The other number after the + sign is the standard period.
+            In real life, this would be 24 hours, for debugging you can make
+            it a few seconds to see the app change from idle to constrained.
+
+            start_time: now + 5 (3)
+            end_time: now + 5 (6)
+
+            This function is used to wrap CONFIG_START_TIME and CONFIG_END_TIME
+            and should only be called by the corresponding class properties!
+
+            See config_constrain_times.
+        """
+        s = timet
+        parts = re.search(
+            '^now\s*([+-])\s*(\d+)\s*\(?(\d+)?\)?$', timet
+        )
+        if parts:
+            sign = parts.group(1)
+            first_delay = parts.group(3)
+            delay = parts.group(2)
+            # self.log.debug("Group 1: %s", sign)
+            # self.log.debug("Group 2 (delay): %s", delay)
+            # self.log.debug("Group 3 (first delay): %s", first_delay)
+            now = dt.now()
+            self.log.debug("now %s", now)
+            delta = timedelta(seconds=int(delay))
+            if first_delay is not None:
+                # self.log.debug("first delay defined")
+                delta = timedelta(seconds=int(first_delay))
+            if sign == '-':
+                now = now - delta
+            else:
+                now = now + delta
+
+            # self.log.debug("now + delta %s", now)
+
+            s = str(self.make_naive(now).time().replace(microsecond=0))
+
+        # self.log.debug("config time s %s", s)
+        return s
