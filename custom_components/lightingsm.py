@@ -46,7 +46,8 @@ CONF_SENSORS = 'sensors'
 CONF_STATE = 'state_entities'
 CONF_DELAY = 'delay'
 CONF_NIGHT_MODE = 'night_mode'
-
+CONFIG_START_TIME = 'start_time'
+CONFIG_END_TIME = 'end_time'
 STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
@@ -639,20 +640,53 @@ class Model():
         self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
 
+    @property
+    def start_time(self):
+        """ Wrapper for _start_time_private """
+        return self.config_time(self._start_time_private)
+
+    @property
+    def end_time(self):
+        """ Wrapper for _end_time_private """
+        return self.config_time(self._end_time_private)
+
+    def config_time(self, timet):
+        """ Injects some debugging capability """
+        s = timet
+        parts = re.search(
+            '^now\s*([+-])\s*(\d+)$', timet
+        )
+        if parts:
+            self.log.debug("Group 1: %s", parts.group(1))
+            self.log.debug("Group 2: %s", parts.group(2))
+            now = dt.now()
+            self.log.debug("now %s", now)
+            delta = timedelta(seconds=int(parts.group(2)))
+            if parts.group(1) == '-':
+                now = now - delta
+            else:
+                now = now + delta
+            self.log.debug("now + delta %s", now)
+
+            s = str(self.make_naive(now).time().replace(microsecond=0))
+
+        self.log.debug("config time s %s", s)
+        return s
+
     def config_constrain_times(self, config):
-        self._start_time = config.get('start_time')
-        self._end_time = config.get('end_time')
+        if CONFIG_START_TIME in config and CONFIG_END_TIME in config:
+            self._start_time_private = config.get(CONFIG_START_TIME)
+            self._end_time_private = config.get(CONFIG_END_TIME)
 
-        # Find XOR function
-        # if self._start_time and self._end_time:
-        #     self.log.error("Must specify both start and end time.")
-        if self._start_time and self._end_time:
-            parsed_start = self.parse_datetime(self._start_time)
-            parsed_end = self.parse_datetime(self._end_time)
-            self.update(start=self._start_time)
-            self.update(end=self._end_time)
+            # Find XOR function
+            # if self.start_time and self.end_time:
+            #     self.log.error("Must specify both start and end time.")
 
-            # set callbacks
+            parsed_start = self.parse_datetime(self.start_time)
+            parsed_end = self.parse_datetime(self.end_time)
+            self.update(start=self.start_time)
+            self.update(end=self.end_time)
+
             parsed_start, parsed_end = self.adjust_times(parsed_start,
                                                          parsed_end)
             self.log.debug("Setting next START callback for %s", parsed_start)
@@ -663,7 +697,7 @@ class Model():
             self.end_time_event_hook = event.async_track_point_in_time(
                 self.hass, self.end_time_callback, parsed_end)
 
-            if not self.now_is_between(self._start_time, self._end_time):
+            if not self.now_is_between(self.start_time, self.end_time):
                 self.log.debug(
                     "Constrain period active. Scheduling transition to 'constrained'")
                 event.async_call_later(self.hass, 1, self.constrain_entity)
@@ -711,7 +745,7 @@ class Model():
     # =====================================================
 
     def constrain_entity(self, evt):
-        """ 
+        """
             Event callback used on component setup if current time requires entity to start in constrained state.
         """
         self.constrain()
@@ -720,32 +754,30 @@ class Model():
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
         """
-        self.log.debug("End time callback. Disabling ML: ")
-        self.constrain()
+
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_end = self.parse_datetime(self._end_time)
-        self.end_time_event_hook = event.async_track_point_in_time(self.hass,
-                                                                   self.end_time_callback,
-                                                                   parsed_end)
+        parsed_end = self.parse_datetime(self.end_time)
+        self.log.debug("END TIME CALLBACK. New callback set to %s", parsed_end)
+        self.end_time_event_hook = event.async_track_point_in_time(
+            self.hass, self.end_time_callback, parsed_end)
         self.update(end_time=parsed_end)
-        self.log.debug("setting new START callback in ~24h" +
-                       str(parsed_end))
+        # must be down here to make sure new callback is set regardless of exceptions
+        self.constrain()
 
     def start_time_callback(self, evt):
         """
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
-        self.log.debug("Start time callback. Enabling ML: ")
-        self.enable()
 
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_start = self.parse_datetime(self._start_time)
-        self.start_time_event_hook = event.async_track_point_in_time(self.hass,
-                                                                     self.start_time_callback,
-                                                                     parsed_start)
-        self.log.debug("setting new END callback in ~24h" +
-                       str(parsed_start))
+        parsed_start = self.parse_datetime(self.start_time)
+        self.log.debug("START TIME CALLBACK."
+                       " New callback set to %s", parsed_start)
+        self.start_time_event_hook = event.async_track_point_in_time(
+            self.hass, self.start_time_callback, parsed_start)
+
         self.update(start_time=parsed_start)
+        self.enable()
 
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )
@@ -964,7 +996,6 @@ class Model():
     #             self.log.debug("DEBUG: Making time happen in 5 seconds!")
     #             return None, t.time()
     #
-
 
     def adjust_times(self, start, end):
         """ Makes sure that a time period is in the future. """
