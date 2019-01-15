@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.4.3"></a>
+## [2.4.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.2...v2.4.3) (2019-01-15)
+
+
+### Bug Fixes
+
+* **constraints:** End constraint should be adjusted based on current time (does not come after start time if within active period) ([61f7dc1](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/61f7dc1))
+
+
+
 <a name="2.4.2"></a>
 ## [2.4.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.1...v2.4.2) (2019-01-15)
 
