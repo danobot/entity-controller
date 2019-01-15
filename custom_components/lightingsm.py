@@ -660,10 +660,15 @@ class Model():
             parsed_end = self.parse_datetime(self.end_time)
 
             # FOR OPTIONAL DEBUGGING: subsequently use normal delay
-            self._start_time_private = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME)).group(1)
-            self._end_time_private = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME)).group(1)
+            sparts = re.search(
+                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME))
+            if sparts is not None:
+                self._start_time_private = sparts.group(1)
+            eparts = re.search(
+                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME))
+            if eparts is not None:
+                self._end_time_private = eparts.group(1)
+
 
             self.update(start=self.start_time)
             self.update(end=self.end_time)
