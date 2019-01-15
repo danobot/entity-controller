@@ -959,18 +959,18 @@ class Model():
         # set start_time callback: if time passed, use tomorrow
         # --------s--------n----|12am|--s(new)--------
         #         \_________>>>________/
-
-        if start <= self.make_naive(dt.now()):
+        now = self.make_naive(dt.now())
+        if start <= now:
             start += timedelta(1)  # start time is tomorrow!
 
         # we now need parsed_end to come after the new parse_start
         # (1) ---s---e---now
         # (2) ---e---s---now
-        if end <= start:
+        if end <= now:
             end += timedelta(1)  # (1)
-            if end <= start:
+           # if end <= start:
                 # bump again because its still before s
-                end += timedelta(1)  # (2)
+            #    end += timedelta(1)  # (2)
         return start, end
 
     def prepare_service_data(self):
