@@ -878,8 +878,8 @@ class Model():
                     "%s: invalid time string: %s", name, time_str)
             else:
                 raise ValueError("invalid time string: %s", time_str)
-        self.log.debug("Result of parsing: %s",
-                       {"datetime": parsed_time, "sun": sun, "offset": offset})
+        # self.log.debug("Result of parsing: %s",
+        #                {"datetime": parsed_time, "sun": sun, "offset": offset})
         return {"datetime": parsed_time, "sun": sun, "offset": offset}
 
     def make_naive(self, dts):
