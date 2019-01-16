@@ -1048,7 +1048,7 @@ class Model():
                 self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
             else:
                 self.log.debug( "Time still happening today. " + str(t))
-
+        self.log.debug("output time: %s", t)
         return t
 
     def debug_time_wrapper(self, timet):
