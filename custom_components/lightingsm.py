@@ -1,14 +1,17 @@
 """
-Entity timer component for Home Assistant Component
+Entity timer component for Home Assistant
 Maintainer:       Daniel Mason
 Version:          v2.4.2
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
-
+Issues Tracker:   Report issues on Github. Include:
+                      * component version
+                      * YAML configuration (for misbehaving entity only)
+                      * log entries
 """
 import logging
 import voluptuous as vol
-
 import homeassistant.helpers.config_validation as cv
+
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
     SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE)
