@@ -1042,12 +1042,13 @@ class Model():
         x = datetime.combine(today, datetime.time(datetime.now()))
         self.log.debug("input time: " + str(t))
         self.log.debug("current time: " + str(x))
-        if t <= x:
-            t = t + timedelta(1)  # tomorrow!
-            self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
-        else:
-            self.log.debug( "Time still happening today. " + str(t))
-
+        while t <= x:
+            if t <= x:
+                t = t + timedelta(1)  # tomorrow!
+                self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
+            else:
+                self.log.debug( "Time still happening today. " + str(t))
+        self.log.debug("output time: %s", t)
         return t
 
     def debug_time_wrapper(self, timet):
