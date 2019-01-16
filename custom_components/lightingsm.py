@@ -1032,8 +1032,8 @@ class Model():
 
     def futurize(self, timet):
         """ Returns tomorrows time if time is in the past """
-        self.log.debug("-------------------- futurize ------------------------"
-        self.log.debug("Input % ", timet)
+        self.log.debug("-------------------- futurize ------------------------")
+        self.log.debug("Input %s ", timet)
         today = date.today()
         try:
             t = datetime.combine(today, timet)
@@ -1044,9 +1044,9 @@ class Model():
         self.log.debug("current time: " + str(x))
         if t <= x:
             t = t + timedelta(1)  # tomorrow!
-            self.log.debug( Time already happened. Returning tomorrow instead. " + str(t))
+            self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
         else:
-        self.log.debug( Time still happening today. " + str(t))
+        self.log.debug( "Time still happening today. " + str(t))
 
         return t
 
