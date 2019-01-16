@@ -1030,21 +1030,23 @@ class Model():
             self.log.debug("none")
         return len(v) > 0
 
-    def futurize(self, time):
+    def futurize(self, timet):
         """ Returns tomorrows time if time is in the past """
+        self.log.debug("-------------------- futurize ------------------------"
+        self.log.debug("Input % ", timet)
         today = date.today()
         try:
-            t = datetime.combine(today, time)
+            t = datetime.combine(today, timet)
         except TypeError as e:
             t = time
         x = datetime.combine(today, datetime.time(datetime.now()))
-        # self.log.debug("if_time_passed --- input time: " + str(t))
-        # self.log.debug("if_time_passed --- current time: " + str(x))
+        self.log.debug("input time: " + str(t))
+        self.log.debug("current time: " + str(x))
         if t <= x:
-            t += timedelta(1)  # tomorrow!
-            # self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
-        # else:
-        # self.log.debug("if_time_passed --- Time still happening today. " + str(t))
+            t = t + timedelta(1)  # tomorrow!
+            self.log.debug( Time already happened. Returning tomorrow instead. " + str(t))
+        else:
+        self.log.debug( Time still happening today. " + str(t))
 
         return t
 
