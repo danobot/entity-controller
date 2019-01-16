@@ -1041,7 +1041,7 @@ class Model():
             t = time
         x = datetime.combine(today, datetime.time(datetime.now()))
         self.log.debug("input time: " + str(t))
-        self.log.debug("current time: " + str(x)
+        self.log.debug("current time: " + str(x))
         while t <= x:
             if t <= x:
                 t = t + timedelta(1)  # tomorrow!
