@@ -1046,7 +1046,7 @@ class Model():
             t = t + timedelta(1)  # tomorrow!
             self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
         else:
-        self.log.debug( "Time still happening today. " + str(t))
+            self.log.debug( "Time still happening today. " + str(t))
 
         return t
 
