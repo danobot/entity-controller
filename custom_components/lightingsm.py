@@ -1,14 +1,17 @@
 """
-Entity timer component for Home Assistant Component
+Entity timer component for Home Assistant
 Maintainer:       Daniel Mason
 Version:          v2.4.3
 Documentation:    https://github.com/danobot/appdaemon-motion-lights
-
+Issues Tracker:   Report issues on Github. Include:
+                      * component version
+                      * YAML configuration (for misbehaving entity only)
+                      * log entries
 """
 import logging
 import voluptuous as vol
-
 import homeassistant.helpers.config_validation as cv
+
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
     SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE)
@@ -271,7 +274,7 @@ class Model():
         self.config_normal_mode(config)
         self.config_night_mode(
             config)  # must come after normal_mode (uses normal mode parameters if not set)
-        self.config_constrain_times(config)
+        self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
         # def draw(self):
@@ -333,22 +336,6 @@ class Model():
 
         if self.is_blocked() and self.is_state_entities_off():
             self.enable()
-
-    # def event_handler(self,event, data):
-    #     self.log.debug("Event: " + str(event))
-    #     self.log.debug("Data: " + str(data))
-    #     self.log.debug("kwargs: " + str(el))
-    #     if event == 'start_end_reached':
-    #         self.enable()
-
-    #     if event == 'start_time_reached':
-    #         self.constrain()
-
-    #     if data['entity_id'] == self.name:
-    #         self.log.debug("It is me!")
-    #         if event == 'lightingsm-reset':
-    #             self.set_state('idle')
-    #             self.log.debug("Reset was called")
 
     def _start_timer(self):
         self.log.info(self.lightParams)
@@ -650,12 +637,12 @@ class Model():
         """ Wrapper for _end_time_private """
         return self.debug_time_wrapper(self._end_time_private)
 
-    def config_constrain_times(self, config):
+    def config_times(self, config):
         if CONFIG_START_TIME in config and CONFIG_END_TIME in config:
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONFIG_START_TIME)
             self._end_time_private = config.get(CONFIG_END_TIME)
-
+            self.dump_sun()
             parsed_start = self.parse_datetime(self.start_time)
             parsed_end = self.parse_datetime(self.end_time)
 
@@ -668,7 +655,6 @@ class Model():
                 '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME))
             if eparts is not None:
                 self._end_time_private = eparts.group(1)
-
 
             self.update(start=self.start_time)
             self.update(end=self.end_time)
@@ -742,7 +728,7 @@ class Model():
         """
 
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_end = self.parse_datetime(self.end_time)
+        parsed_end = self.futurize(self.parse_datetime(self.end_time))
         self.log.debug("END TIME CALLBACK. New callback set to %s", parsed_end)
         self.end_time_event_hook = event.async_track_point_in_time(
             self.hass, self.end_time_callback, parsed_end)
@@ -754,9 +740,8 @@ class Model():
         """
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
-
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_start = self.parse_datetime(self.start_time)
+        parsed_start = self.futurize(self.parse_datetime(self.start_time))
         self.log.debug("START TIME CALLBACK."
                        " New callback set to %s", parsed_start)
         self.start_time_event_hook = event.async_track_point_in_time(
@@ -764,7 +749,6 @@ class Model():
 
         self.update(start_time=parsed_start)
         self.enable()
-
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )
     # =====================================================
@@ -789,19 +773,6 @@ class Model():
         self.log.debug("now_is_between start time %s", start_date)
         self.log.debug("now_is_between end time %s", end_date)
         return start_date <= now <= end_date
-
-    def sunset(self, aware):
-        if aware is True:
-            return dt.as_local(self.next_sunset())
-        else:
-            return self.make_naive(dt.as_local(self.next_sunset()))
-
-    def sunrise(self, aware):
-        if aware is True:
-            return dt.as_local(self.next_sunrise())
-        else:
-            return self.make_naive(dt.as_local(
-                self.next_sunrise()))
 
     def parse_time(self, time_str, name=None, aware=False):
         if aware is True:
@@ -860,6 +831,7 @@ class Model():
                         '^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$', str(time_str)
                     )
                     if parts:
+
                         sun = "sunrise"
                         if parts.group(1) == "+":
                             td = timedelta(
@@ -916,36 +888,50 @@ class Model():
                         local.hour, local.minute, local.second,
                         local.microsecond)
 
+    def sunset(self, aware):
+        t = get_astral_event_date(self.hass,
+                                  SUN_EVENT_SUNSET,
+                                  datetime.now().replace(hour=0))
+        if aware is True:
+            return dt.as_local(t)
+        else:
+            return t
+
+
+    def sunrise(self, aware):
+        t = get_astral_event_date(self.hass,
+                                  SUN_EVENT_SUNRISE,
+                                  datetime.now().replace(hour=0))
+        if aware is True:
+            return dt.as_local(t)
+        else:
+            return t
+
     def next_sunrise(self, offset=0):
         mod = offset
         while True:
-            try:
-                next_rising_dt = get_astral_event_date(self.hass,
-                                                       SUN_EVENT_SUNRISE,
-                                                       datetime.now())
-                if next_rising_dt > dt.now():
-                    break
-            except astral.AstralError:
-                pass
+
+            next_rising_dt = self.sunrise(True) + timedelta(mod)
+            if next_rising_dt > dt.now():
+                break
+
             mod += 1
 
         return next_rising_dt
 
+
     def next_sunset(self, offset=0):
         mod = offset
         while True:
-            try:
-                next_setting_dt = get_astral_event_date(self.hass,
-                                                        SUN_EVENT_SUNSET,
-                                                        datetime.now())
 
-                if next_setting_dt > dt.now():
-                    break
-            except astral.AstralError:
-                pass
+            next_setting_dt = self.sunset(True) + timedelta(mod)
+            if next_setting_dt > dt.now():
+                break
+
             mod += 1
 
         return next_setting_dt
+
 
     # =====================================================
     #    H E L P E R   F U N C T I O N S    ( C U S T O M )
@@ -968,9 +954,9 @@ class Model():
         # (2) ---e---s---now
         if end <= now:
             end += timedelta(1)  # (1)
-           # if end <= start:
-                # bump again because its still before s
-            #    end += timedelta(1)  # (2)
+        # if end <= start:
+        # bump again because its still before s
+        #    end += timedelta(1)  # (2)
         return start, end
 
     def prepare_service_data(self):
@@ -1025,8 +1011,8 @@ class Model():
             self.hass, sun, datetime.now())
 
     def add(self, list, e, key=None):
-        """ Adds e (which can be a string or list or config) to the list 
-            if e is defined. 
+        """ Adds e (which can be a string or list or config) to the list
+            if e is defined.
         """
         if e is not None:
             v = []
@@ -1044,6 +1030,24 @@ class Model():
             self.log.debug("none")
         return len(v) > 0
 
+    def futurize(self, time):
+        """ Returns tomorrows time if time is in the past """
+        today = date.today()
+        try:
+            t = datetime.combine(today, time)
+        except TypeError as e:
+            t = time
+        x = datetime.combine(today, datetime.time(datetime.now()))
+        # self.log.debug("if_time_passed --- input time: " + str(t))
+        # self.log.debug("if_time_passed --- current time: " + str(x))
+        if t <= x:
+            t += timedelta(1)  # tomorrow!
+            # self.log.debug("if_time_passed --- Time already happened. Returning tomorrow instead. " + str(t))
+        # else:
+        # self.log.debug("if_time_passed --- Time still happening today. " + str(t))
+
+        return t
+
     def debug_time_wrapper(self, timet):
         """
             Injects some debugging capability. Number is parenthesis is the
@@ -1060,7 +1064,7 @@ class Model():
             This function is used to wrap CONFIG_START_TIME and CONFIG_END_TIME
             and should only be called by the corresponding class properties!
 
-            See config_constrain_times.
+            See config_times.
         """
         s = timet
         parts = re.search(
@@ -1090,3 +1094,21 @@ class Model():
 
         # self.log.debug("config time s %s", s)
         return s
+
+
+    def dump_sun(self):
+        self.log.debug("--------------------------------------------------")
+        self.log.debug("Time Dump")
+        self.log.debug("--------------------------------------------------")
+        self.log.debug("DT Now:               %s", dt.now())
+        self.log.debug("datetime Now:         %s", datetime.now())
+        self.log.debug("Next Sunrise:         %s", self.next_sunrise(True))
+        self.log.debug("Next Sunset:          %s", self.next_sunset(True))
+        self.log.debug("Sunrise:              %s", self.sunrise(True))
+        self.log.debug("Sunset:               %s", self.sunset(True))
+        self.log.debug("--------------------------------------------------")
+        self.log.debug("Sunset Diff (to now): %s",
+                       self.next_sunset() - dt.now())
+        self.log.debug("Sunrise Diff(to now): %s",
+                       self.next_sunset() - dt.now())
+        self.log.debug("--------------------------------------------------")
