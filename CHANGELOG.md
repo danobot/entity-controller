@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.4.7"></a>
+## [2.4.7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.6...v2.4.7) (2019-01-16)
+
+
+### Bug Fixes
+
+* **constraints:** sunrise returning yesterdays sunrise. Patches futurize to correct symptom. Better fix required. ([ca3c0ea](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/ca3c0ea))
+
+
+
 <a name="2.4.6"></a>
 ## [2.4.6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.5...v2.4.6) (2019-01-16)
 
