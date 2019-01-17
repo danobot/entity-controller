@@ -204,7 +204,9 @@ class LightingSM(entity.Entity):
             'override_entities',
             'delay',
             'sensor_type',
-            'mode'
+            'mode',
+            'start_time',
+            'end_time'
         ]
         for k, v in self.attributes.items():
             if k in PERSISTED_STATE_ATTRIBUTES:
