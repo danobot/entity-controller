@@ -236,7 +236,7 @@ class Model():
     def __init__(self, hass, config, machine, entity):
         self.hass = hass  # backwards reference to hass object
         self.entity = entity  # backwards reference to entity containing this model
-
+        self.debug_day_length = config.get("day_length", None)
         self.stateEntities = []
         self.controlEntities = []
         self.sensorEntities = []
@@ -642,10 +642,19 @@ class Model():
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONFIG_START_TIME)
             self._end_time_private = config.get(CONFIG_END_TIME)
+            self.log.debug("DEbugging start ==========================================")
             self.dump_sun()
-            parsed_start = self.parse_datetime(self.start_time)
-            parsed_end = self.parse_datetime(self.end_time)
+            start_time_parsed = self.parse_time(self.start_time)
+            self.log.debug("start_time_parsed: %s",
+                           start_time_parsed)
 
+            self.log.debug("futurize outputs %s", self.futurize(start_time_parsed))
+
+            self.log.debug("DEbugging end ==========================================")
+            parsed_start = self.parse_time(self.start_time, aware=False)
+            parsed_end = self.parse_time(self.end_time, aware=False)
+            # parsed_start = datetime.now() + timedelta(seconds=5)
+            # parsed_end = datetime.now() + timedelta(seconds=10)
             # FOR OPTIONAL DEBUGGING: subsequently use normal delay
             sparts = re.search(
                 '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME))
@@ -659,8 +668,11 @@ class Model():
             self.update(start=self.start_time)
             self.update(end=self.end_time)
 
-            parsed_start, parsed_end = self.adjust_times(parsed_start,
-                                                         parsed_end)
+            # parsed_start, parsed_end = self.adjust_times(parsed_start,
+                        #                                              parsed_end)
+
+            parsed_start = self.futurize(parsed_start)
+            parsed_end = self.futurize(parsed_end)
             self.log.debug("Setting FIRST START callback for %s", parsed_start)
             self.log.debug("Setting FIRST END callback for %s", parsed_end)
 
@@ -726,10 +738,19 @@ class Model():
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
         """
-
+        self.log.debug("END TIME CALLBACK.")
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_end = self.futurize(self.parse_datetime(self.end_time))
-        self.log.debug("END TIME CALLBACK. New callback set to %s", parsed_end)
+        # if self.debug_day_length:
+        #     x = self.make_naive(dt.now() + timedelta(seconds=int(self.debug_day_length)))
+        #     self.log.debug("using debug day lengh %s", x)
+        #
+        # else:
+        x = self.parse_time(self.end_time)
+
+
+
+        parsed_end = self.futurize(x)
+        self.log.debug("END TIME CALLBACK. New callback set to %s (future)", parsed_end)
         self.end_time_event_hook = event.async_track_point_in_time(
             self.hass, self.end_time_callback, parsed_end)
         self.update(end_time=parsed_end)
@@ -738,12 +759,20 @@ class Model():
 
     def start_time_callback(self, evt):
         """
+
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
+        self.log.debug("START TIME CALLBACK.")
         # must be reparsed to get up to date sunset/sunrise times
-        parsed_start = self.futurize(self.parse_datetime(self.start_time))
+        # if self.debug_day_length:
+        #     x = self.make_naive(dt.now() + timedelta(seconds=int(self.debug_day_length)))
+        #     self.log.debug("using debug day lengh %s", x)
+        # else:
+        x = self.parse_time(self.start_time)
+
+        parsed_start = self.futurize(x)
         self.log.debug("START TIME CALLBACK."
-                       " New callback set to %s", parsed_start)
+                       " New callback set to %s (future)", parsed_start)
         self.start_time_event_hook = event.async_track_point_in_time(
             self.hass, self.start_time_callback, parsed_start)
 
@@ -937,27 +966,27 @@ class Model():
     #    H E L P E R   F U N C T I O N S    ( C U S T O M )
     # =====================================================
 
-    def adjust_times(self, start, end):
-        """ Makes sure that a time period is in the future. """
-        self.log.debug("Parsed start time (unadjusted) %s", start)
-        self.log.debug("Parsed end time (unadjusted) %s", end)
-
-        # set start_time callback: if time passed, use tomorrow
-        # --------s--------n----|12am|--s(new)--------
-        #         \_________>>>________/
-        now = self.make_naive(dt.now())
-        if start <= now:
-            start += timedelta(1)  # start time is tomorrow!
-
-        # we now need parsed_end to come after the new parse_start
-        # (1) ---s---e---now
-        # (2) ---e---s---now
-        if end <= now:
-            end += timedelta(1)  # (1)
-        # if end <= start:
-        # bump again because its still before s
-        #    end += timedelta(1)  # (2)
-        return start, end
+    # def adjust_times(self, start, end):
+    #     """ Makes sure that a time period is in the future. """
+    #     self.log.debug("Parsed start time (unadjusted) %s", start)
+    #     self.log.debug("Parsed end time (unadjusted) %s", end)
+    #
+    #     # set start_time callback: if time passed, use tomorrow
+    #     # --------s--------n----|12am|--s(new)--------
+    #     #         \_________>>>________/
+    #     now = datetime.now()
+    #     if start <= now:
+    #         start += timedelta(1)  # start time is tomorrow!
+    #
+    #     # we now need parsed_end to come after the new parse_start
+    #     # (1) ---s---e---now
+    #     # (2) ---e---s---now
+    #     if end <= now:
+    #         end += timedelta(1)  # (1)
+    #     # if end <= start:
+    #     # bump again because its still before s
+    #     #    end += timedelta(1)  # (2)
+    #     return start, end
 
     def prepare_service_data(self):
         """
@@ -1031,28 +1060,37 @@ class Model():
         return len(v) > 0
 
     def futurize(self, timet):
-        """ Returns tomorrows time if time is in the past """
+        """ Returns tomorrows time if time is in the past.
+            Input time should be offset aware
+         """
+
         self.log.debug("-------------------- futurize ------------------------")
-        self.log.debug("Input %s ", timet)
+        self.log.debug("Input (naive) %s ", timet)
         today = date.today()
         try:
             t = datetime.combine(today, timet)
         except TypeError as e:
-            t = time
-        x = datetime.combine(today, datetime.time(datetime.now()))
+            t = timet
+        x = datetime.now()
         self.log.debug("input time: " + str(t))
+
         self.log.debug("current time: " + str(x))
         while t <= x:
             if t <= x:
-                t = t + timedelta(1)  # tomorrow!
+                if self.debug_day_length is not None:
+                    t = t + timedelta(seconds=int(self.debug_day_length) ) # tomorrow!
+                else:
+                    t = t + timedelta(1)  # tomorrow!
                 self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
             else:
                 self.log.debug( "Time still happening today. " + str(t))
         self.log.debug("output time: %s", t)
+        self.log.debug("-------------------- futurize (END) -------------------")
         return t
 
     def debug_time_wrapper(self, timet):
         """
+
             Injects some debugging capability. Number is parenthesis is the
             first delay used on initial component setup. (This creates a time
             difference between start and end time callbacks.)
@@ -1103,12 +1141,16 @@ class Model():
         self.log.debug("--------------------------------------------------")
         self.log.debug("Time Dump")
         self.log.debug("--------------------------------------------------")
-        self.log.debug("DT Now:               %s", dt.now())
-        self.log.debug("datetime Now:         %s", datetime.now())
-        self.log.debug("Next Sunrise:         %s", self.next_sunrise(True))
-        self.log.debug("Next Sunset:          %s", self.next_sunset(True))
-        self.log.debug("Sunrise:              %s", self.sunrise(True))
-        self.log.debug("Sunset:               %s", self.sunset(True))
+        self.log.debug("Start time:             %s", self._start_time_private)
+        self.log.debug("End time:               %s", self._end_time_private)
+        self.log.debug("Start time (property):  %s", self.start_time)
+        self.log.debug("End time (property):    %s", self.end_time)
+        self.log.debug("DT Now:                 %s", dt.now())
+        self.log.debug("datetime Now:           %s", datetime.now())
+        self.log.debug("Next Sunrise:           %s", self.next_sunrise(True))
+        self.log.debug("Next Sunset:            %s", self.next_sunset(True))
+        self.log.debug("Sunrise:                %s", self.sunrise(True))
+        self.log.debug("Sunset:                 %s", self.sunset(True))
         self.log.debug("--------------------------------------------------")
         self.log.debug("Sunset Diff (to now): %s",
                        self.next_sunset() - dt.now())
