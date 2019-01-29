@@ -18,6 +18,9 @@ test-component-hass-image:
       - $GITLAB_USER_LOGIN == $CI_NAME
 
   script:
+    - echo $GITLAB_USER_LOGIN
+    - echo $CI_USER
+    - echo $CI_NAME
     - docker build -t component_test -f Dockerfile.component .
     - docker run --rm component_test pytest #/usr/src/app/tests/components/test_lightingsm.py
     # -v $(pwd)/custom_components/lightingsm.py:/usr/src/app/homeassistant/components/lightingsm.py:ro 
