@@ -1,6 +1,6 @@
 {
     "lighting_sm_component": {
-      "version": "2.4.9",
+      "version": "2.4.10",
       "local_location": "custom_components/lightingsm.py",
       "remote_location": "https://raw.githubusercontent.com/danobot/entity-controller/master/custom_components/lightingsm.py",
       "visit_repo": "https://github.com/danobot/entity-controller",
