@@ -124,7 +124,8 @@ async def async_setup(hass, config):
                            dest=None)
 
     # Constrained
-    machine.add_transition(trigger='enable', source='constrained', dest='idle')
+    machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
+    machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
 
     for key, config in myconfig.items():
         _LOGGER.info("Config Item %s: %s", str(key), str(config))
