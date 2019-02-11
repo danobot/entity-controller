@@ -1,5 +1,8 @@
 # Introduction
-This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup.
+This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
+
+**Latest stable version `v2.4.9` tested on Home Assistant `v0.87.0`.**
+
 
 ![Lighting SM State Diagram](images/lighting_sm.png)
 # Requirements
