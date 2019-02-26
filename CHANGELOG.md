@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="3.0.0"></a>
+# [3.0.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.10...v3.0.0) (2019-02-26)
+
+
+### Chores
+
+* rename component, migrate to new directory/file format ([889d5cd](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/889d5cd))
+
+
+### BREAKING CHANGES
+
+* component has been renamed to entity_controller and migrated to the new file/directory format. To update your configuration, hard-replace `lightingsm` with `entity_controller` in your configuration files and Lovelace config. The directory/file format change may require you go into your `custom_components` folder and manually remove the `lightingsm.py` file and create the new directory structure.
+
+
+
 <a name="2.4.10"></a>
 ## [2.4.10](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v2.4.9...v2.4.10) (2019-02-11)
 
