@@ -395,7 +395,8 @@ class Model():
             self.timer_expires()
 
     def block_timer_expire(self):
-        self.log.debug("Blocked Timer expired")
+        self.log.debug("Blocked Timer expired - Turn off all control entities.")
+        self.turn_off_control_entities()
         self.block_timer_expires()
 
     # =====================================================
@@ -513,17 +514,7 @@ class Model():
         self._cancel_timer()  # cancel previous timer
         self.update(delay=self.lightParams.get(
             'delay'))  # no need to update immediately
-        if len(self.offEntities) > 0:
-            self.log.info(
-                "Turning on special off_entities that were defined, "
-                "instead of turning off the regular control_entities")
-            for e in self.offEntities:
-                self.log.debug("Turning on %s", e)
-                self.call_service(e, 'turn_on')
-        else:
-            for e in self.controlEntities:
-                self.log.debug("Turning off %s", e)
-                self.call_service(e, 'turn_off')
+        self.turn_off_control_entities()
 
     def on_enter_blocked(self):
         self.update(blocked_at=datetime.now())
@@ -800,6 +791,18 @@ class Model():
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )
     # =====================================================
+    def turn_off_control_entities(self):
+        if len(self.offEntities) > 0:
+            self.log.info(
+                "Turning on special off_entities that were defined, "
+                "instead of turning off the regular control_entities")
+            for e in self.offEntities:
+                self.log.debug("Turning on %s", e)
+                self.call_service(e, 'turn_on')
+        else:
+            for e in self.controlEntities:
+                self.log.debug("Turning off %s", e)
+                self.call_service(e, 'turn_off')
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
