@@ -1,8 +1,8 @@
 {
-    "lighting_sm_component": {
+    "entity_controller": {
       "version": "3.0.0",
       "local_location": "/custom_components/entity_controller/__init__.py",
-      "remote_location": "https://raw.githubusercontent.com/danobot/entity-controller/master/custom_components/lightingsm.py",
+      "remote_location": "https://raw.githubusercontent.com/danobot/entity-controller/master/custom_components/entity_controller/__init__.py",
       "visit_repo": "https://github.com/danobot/entity-controller",
       "changelog": "https://github.com/danobot/entity-controller/blob/master/CHANGELOG.md"
     }
