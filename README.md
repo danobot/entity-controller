@@ -1,5 +1,5 @@
 # Introduction
-This implementation of motion activated lighting implements a finite state machine to ensure that `MotionLight`s do not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
+This implementation of motion activated lighting implements a finite state machine to ensure that EntityController does not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
 
 **Latest stable version `v2.4.9` tested on Home Assistant `v0.87.0`.**
 
@@ -19,8 +19,8 @@ That last one can be separated into the following two requirements:
 
 This component is by far the most elegant solution I have found for this problem.
 
-# Breaking Changes
-The application was converted to a native Home Assistant component. Appdaemon is no longer required. To receive future updates, update your HA configuration by adding the `lightingsm` top-level configuration key and inside a list of motion lights as shown in the examples below.
+# Breaking Changes in `v3.0.0`
+The component has been renamed to `entity_controller` and migrated to the new file/directory format. To update your configuration, hard-replace `lightingsm` with `entity_controller` in your YAML and Lovelace configuration. The directory/file format change may require you go into your `custom_components` folder and manually remove the `lightingsm.py` file and create the new directory structure.
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
@@ -29,13 +29,13 @@ The app is quite configurable. In its most basic form, you can define the follow
 |---|---|
 |`sensor` entities| Used as triggers. When these entities turn on, your `control` entities will be switched on|
 |`control` entities| The entities you wish to switch on and off depending on `sensor` entity states.|
-|`state` entities|Unless you wish to use scenes, you need not worry about `state` entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where `control` entities do not supply a usable state*. Optional.|
-|`override` entities| The entities used to override the entire lightingsm logic. Optional.|
+|`state` entities|Unless you wish to use scenes, you need not worry about `state` entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where `control` entities do not supply a usable state*. (As is the case with `scene`.) Optional.|
+|`override` entities| The entities used to override the entire EntityController logic. Optional.|
 ## Basic Configuration
-`MotionLight` needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
+The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
 
 ```yaml
-lightingsm:
+entity_controller:
   motion_light:
     sensor: binary_sensor.living_room_motion  # required, [sensors]
     entity: light.table_lamp                  # required, [entity,entities,entity_on]
@@ -62,7 +62,7 @@ motion_light_sun:
 ```
 
 ### Home Assistant State Entities
-Since `v1.1.0`, the app creates and updates entities representing the motion light itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
+Since `v1.1.0`, the app creates and updates entities representing the EntityController itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
 
 ![HASS Entity State Attributes 1](images/state_attributes_1.png)
 ![HASS Entity State Attributes 2](images/state_attributes_2.png)
@@ -86,7 +86,7 @@ override_example:
     - input_boolean.bedroom_motion_trigger
 ```
 
-**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `lightingsm/enable` for a specific `entity_id`.
+**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `entity_controller/enable` for a specific `entity_id`.
 
 
 ### Night Mode
@@ -149,7 +149,7 @@ motion_light:
   
 ```
 ### State Entities
-It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by LightingSM. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
+It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by EntityController. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
 
 The notion of separate `state entities` allows you to keep the entity that is being controlled separate from the one that is being observed.
 
@@ -227,9 +227,9 @@ soon_test_case:
   start_time: soon
   end_time: soon-after
 ```
-# About LightingSM 
+# About EntityController 
 
-`LightingSM` is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
+EntityController is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
 
 # Automatic updates
