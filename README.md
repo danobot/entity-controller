@@ -149,7 +149,7 @@ motion_light:
   entity_off: script.fade_out_led           # required if `turn_off` does not work on `entity_on`
   
 ```
-### Block Mode Time Rescriction
+### Block Mode Time Restriction
 When `block_timeout` is defined, the controller will start a timer when the sensor is triggered and exit `blocked` state once the timeout is reached, thereby restricting the time that a controller can stay `blocked` mode. This is useful when you want the controller to turn off a light that was turned on manually.
 
 The state sequence is as follows:
