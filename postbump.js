@@ -2,7 +2,7 @@ var v = require('./package.json').version
 const replace = require('replace-in-file');
 const regex = new RegExp('VERSION = .*', 'i');
 const options = {
-    files: 'custom_components/lightingsm.py',
+    files: 'custom_components/entity_controller/__init__.py',
     from: regex,
     to: "VERSION = '"+v+"'",
 };
@@ -22,7 +22,7 @@ changes = replace.sync(options2)
 const regex3 = new RegExp('Version:          .*', 'i');
 
 const lightingsm_header = {
-    files: 'custom_components/lightingsm.py',
+    files: 'custom_components/entity_controller/__init__.py',
     from: regex3,
     to: "Version:          v"+v,
 };
