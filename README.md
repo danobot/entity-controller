@@ -3,6 +3,7 @@ This implementation of motion activated lighting implements a finite state machi
 
 **Latest stable version `v3.0.0` tested on Home Assistant `v0.88.0`.**
 
+[Donate to support development and show appreciation](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
 ![Lighting SM State Diagram](images/lighting_sm.png)
 # Requirements
@@ -148,6 +149,20 @@ motion_light:
   entity_off: script.fade_out_led           # required if `turn_off` does not work on `entity_on`
   
 ```
+### Block Mode Time Rescriction
+When `block_timeout` is defined, the controller will exit `blocked` state once the timeout is reachedm thereby restricting the time that a controller can stay `blocked`. This is useful when you want the contorller to turn off a light that was turned on manually.
+
+```yaml
+blocked_mode_demo:
+  sensor: binary_sensor.living_room_motion
+  entity: light.lounge_lamp
+  block_timeout: 160                        # in seconds (like all other time measurements)
+```
+
+**Note:** A controller enters the `blocked` state when a control entity is `on` while a sensor entity is triggered. This means the timer is not started at the moment the light is switched on. Instead, it is started when the sensor is activated. THerefore, if the light is turned off before the controller ever entered `blocked` mode, then the controller remains in `idle` state.
+
+The easiest way to make sense of it is to set up a configuration and explore the different scenarios through every day use. Then re-read the explanation in this document and it will (hopefully) make sense.
+
 ### State Entities
 It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by EntityController. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
 
@@ -211,7 +226,7 @@ diagram_test:
 |active|Momentary, intermediate state to `active_timer`. You won't see this state much as all.|
 |active_timer|Control entities have been switched on and timer is running|
 |overridden|Entity is overridden by an `override_entity`|
-|blocked|Entities in this state wanted to turn on but were blocked because one or more `state_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
+|blocked|Entities in this state wanted to turn on (a sensor entity triggered) but were blocked because one or more `control_entites`/`state_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
 |constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
 
 Note that, unless you specifically define `state_entities` in your configuration, that `control_entities == state_entities`.

@@ -66,7 +66,8 @@ async def async_setup(hass, config):
 
     myconfig = config[DOMAIN]
 
-    _LOGGER.info("Component Configuration: " + str(myconfig))
+    _LOGGER.info("If you have ANY issues with EntityController, please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
+    _LOGGER.info("Domain Configuration: " + str(myconfig))
 
     machine = Machine(states=STATES,
                       initial='idle',
@@ -115,6 +116,8 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='timer_expires', source='active_timer',
                            dest='idle',
                            conditions=['is_duration_sensor', 'is_sensor_off'])
+    machine.add_transition(trigger='block_timer_expires', source='blocked',
+                           dest='idle')
     machine.add_transition(trigger='control', source='active_timer',
                            dest='idle', conditions=['is_state_entities_off'])
 
@@ -244,6 +247,7 @@ class Model():
         self.sensorEntities = []
         self.offEntities = []
         self.timer_handle = None
+        self.block_timer_handle = None
         self.sensor_type = None
         self.night_mode = None
         self.backoff = False
@@ -390,6 +394,10 @@ class Model():
         else:
             self.timer_expires()
 
+    def block_timer_expire(self):
+        self.log.debug("Blocked Timer expired")
+        self.block_timer_expires()
+
     # =====================================================
     # S T A T E   M A C H I N E   C O N D I T I O N S
     # =====================================================
@@ -521,6 +529,14 @@ class Model():
         self.update(blocked_at=datetime.now())
         self.update(blocked_by=self._state_entity_state())
 
+        if self.block_timeout:
+            self.block_timer_handle = Timer(self.block_timeout, self.block_timer_expire)
+            self.block_timer_handle.start()
+            self.update(block_timeout=self.block_timeout)
+
+    def on_exit_blocked(self):
+        if self.block_timer_handle.is_alive():
+            self.block_timer_handle.cancel()
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
@@ -706,6 +722,7 @@ class Model():
         if "entity_off" in config:
             self.entityOff = config.get("entity_off", None)
 
+        self.block_timeout = config.get("block_timeout", None)
         self.image_prefix = config.get('image_prefix', '/fsm_diagram_')
         self.image_path = config.get('image_path', '/conf/temp')
         self.backoff = config.get('backoff', False)
