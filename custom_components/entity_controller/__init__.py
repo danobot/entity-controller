@@ -37,6 +37,7 @@ SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
 MODE_NIGHT = 'night'
+OFF_PARAMS = ['transition']
 
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
@@ -253,8 +254,11 @@ class Model():
         self.backoff = False
         self.backoff_count = 0
         self.light_params_day = {}
+        self.off_params_day = {}
         self.light_params_night = {}
+        self.off_params_night = {}
         self.lightParams = {}
+        self.offParams = {}
         self.name = None
         self.stay = False
         self.start = None
@@ -622,6 +626,9 @@ class Model():
                                                                   DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get(
                 'service_data', self.light_params_day.get('service_data'))
+            for off_param in OFF_PARAMS:
+                if off_param in self.light_params_night['service_data']:
+                    self.off_params_night[off_param] = self.light_params_night['service_data'][off_param]
 
             if not "start_time" in night_mode:
                 self.log.error("Night mode requires a start_time parameter !")
@@ -635,6 +642,9 @@ class Model():
         params['service_data'] = config.get("service_data", None)
         self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
+        for off_param in OFF_PARAMS:
+            if off_param in self.light_params_day['service_data']:
+                self.off_params_day[off_param] = self.light_params_day['service_data'][off_param]
 
     @property
     def start_time(self):
@@ -801,8 +811,13 @@ class Model():
                 self.call_service(e, 'turn_on')
         else:
             for e in self.controlEntities:
+                
                 self.log.debug("Turning off %s", e)
-                self.call_service(e, 'turn_off')
+                if self.offParams:
+                    self.call_service(e, 'turn_off',
+                                      **self.offParams)
+                else:
+                    self.call_service(e, 'turn_off')
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
@@ -1019,11 +1034,13 @@ class Model():
             self.log.debug(
                 "Using NIGHT MODE parameters: " + str(self.light_params_night))
             self.lightParams = self.light_params_night
+            self.offParams = self.off_params_night
             self.update(mode=MODE_NIGHT)
         else:
             self.log.debug(
                 "Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
+            self.offParams = self.off_params_day
             if self.night_mode is not None:
                 self.update(mode=MODE_DAY)  # only show when night mode set up
         self.update(delay=self.lightParams.get('delay'))
