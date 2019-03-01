@@ -809,8 +809,8 @@ class Model():
             for e in self.controlEntities:
 
                 self.log.debug("Turning off %s", e)
-                
-                if self.offParams:
+
+                if self.offParams is not None:
                     self.call_service(e, 'turn_off',
                                       **self.offParams)
                 else:
