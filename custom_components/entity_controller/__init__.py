@@ -13,7 +13,7 @@ import homeassistant.helpers.config_validation as cv
 
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
-    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE)
+    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE,CONF_NAME)
 from homeassistant.util import dt
 from homeassistant.helpers.entity_component import EntityComponent
 from transitions import Machine
@@ -41,11 +41,17 @@ DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
 DEFAULT_NAME = 'Entity Timer'
 
-CONF_NAME = 'name'
-CONF_CONTROL = 'entities'
+# CONF_NAME = 'slug'
+CONF_CONTROL_ENTITIES = 'entities'
+CONF_CONTROL_ENTITY = 'entity'
+CONF_CONTROL_ENTITY_ON = 'entity_on'
+CONF_CONTROL_ENTITY_OFF = 'entity_off'
+CONF_SENSOR = 'sensor'
 CONF_SENSORS = 'sensors'
-CONF_STATE = 'state_entities'
+CONF_STATE_ENTITIES = 'state_entities'
 CONF_DELAY = 'delay'
+CONF_BLOCK_TIMEOUT = 'block_timeout'
+CONF_SENSOR_TYPE = 'sensor_type_duration'
 CONF_NIGHT_MODE = 'night_mode'
 CONFIG_START_TIME = 'start_time'
 CONFIG_END_TIME = 'end_time'
@@ -55,6 +61,30 @@ STATES = ['idle', 'overridden', 'constrained', 'blocked',
 
 _LOGGER = logging.getLogger(__name__)
 devices = []
+
+ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES, 
+                           CONF_CONTROL_ENTITY, CONF_CONTROL_ENTITY_ON), {
+    # vol.Required(CONF_NAME): cv.string,
+    vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
+    vol.Optional(CONFIG_START_TIME): cv.string,
+    vol.Optional(CONFIG_END_TIME): cv.string,
+    vol.Optional(CONF_SENSOR_TYPE, default=False): cv.boolean,
+    vol.Optional(CONF_SENSOR, default=[]): cv.entity_ids,
+    vol.Optional(CONF_SENSORS, default=[]): cv.entity_ids,
+    vol.Optional(CONF_CONTROL_ENTITIES, default=[]): cv.entity_ids,
+    vol.Optional(CONF_CONTROL_ENTITY, default=[]): cv.entity_ids,
+    vol.Optional(CONF_CONTROL_ENTITY_ON, default=None): cv.entity_ids,
+    vol.Optional(CONF_CONTROL_ENTITY_OFF, default=None): cv.entity_ids,
+    vol.Optional(CONF_STATE_ENTITIES, default=[]):  cv.entity_ids,
+    vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int
+    
+}, extra=vol.ALLOW_EXTRA)
+
+CONFIG_SCHEMA = vol.Schema({
+    DOMAIN: cv.schema_with_slug_keys(ENTITY_SCHEMA),
+}, extra=vol.ALLOW_EXTRA)
+
+
 
 
 async def async_setup(hass, config):
@@ -127,8 +157,11 @@ async def async_setup(hass, config):
     # Constrained
     machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
     machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
-
+    
     for key, config in myconfig.items():
+        if not config:
+            config = {}
+        
         _LOGGER.info("Config Item %s: %s", str(key), str(config))
         config["name"] = key
         m = None
@@ -150,7 +183,7 @@ class EntityController(entity.Entity):
         self.attributes = {}
         self.may_update = False
         self.model = None
-        self.friendly_name = config.get('name', 'Motion Light')
+        self.friendly_name = config.get(CONF_NAME, 'Motion Light')
         if 'friendly_name' in config:
             self.friendly_name = config.get('friendly_name')
         try:
@@ -200,11 +233,11 @@ class EntityController(entity.Entity):
         PERSISTED_STATE_ATTRIBUTES = [
             'last_triggered_by',
             'last_triggered_at',
-            'state_entities',
+            CONF_STATE_ENTITIES,
             'control_entities',
             'sensor_entities',
             'override_entities',
-            'delay',
+            CONF_DELAY,
             'sensor_type',
             'mode',
             'start_time',
@@ -224,7 +257,7 @@ class EntityController(entity.Entity):
             self.async_schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
-        if k == 'delay':
+        if k == CONF_DELAY:
             v = str(v) + 's'
         self.attributes[k] = v
 
@@ -259,12 +292,12 @@ class Model():
         self.start = None
         self.end = None
         self.reset_count = None
-        self.log = logging.getLogger(__name__ + '.' + config.get('name'))
+        self.log = logging.getLogger(__name__ + '.' + config.get(CONF_NAME))
         self.log.setLevel(logging.DEBUG)
         self.log.debug(
             "Initialising EntityController entity with this configuration: " + str(
                 config))
-        self.name = config.get('name', 'Unnamed Entity Controller')
+        self.name = config.get(CONF_NAME, 'Unnamed Entity Controller')
         self.log.debug("Controller name: " + str(self.name))
 
         machine.add_model(
@@ -282,6 +315,9 @@ class Model():
         self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
+
+        self.log_config()
+
         # def draw(self):
         #     self.update()
         #     if self.do_draw:
@@ -345,12 +381,12 @@ class Model():
     def _start_timer(self):
         self.log.info(self.lightParams)
         if self.backoff_count == 0:
-            self.previous_delay = self.lightParams.get('delay', DEFAULT_DELAY)
+            self.previous_delay = self.lightParams.get(CONF_DELAY, DEFAULT_DELAY)
         else:
             self.log.debug(
                 "Backoff: %s,  count: %s, delay%s, factor: %s",
                 self.backoff, self.backoff_count,
-                self.lightParams.get('delay', DEFAULT_DELAY),
+                self.lightParams.get(CONF_DELAY, DEFAULT_DELAY),
                 self.backoff_factor)
             self.previous_delay = round(
                 self.previous_delay * self.backoff_factor, 2)
@@ -491,28 +527,14 @@ class Model():
 
         self.log.debug(
             "light params before turning on: " + str(self.lightParams))
-        for e in self.controlEntities:
-
-            # self.log.debug("brightness value" + str(self.lightParams.get('brightness')))
-            if self.lightParams.get('service_data') is not None:
-                self.log.debug(
-                    "Turning on %s with service parameters %s", e,
-                    self.lightParams.get(
-                        'service_data'))
-                self.call_service(e, 'turn_on',
-                                  **self.lightParams.get('service_data'))
-            else:
-                self.log.debug(
-                    "Turning on %s (no parameters passed to service call)",
-                    e)
-                self.call_service(e, 'turn_on')
+        self.turn_on_control_entities()
         self.enter()
 
     def on_exit_active(self):
         self.log.debug("Turning off entities, cancelling timer")
         self._cancel_timer()  # cancel previous timer
         self.update(delay=self.lightParams.get(
-            'delay'))  # no need to update immediately
+            CONF_DELAY))  # no need to update immediately
         self.turn_off_control_entities()
 
     def on_enter_blocked(self):
@@ -534,24 +556,26 @@ class Model():
     def config_control_entities(self, config):
 
         self.controlEntities = []
-
-        self.add(self.controlEntities, config, "entity")
-        self.add(self.controlEntities, config, "entities")
-        self.add(self.controlEntities, config, "entity_on")
+        
+        self.add(self.controlEntities, config, CONF_CONTROL_ENTITY)
+        self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
+        self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
+        self.add(self.controlEntities, config, CONF_CONTROL_ENTITY_ON)
 
         self.log.debug("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self, config):
         self.stateEntities = []
-        if config.get('state_entities', False):
-            self.stateEntities.extend(config.get('state_entities', []))
+        self.add(self.stateEntities, config, CONF_STATE_ENTITIES)
+        if len(self.stateEntities) > 0:
+            self.stateEntities.extend(config.get(CONF_STATE_ENTITIES, [])) # for some reason, config validation is not returning default value!!!
             self.log.info("State Entities (explicitly defined): " + str(
                 self.stateEntities))
             event.async_track_state_change(self.hass, self.stateEntities,
                                            self.state_entity_state_change)
 
-        # If no state entities are defined, use control entites as state
         if len(self.stateEntities) == 0:
+            # If no state entities are defined, use control entites as state
             self.stateEntities = self.controlEntities.copy()
             self.log.debug("Added Control Entities as state entities: " + str(
                 self.stateEntities))
@@ -560,14 +584,14 @@ class Model():
 
     def config_off_entities(self, config):
 
-        self.offEntities = []
-        if self.add(self.offEntities, config, "entity_off"):
+        self.offEntities = config.get(CONF_CONTROL_ENTITY_OFF, [])
+        if len(self.offEntities) > 0:
             self.log.info('Off Entities: ' + str(self.offEntities))
 
     def config_sensor_entities(self, config):
         self.sensorEntities = []
-        self.add(self.sensorEntities, config, 'sensor')
-        self.add(self.sensorEntities, config, 'sensors')
+        self.add(self.sensorEntities, config, CONF_SENSOR)
+        self.add(self.sensorEntities, config, CONF_SENSORS)
 
         if len(self.sensorEntities) == 0:
             self.log.error(
@@ -615,9 +639,9 @@ class Model():
         if "night_mode" in config:
             self.night_mode = config["night_mode"]
             night_mode = config["night_mode"]
-            self.light_params_night['delay'] = night_mode.get('delay',
+            self.light_params_night[CONF_DELAY] = night_mode.get(CONF_DELAY,
                                                               config.get(
-                                                                  "delay",
+                                                                  CONF_DELAY,
                                                                   DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get(
                 'service_data', self.light_params_day.get('service_data'))
@@ -630,9 +654,9 @@ class Model():
 
     def config_normal_mode(self, config):
         params = {}
-        params['delay'] = config.get("delay", DEFAULT_DELAY)
+        params[CONF_DELAY] = config.get(CONF_DELAY)
         params['service_data'] = config.get("service_data", None)
-        self.log.info("serivce data set up: " + str(config))
+        self.log.info("service data set up: " + str(config))
         self.light_params_day = params
 
     @property
@@ -651,7 +675,6 @@ class Model():
             self._start_time_private = config.get(CONFIG_START_TIME)
             self._end_time_private = config.get(CONFIG_END_TIME)
             self.log.debug("DEbugging start ==========================================")
-            self.dump_sun()
             start_time_parsed = self.parse_time(self.start_time)
             self.log.debug("start_time_parsed: %s",
                            start_time_parsed)
@@ -709,10 +732,10 @@ class Model():
 
         self.do_draw = config.get("draw", False)
 
-        if "entity_off" in config:
-            self.entityOff = config.get("entity_off", None)
+        if CONF_CONTROL_ENTITY_OFF in config:
+            self.entityOff = config.get(CONF_CONTROL_ENTITY_OFF)
 
-        self.block_timeout = config.get("block_timeout", None)
+        self.block_timeout = config.get(CONF_BLOCK_TIMEOUT, None)
         self.image_prefix = config.get('image_prefix', '/fsm_diagram_')
         self.image_path = config.get('image_path', '/conf/temp')
         self.backoff = config.get('backoff', False)
@@ -790,6 +813,17 @@ class Model():
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )
     # =====================================================
+    def turn_on_control_entities(self):
+        for e in self.controlEntities:
+            if self.lightParams.get('service_data') is not None:
+                self.log.debug("Turning on %s with service parameters %s", e,
+                    self.lightParams.get('service_data'))
+                self.call_service(e, 'turn_on',
+                                  **self.lightParams.get('service_data'))
+            else:
+                self.log.debug("Turning on %s (no parameters passed to service call)",
+                    e)
+                self.call_service(e, 'turn_on')
     def turn_off_control_entities(self):
         if len(self.offEntities) > 0:
             self.log.info(
@@ -1025,7 +1059,7 @@ class Model():
             self.lightParams = self.light_params_day
             if self.night_mode is not None:
                 self.update(mode=MODE_DAY)  # only show when night mode set up
-        self.update(delay=self.lightParams.get('delay'))
+        self.update(delay=self.lightParams.get(CONF_DELAY))
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
@@ -1085,28 +1119,28 @@ class Model():
             Input time should be offset aware
          """
 
-        self.log.debug("-------------------- futurize ------------------------")
-        self.log.debug("Input (naive) %s ", timet)
+        # self.log.debug("-------------------- futurize ------------------------")
+        # self.log.debug("Input (naive) %s ", timet)
         today = date.today()
         try:
             t = datetime.combine(today, timet)
         except TypeError as e:
             t = timet
         x = datetime.now()
-        self.log.debug("input time: " + str(t))
+        # self.log.debug("input time: " + str(t))
 
-        self.log.debug("current time: " + str(x))
+        # self.log.debug("current time: " + str(x))
         while t <= x:
             if t <= x:
                 if self.debug_day_length is not None:
                     t = t + timedelta(seconds=int(self.debug_day_length) ) # tomorrow!
                 else:
                     t = t + timedelta(1)  # tomorrow!
-                self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
+                # self.log.debug( "Time already happened. Returning tomorrow instead. " + str(t))
             else:
                 self.log.debug( "Time still happening today. " + str(t))
-        self.log.debug("output time: %s", t)
-        self.log.debug("-------------------- futurize (END) -------------------")
+        # self.log.debug("output time: %s", t)
+        # self.log.debug("-------------------- futurize (END) -------------------")
         return t
 
     def debug_time_wrapper(self, timet):
@@ -1158,10 +1192,17 @@ class Model():
         return s
 
 
-    def dump_sun(self):
+    def log_config(self):
         self.log.debug("--------------------------------------------------")
-        self.log.debug("Time Dump")
+        self.log.debug("       C O N F I G U R A T I O N   D U M P        ")
         self.log.debug("--------------------------------------------------")
+        self.log.debug("Entity Controller       %s", self.name)
+        self.log.debug("Sensor Entities         %s", str(self.sensorEntities))
+        self.log.debug("Control Entities:       %s", str(self.controlEntities))
+        self.log.debug("State Entities:         %s", str(self.stateEntities))
+        self.log.debug("Off Entities:           %s", str(self.offEntities))
+        self.log.debug("Light params:           %s", str(self.lightParams))
+        self.log.debug("        -------        Time        -------        ")
         self.log.debug("Start time:             %s", self._start_time_private)
         self.log.debug("End time:               %s", self._end_time_private)
         self.log.debug("Start time (property):  %s", self.start_time)
@@ -1170,9 +1211,9 @@ class Model():
         self.log.debug("datetime Now:           %s", datetime.now())
         self.log.debug("Next Sunrise:           %s", self.next_sunrise(True))
         self.log.debug("Next Sunset:            %s", self.next_sunset(True))
+        self.log.debug("        -------        Sun         -------        ")
         self.log.debug("Sunrise:                %s", self.sunrise(True))
         self.log.debug("Sunset:                 %s", self.sunset(True))
-        self.log.debug("--------------------------------------------------")
         self.log.debug("Sunset Diff (to now): %s",
                        self.next_sunset() - dt.now())
         self.log.debug("Sunrise Diff(to now): %s",

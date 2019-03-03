@@ -73,7 +73,7 @@ async def test_config_options(hass_et):
     hass.state = CoreState.starting
     _LOGGER.debug('ENTITIES @ start: %s', hass.states.async_entity_ids())
 
-    assert await async_setup_component(hass, 'lightingsm', {'lightingsm': {
+    assert await async_setup_component(hass, 'entity_controller', {'entity_controller': {
         'test': {'entity': CONTROL_ENTITY,
                  'sensor': SENSOR_ENTITY
                  },
