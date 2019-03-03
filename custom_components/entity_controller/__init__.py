@@ -16,7 +16,6 @@ from homeassistant.const import (
     SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE)
 from homeassistant.util import dt
 from homeassistant.helpers.entity_component import EntityComponent
-import logging
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from threading import Timer
@@ -94,7 +93,7 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='sensor_on', source='blocked',
                            dest='blocked')  # re-entering self-transition (on_enter callback executed.)
 
-    # Overridden      
+    # Overridden
     machine.add_transition(trigger='enable', source='overridden', dest='idle')
 
     # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
@@ -526,7 +525,7 @@ class Model():
             self.update(block_timeout=self.block_timeout)
 
     def on_exit_blocked(self):
-        if self.block_timer_handle.is_alive():
+        if self.block_timer_handle and self.block_timer_handle.is_alive():
             self.block_timer_handle.cancel()
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
@@ -609,9 +608,9 @@ class Model():
 
     def config_night_mode(self, config):
         """
-            Configured night mode parameters. If no night_mode service 
-            parameters are given, the day mode parameters are used instead. 
-            If those do not exist, the 
+            Configured night mode parameters. If no night_mode service
+            parameters are given, the day mode parameters are used instead.
+            If those do not exist, the
         """
         if "night_mode" in config:
             self.night_mode = config["night_mode"]
