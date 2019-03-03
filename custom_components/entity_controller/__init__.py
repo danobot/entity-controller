@@ -316,7 +316,6 @@ class Model():
         self.config_other(config)
         self.prepare_service_data()
 
-        self.log_config()
 
         # def draw(self):
         #     self.update()
@@ -675,6 +674,8 @@ class Model():
             self._start_time_private = config.get(CONFIG_START_TIME)
             self._end_time_private = config.get(CONFIG_END_TIME)
             self.log.debug("DEbugging start ==========================================")
+            self.log_config()
+
             start_time_parsed = self.parse_time(self.start_time)
             self.log.debug("start_time_parsed: %s",
                            start_time_parsed)
