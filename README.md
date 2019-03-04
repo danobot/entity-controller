@@ -117,11 +117,24 @@ By default, the app assumes you have a Type 1 motion sensor (event based), these
 
 In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 
-If your sensor emits both `on` and `off` signals, then add `sensor_type_duration: True` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
+If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
 
 Control entities are turned off when the following events occur (whichever happens last)
   * the timer expires and sensor is off
   * the sensor state changes to `off` and timer already expired
+
+If you want the timer to be restarted one last time when the sensor returns to `off`, then add `sensor_resets_timer: True` to your entity configuration.
+
+Notation: `[ ]` indicate internal, `( )` indicates external, `...` indicates passage of time, `->` Indicates related action
+
+**Normal sensor**
+Idle -> Active Timer -> [timer started] ... [timer expires] -> Idle
+
+**Duration Sensor**
+Idle -> Active Timer - [timer started] ... **[Timer expires] ... (sensor goes to off)** -> Idle
+
+**With `sensor_resets_timer`**
+Idle -> Active Timer -> [timer started] ... [original timer expires] ... (sensor goes to off) ... **[timer restarted] .. [timer expires]** -> Idle
 
 ## Advanced Configuration
 ### Specifying Custom Service Call Parameters
@@ -154,15 +167,13 @@ When `block_timeout` is defined, the controller will start a timer when the sens
 
 The state sequence is as follows:
 
-**With block_timeout:**
-```
-  Idle --(sensor trigger)--> Blocked --(sensor trigger)--> [Timer started] ... [Timer expires] --> idle
-```
-
 **Without block_timeout:**
-```
-  Idle --(sensor trigger)--> Blocked --(control entity is turned off)--> idle
-```
+Idle ... (sensor ON) -> Blocked ... **(control entity OFF)** -> Idle
+  
+**With block_timeout:**
+Idle ... (sensor ON) -> Blocked ... **(sensor ON) -> [Timer started] ... [Timer expires]** -> Idle
+
+
 
 **Example configuration:**
 ```yaml
