@@ -51,7 +51,9 @@ CONF_SENSORS = 'sensors'
 CONF_STATE_ENTITIES = 'state_entities'
 CONF_DELAY = 'delay'
 CONF_BLOCK_TIMEOUT = 'block_timeout'
-CONF_SENSOR_TYPE = 'sensor_type_duration'
+CONF_SENSOR_TYPE_DURATION = 'sensor_type_duration'
+CONF_SENSOR_TYPE = 'sensor_type'
+CONF_SENSOR_RESETS_TIMER = 'sensor_resets_timer'
 CONF_NIGHT_MODE = 'night_mode'
 CONFIG_START_TIME = 'start_time'
 CONFIG_END_TIME = 'end_time'
@@ -68,7 +70,9 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
     vol.Optional(CONFIG_START_TIME): cv.string,
     vol.Optional(CONFIG_END_TIME): cv.string,
-    vol.Optional(CONF_SENSOR_TYPE, default=False): cv.boolean,
+    vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
+    vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)),
+    vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
     vol.Optional(CONF_SENSOR, default=[]): cv.entity_ids,
     vol.Optional(CONF_SENSORS, default=[]): cv.entity_ids,
     vol.Optional(CONF_CONTROL_ENTITIES, default=[]): cv.entity_ids,
@@ -273,6 +277,7 @@ class Model():
     def __init__(self, hass, config, machine, entity):
         self.hass = hass  # backwards reference to hass object
         self.entity = entity  # backwards reference to entity containing this model
+        self.config = {} # new way of storing configuration (avoids having an attribue for each)
         self.debug_day_length = config.get("day_length", None)
         self.stateEntities = []
         self.controlEntities = []
@@ -354,8 +359,18 @@ class Model():
                         self.SENSOR_OFF_STATE) and self.is_duration_sensor() and self.is_active_timer():
             self.update(last_triggered_by=entity,
                         sensor_turned_off_at=datetime.now())
-            # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
-            self.sensor_off_duration()
+  
+
+            # If configured, reset timer when duration sensor goes off
+            if self.config[CONF_SENSOR_RESETS_TIMER]:
+                self.log.debug("CONF_SENSOR_RESETS_TIMER")
+                self.update(notes="The sensor turned off and reset the timeout. Timer started.")
+                self._reset_timer()
+            else:
+                # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
+                self.sensor_off_duration()
+                self.log.debug("CONF_SENSOR_RESETS_TIMER - normal")
+
 
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
@@ -503,7 +518,8 @@ class Model():
         expired = self.timer_handle.is_alive() == False
         self.log.debug("is_timer_expired -> " + str(expired))
         return expired
-
+    def does_sensor_reset_timer(self):
+        return self.config[CONF_SENSOR_RESETS_TIMER]
     # =====================================================
     # S T A T E   M A C H I N E   C A L L B A C K S
     # =====================================================
@@ -735,7 +751,9 @@ class Model():
 
         if CONF_CONTROL_ENTITY_OFF in config:
             self.entityOff = config.get(CONF_CONTROL_ENTITY_OFF)
-
+        
+        self.config[CONF_SENSOR_RESETS_TIMER] = config.get(CONF_SENSOR_RESETS_TIMER)
+        
         self.block_timeout = config.get(CONF_BLOCK_TIMEOUT, None)
         self.image_prefix = config.get('image_prefix', '/fsm_diagram_')
         self.image_path = config.get('image_path', '/conf/temp')
@@ -750,11 +768,14 @@ class Model():
 
         self.stay = config.get("stay", False)
 
-        if config.get("sensor_type_duration"):
+        if config.get(CONF_SENSOR_TYPE_DURATION):
             self.sensor_type = SENSOR_TYPE_DURATION
         else:
             self.sensor_type = SENSOR_TYPE_EVENT
 
+        if CONF_SENSOR_TYPE in config:
+            self.sensor_type = config.get(CONF_SENSOR_TYPE)
+            
         self.update(sensor_type=self.sensor_type)
 
     # =====================================================
