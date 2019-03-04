@@ -602,8 +602,8 @@ class Model():
                                        self.sensor_state_change)
 
     def config_static_strings(self, config):
-        DEFAULT_ON = ["on", "playing", "home"]
-        DEFAULT_OFF = ["off", "idle", "paused", "away"]
+        DEFAULT_ON = ["on", "playing", "home", "True"]
+        DEFAULT_OFF = ["off", "idle", "paused", "away", "False"]
         self.CONTROL_ON_STATE = config.get("control_states_on", DEFAULT_ON)
         self.CONTROL_OFF_STATE = config.get("control_states_off", DEFAULT_OFF)
         self.SENSOR_ON_STATE = config.get("sensor_states_on", DEFAULT_ON)
