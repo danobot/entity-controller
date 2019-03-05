@@ -674,7 +674,7 @@ class Model():
         params[CONF_DELAY] = config.get(CONF_DELAY)
         params['service_data'] = config.get("service_data", None)
         params['service_data_off'] = config.get("service_data_off", None)
-        self.log.info("serivce data set up: " + str(config))
+        self.log.info("Service data set up: " + str(config))
         self.light_params_day = params
 
     @property
