@@ -253,11 +253,8 @@ class Model():
         self.backoff = False
         self.backoff_count = 0
         self.light_params_day = {}
-        self.off_params_day = {}
         self.light_params_night = {}
-        self.off_params_night = {}
         self.lightParams = {}
-        self.offParams = {}
         self.name = None
         self.stay = False
         self.start = None
@@ -625,7 +622,7 @@ class Model():
                                                                   DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get(
                 'service_data', self.light_params_day.get('service_data'))
-            self.off_params_night = night_mode.get(
+            self.light_params_night['service_data_off'] = night_mode.get(
                 'service_data_off', self.light_params_day.get('service_data_off'))
 
             if not "start_time" in night_mode:
@@ -638,9 +635,9 @@ class Model():
         params = {}
         params['delay'] = config.get("delay", DEFAULT_DELAY)
         params['service_data'] = config.get("service_data", None)
+        params['service_data_off'] = config.get("service_data_off", None)
         self.log.info("serivce data set up: " + str(config))
         self.light_params_day = params
-        self.off_params_day = config.get("service_data_off", None)
 
     @property
     def start_time(self):
@@ -807,12 +804,10 @@ class Model():
                 self.call_service(e, 'turn_on')
         else:
             for e in self.controlEntities:
-
                 self.log.debug("Turning off %s", e)
-
-                if self.offParams is not None:
+                if self.lightParams.get('service_data_off') is not None:
                     self.call_service(e, 'turn_off',
-                                      **self.offParams)
+                                      **self.lightParams.get('service_data_off'))
                 else:
                     self.call_service(e, 'turn_off')
 
@@ -1031,13 +1026,11 @@ class Model():
             self.log.debug(
                 "Using NIGHT MODE parameters: " + str(self.light_params_night))
             self.lightParams = self.light_params_night
-            self.offParams = self.off_params_night
             self.update(mode=MODE_NIGHT)
         else:
             self.log.debug(
                 "Using DAY MODE parameters: " + str(self.light_params_day))
             self.lightParams = self.light_params_day
-            self.offParams = self.off_params_day
             if self.night_mode is not None:
                 self.update(mode=MODE_DAY)  # only show when night mode set up
         self.update(delay=self.lightParams.get('delay'))
