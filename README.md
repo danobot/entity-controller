@@ -117,11 +117,24 @@ By default, the app assumes you have a Type 1 motion sensor (event based), these
 
 In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 
-If your sensor emits both `on` and `off` signals, then add `sensor_type_duration: True` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
+If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
 
 Control entities are turned off when the following events occur (whichever happens last)
   * the timer expires and sensor is off
   * the sensor state changes to `off` and timer already expired
+
+If you want the timer to be restarted one last time when the sensor returns to `off`, then add `sensor_resets_timer: True` to your entity configuration.
+
+Notation: `[ ]` indicate internal, `( )` indicates external, `...` indicates passage of time, `->` Indicates related action
+
+**Normal sensor**
+Idle -> Active Timer -> [timer started] ... [timer expires] -> Idle
+
+**Duration Sensor**
+Idle -> Active Timer - [timer started] ... **[Timer expires] ... (sensor goes to off)** -> Idle
+
+**With `sensor_resets_timer`**
+Idle -> Active Timer -> [timer started] ... [original timer expires] ... (sensor goes to off) ... **[timer restarted] .. [timer expires]** -> Idle
 
 ## Advanced Configuration
 ### Specifying Custom Service Call Parameters
@@ -154,15 +167,13 @@ When `block_timeout` is defined, the controller will start a timer when the sens
 
 The state sequence is as follows:
 
-**With block_timeout:**
-```
-  Idle --(sensor trigger)--> Blocked --(sensor trigger)--> [Timer started] ... [Timer expires] --> idle
-```
-
 **Without block_timeout:**
-```
-  Idle --(sensor trigger)--> Blocked --(control entity is turned off)--> idle
-```
+Idle ... (sensor ON) -> Blocked ... **(control entity OFF)** -> Idle
+  
+**With block_timeout:**
+Idle ... (sensor ON) -> Blocked ... **(sensor ON) -> [Timer started] ... [Timer expires]** -> Idle
+
+
 
 **Example configuration:**
 ```yaml
@@ -185,10 +196,35 @@ The notion of separate `state entities` allows you to keep the entity that is be
 
 Since the release of `v1.0.0` and the introduction of `override` entities, the real use case for `state_entities` is difficult to define.
 
+**Example 1**
+One example is my porch light shown below:
 
-You can use the config key `entities` and `state_entities` to define these. For example, the configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`. The `control` entity is a `scene` which does not provide useful state information as it is in `scening` state at all times.
+```yaml
+  mtn_porch:
+    sensors: 
+      - sensor.cam_front_motion_detected
+    entities:
+      - light.porch_light
+      - script.buzz_doorbell
+```
 
-(This is the only use case for `state_entities` I have found so far. Please let me know if there are more.)
+The control entities contains a mix of entities from different domains. The state of the script entitity is non-sensical and causes issues. The controller enters active state, turns on control entities and then immediately leaves active state (going back to idle). This is because the state of the script is interpreted after turn on.
+
+In this case, you need to tell the controller exactly which entitty to observe for state. 
+```yaml
+  mtn_porch:
+    sensors: 
+      - binary_sensor.front_motion_detected
+    entities:
+      - light.porch_light
+      - script.buzz_doorbell
+    state_entities:
+      - light.porch_light
+```
+**Example 2**
+The configuration below will trigger based on the supplied sensors, the entities defined in `entities` will turn on if and only if all `state_entities` states are `false`. The `control` entity is a `scene` which does not provide useful state information as it is in `scening` state at all times.
+
+In general, you can use the config key `entities` and `state_entities` to specify these. For example, 
 
 ```yaml
 mtn_lounge:
@@ -201,7 +237,7 @@ mtn_lounge:
   delay: 300
 ```
 
-**Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. Use this advanced feature at your own risk. If you have problems, make your state entities the same as your control entities
+**Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. This is the culprit of _advanced configurations_, use at your own risk. If you have problems, make your state entities the same as your control entities, and stick to state entities with a clear state (such as lights, media players etc.)
 
 ### Customising State Strings
 The following code extract shows the default state strings that were made to represent the `on` and `off` states. These defaults can be overwritten for all entity types using the configuration keys `state_strings_on` and `state_strings_off`. For more granular control, use the entity specific configuration keys shown in the code extract below.

@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="3.2.0"></a>
+# [3.2.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.4...v3.2.0) (2019-03-04)
+
+
+### Bug Fixes
+
+* add True and False to state strings ([66d0931](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/66d0931))
+
+
+### Features
+
+* **duration sensor:** updated config keys, added validations, added `sensor_resets_timer` and updated docs ([340e27d](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/340e27d))
+
+
+
+<a name="3.1.4"></a>
+## [3.1.4](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.3...v3.1.4) (2019-03-03)
+
+
+### Bug Fixes
+
+* revert defective change ([bce14ae](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/bce14ae))
+
+
+
+<a name="3.1.3"></a>
+## [3.1.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.2...v3.1.3) (2019-03-03)
+
+
+
+<a name="3.1.2"></a>
+## [3.1.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.1...v3.1.2) (2019-03-03)
+
+
+### Bug Fixes
+
+* Check that the block timer handle is not None before accessing attr. ([#38](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/38)) ([2b36093](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/2b36093))
+
+
+
 <a name="3.1.1"></a>
 ## [3.1.1](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.0...v3.1.1) (2019-02-26)
 
