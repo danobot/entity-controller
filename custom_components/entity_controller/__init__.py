@@ -48,6 +48,8 @@ CONF_CONTROL_ENTITY_ON = 'entity_on'
 CONF_CONTROL_ENTITY_OFF = 'entity_off'
 CONF_SENSOR = 'sensor'
 CONF_SENSORS = 'sensors'
+CONF_SERVICE_DATA = 'service_data'
+CONF_SERVICE_DATA_OFF = 'service_data_off'
 CONF_STATE_ENTITIES = 'state_entities'
 CONF_DELAY = 'delay'
 CONF_BLOCK_TIMEOUT = 'block_timeout'
@@ -80,7 +82,9 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_CONTROL_ENTITY_ON, default=None): cv.entity_ids,
     vol.Optional(CONF_CONTROL_ENTITY_OFF, default=None): cv.entity_ids,
     vol.Optional(CONF_STATE_ENTITIES, default=[]):  cv.entity_ids,
-    vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int
+    vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
+    vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
+    vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict)
     
 }, extra=vol.ALLOW_EXTRA)
 
@@ -658,10 +662,10 @@ class Model():
                                                               config.get(
                                                                   CONF_DELAY,
                                                                   DEFAULT_DELAY))
-            self.light_params_night['service_data'] = night_mode.get(
-                'service_data', self.light_params_day.get('service_data'))
-            self.light_params_night['service_data_off'] = night_mode.get(
-                'service_data_off', self.light_params_day.get('service_data_off'))
+            self.light_params_night[CONF_SERVICE_DATA] = night_mode.get(
+                CONF_SERVICE_DATA, self.light_params_day.get(CONF_SERVICE_DATA))
+            self.light_params_night[CONF_SERVICE_DATA_OFF] = night_mode.get(
+                CONF_SERVICE_DATA_OFF, self.light_params_day.get(CONF_SERVICE_DATA_OFF))
 
             if not "start_time" in night_mode:
                 self.log.error("Night mode requires a start_time parameter !")
@@ -672,8 +676,8 @@ class Model():
     def config_normal_mode(self, config):
         params = {}
         params[CONF_DELAY] = config.get(CONF_DELAY)
-        params['service_data'] = config.get("service_data", None)
-        params['service_data_off'] = config.get("service_data_off", None)
+        params[CONF_SERVICE_DATA] = config.get("service_data", None)
+        params[CONF_SERVICE_DATA_OFF] = config.get("service_data_off", None)
         self.log.info("Service data set up: " + str(config))
         self.light_params_day = params
 
@@ -840,11 +844,11 @@ class Model():
     # =====================================================
     def turn_on_control_entities(self):
         for e in self.controlEntities:
-            if self.lightParams.get('service_data') is not None:
+            if self.lightParams.get(CONF_SERVICE_DATA) is not None:
                 self.log.debug("Turning on %s with service parameters %s", e,
-                    self.lightParams.get('service_data'))
+                    self.lightParams.get(CONF_SERVICE_DATA))
                 self.call_service(e, 'turn_on',
-                                  **self.lightParams.get('service_data'))
+                                  **self.lightParams.get(CONF_SERVICE_DATA))
             else:
                 self.log.debug("Turning on %s (no parameters passed to service call)",
                     e)
@@ -860,9 +864,9 @@ class Model():
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off %s", e)
-                if self.lightParams.get('service_data_off') is not None:
+                if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
                     self.call_service(e, 'turn_off',
-                                      **self.lightParams.get('service_data_off'))
+                                      **self.lightParams.get(CONF_SERVICE_DATA_OFF))
                 else:
                     self.call_service(e, 'turn_off')
 
