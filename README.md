@@ -119,7 +119,7 @@ By default, the app assumes you have a Type 1 motion sensor (event based), these
 
 In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 
-If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
+If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list). By default, the controller treats sensors as `event` sensors.
 
 Control entities are turned off when the following events occur (whichever happens last)
   * the timer expires and sensor is off

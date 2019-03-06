@@ -656,8 +656,8 @@ class Model():
             If those do not exist, the
         """
         if "night_mode" in config:
-            self.night_mode = config["night_mode"]
-            night_mode = config["night_mode"]
+            self.night_mode = config[CONF_NIGHT_MODE]
+            night_mode = config[CONF_NIGHT_MODE]
             self.light_params_night[CONF_DELAY] = night_mode.get(CONF_DELAY,
                                                               config.get(
                                                                   CONF_DELAY,
@@ -674,11 +674,11 @@ class Model():
                 self.log.error("Night mode requires a end_time parameter !")
 
     def config_normal_mode(self, config):
+        self.log.info("Service data set up")
         params = {}
         params[CONF_DELAY] = config.get(CONF_DELAY)
-        params[CONF_SERVICE_DATA] = config.get("service_data", None)
-        params[CONF_SERVICE_DATA_OFF] = config.get("service_data_off", None)
-        self.log.info("Service data set up: " + str(config))
+        params[CONF_SERVICE_DATA] = config.get(CONF_SERVICE_DATA, None)
+        params[CONF_SERVICE_DATA_OFF] = config.get(CONF_SERVICE_DATA_OFF, None)
         self.light_params_day = params
 
     @property
