@@ -13,7 +13,7 @@ import homeassistant.helpers.config_validation as cv
 
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
-    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE,CONF_NAME)
+    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE, CONF_NAME)
 from homeassistant.util import dt
 from homeassistant.helpers.entity_component import EntityComponent
 from transitions import Machine
@@ -96,9 +96,7 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     
 }, extra=vol.ALLOW_EXTRA)
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: cv.schema_with_slug_keys(ENTITY_SCHEMA),
-})
+PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 
 
 
@@ -109,7 +107,7 @@ async def async_setup(hass, config):
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
 
-    myconfig = config[DOMAIN]
+    myconfig = config[DOMAIN][0]
 
     _LOGGER.info("If you have ANY issues with EntityController, please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
     _LOGGER.info("Domain Configuration: " + str(myconfig))
@@ -704,7 +702,7 @@ class Model():
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONF_START_TIME)
             self._end_time_private = config.get(CONF_END_TIME)
-            self.log.debug("DEbugging start ==========================================")
+            # self.log.debug("Debugging start ==========================================")
             self.log_config()
 
             start_time_parsed = self.parse_time(self.start_time)
@@ -713,7 +711,7 @@ class Model():
 
             self.log.debug("futurize outputs %s", self.futurize(start_time_parsed))
 
-            self.log.debug("DEbugging end ==========================================")
+            # self.log.debug("Debugging end ==========================================")
             parsed_start = self.parse_time(self.start_time, aware=False)
             parsed_end = self.parse_time(self.end_time, aware=False)
             # parsed_start = datetime.now() + timedelta(seconds=5)
