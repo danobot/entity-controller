@@ -56,9 +56,9 @@ CONF_BLOCK_TIMEOUT = 'block_timeout'
 CONF_SENSOR_TYPE_DURATION = 'sensor_type_duration'
 CONF_SENSOR_TYPE = 'sensor_type'
 CONF_SENSOR_RESETS_TIMER = 'sensor_resets_timer'
+CONF_START_TIME = 'start_time'
+CONF_END_TIME = 'end_time'
 CONF_NIGHT_MODE = 'night_mode'
-CONFIG_START_TIME = 'start_time'
-CONFIG_END_TIME = 'end_time'
 STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
@@ -70,8 +70,8 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
                            CONF_CONTROL_ENTITY, CONF_CONTROL_ENTITY_ON), {
     # vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
-    vol.Optional(CONFIG_START_TIME): cv.string,
-    vol.Optional(CONFIG_END_TIME): cv.string,
+    vol.Optional(CONF_START_TIME): cv.string,
+    vol.Optional(CONF_END_TIME): cv.string,
     vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
     vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)),
     vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
@@ -509,8 +509,8 @@ class Model():
             return False  # if night mode is undefined, it's never night :)
         else:
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
-            return self.now_is_between(self.night_mode['start_time'],
-                                       self.night_mode['end_time'])
+            return self.now_is_between(self.night_mode[CONF_START_TIME],
+                                       self.night_mode[CONF_END_TIME])
 
     def is_event_sensor(self):
         return self.sensor_type == SENSOR_TYPE_EVENT
@@ -692,10 +692,10 @@ class Model():
         return self.debug_time_wrapper(self._end_time_private)
 
     def config_times(self, config):
-        if CONFIG_START_TIME in config and CONFIG_END_TIME in config:
+        if CONF_START_TIME in config and CONF_END_TIME in config:
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
-            self._start_time_private = config.get(CONFIG_START_TIME)
-            self._end_time_private = config.get(CONFIG_END_TIME)
+            self._start_time_private = config.get(CONF_START_TIME)
+            self._end_time_private = config.get(CONF_END_TIME)
             self.log.debug("DEbugging start ==========================================")
             self.log_config()
 
@@ -712,11 +712,11 @@ class Model():
             # parsed_end = datetime.now() + timedelta(seconds=10)
             # FOR OPTIONAL DEBUGGING: subsequently use normal delay
             sparts = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME))
+                '^(now\s*[+-]\s*\d+)', config.get(CONF_START_TIME))
             if sparts is not None:
                 self._start_time_private = sparts.group(1)
             eparts = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME))
+                '^(now\s*[+-]\s*\d+)', config.get(CONF_END_TIME))
             if eparts is not None:
                 self._end_time_private = eparts.group(1)
 
@@ -1190,7 +1190,7 @@ class Model():
             start_time: now + 5 (3)
             end_time: now + 5 (6)
 
-            This function is used to wrap CONFIG_START_TIME and CONFIG_END_TIME
+            This function is used to wrap CONF_START_TIME and CONF_END_TIME
             and should only be called by the corresponding class properties!
 
             See config_times.
