@@ -13,7 +13,7 @@ import homeassistant.helpers.config_validation as cv
 
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
-    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE,CONF_NAME)
+    SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE, CONF_NAME)
 from homeassistant.util import dt
 from homeassistant.helpers.entity_component import EntityComponent
 from transitions import Machine
@@ -48,28 +48,37 @@ CONF_CONTROL_ENTITY_ON = 'entity_on'
 CONF_CONTROL_ENTITY_OFF = 'entity_off'
 CONF_SENSOR = 'sensor'
 CONF_SENSORS = 'sensors'
+CONF_SERVICE_DATA = 'service_data'
+CONF_SERVICE_DATA_OFF = 'service_data_off'
 CONF_STATE_ENTITIES = 'state_entities'
 CONF_DELAY = 'delay'
 CONF_BLOCK_TIMEOUT = 'block_timeout'
 CONF_SENSOR_TYPE_DURATION = 'sensor_type_duration'
 CONF_SENSOR_TYPE = 'sensor_type'
 CONF_SENSOR_RESETS_TIMER = 'sensor_resets_timer'
+CONF_START_TIME = 'start_time'
+CONF_END_TIME = 'end_time'
 CONF_NIGHT_MODE = 'night_mode'
-CONFIG_START_TIME = 'start_time'
-CONFIG_END_TIME = 'end_time'
 STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
 
 _LOGGER = logging.getLogger(__name__)
 devices = []
+MODE_SCHEMA = vol.Schema({
+    vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
+    vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict),
+    vol.Required(CONF_START_TIME): cv.string,
+    vol.Required(CONF_END_TIME): cv.string,
+    vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int
+})
 
 ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES, 
                            CONF_CONTROL_ENTITY, CONF_CONTROL_ENTITY_ON), {
     # vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
-    vol.Optional(CONFIG_START_TIME): cv.string,
-    vol.Optional(CONFIG_END_TIME): cv.string,
+    vol.Optional(CONF_START_TIME): cv.string,
+    vol.Optional(CONF_END_TIME): cv.string,
     vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
     vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)),
     vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
@@ -80,13 +89,14 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_CONTROL_ENTITY_ON, default=None): cv.entity_ids,
     vol.Optional(CONF_CONTROL_ENTITY_OFF, default=None): cv.entity_ids,
     vol.Optional(CONF_STATE_ENTITIES, default=[]):  cv.entity_ids,
-    vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int
+    vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
+    vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
+    vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
+    vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict)
     
 }, extra=vol.ALLOW_EXTRA)
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: cv.schema_with_slug_keys(ENTITY_SCHEMA),
-}, extra=vol.ALLOW_EXTRA)
+PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 
 
 
@@ -97,7 +107,7 @@ async def async_setup(hass, config):
     component = EntityComponent(
         _LOGGER, DOMAIN, hass)
 
-    myconfig = config[DOMAIN]
+    myconfig = config[DOMAIN][0]
 
     _LOGGER.info("If you have ANY issues with EntityController, please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
     _LOGGER.info("Domain Configuration: " + str(myconfig))
@@ -505,8 +515,8 @@ class Model():
             return False  # if night mode is undefined, it's never night :)
         else:
             self.log.debug("NIGHT MODE ENABLED: " + str(self.night_mode))
-            return self.now_is_between(self.night_mode['start_time'],
-                                       self.night_mode['end_time'])
+            return self.now_is_between(self.night_mode[CONF_START_TIME],
+                                       self.night_mode[CONF_END_TIME])
 
     def is_event_sensor(self):
         return self.sensor_type == SENSOR_TYPE_EVENT
@@ -652,14 +662,16 @@ class Model():
             If those do not exist, the
         """
         if "night_mode" in config:
-            self.night_mode = config["night_mode"]
-            night_mode = config["night_mode"]
+            self.night_mode = config[CONF_NIGHT_MODE]
+            night_mode = config[CONF_NIGHT_MODE]
             self.light_params_night[CONF_DELAY] = night_mode.get(CONF_DELAY,
                                                               config.get(
                                                                   CONF_DELAY,
                                                                   DEFAULT_DELAY))
-            self.light_params_night['service_data'] = night_mode.get(
-                'service_data', self.light_params_day.get('service_data'))
+            self.light_params_night[CONF_SERVICE_DATA] = night_mode.get(
+                CONF_SERVICE_DATA, self.light_params_day.get(CONF_SERVICE_DATA))
+            self.light_params_night[CONF_SERVICE_DATA_OFF] = night_mode.get(
+                CONF_SERVICE_DATA_OFF, self.light_params_day.get(CONF_SERVICE_DATA_OFF))
 
             if not "start_time" in night_mode:
                 self.log.error("Night mode requires a start_time parameter !")
@@ -668,10 +680,11 @@ class Model():
                 self.log.error("Night mode requires a end_time parameter !")
 
     def config_normal_mode(self, config):
+        self.log.info("Service data set up")
         params = {}
         params[CONF_DELAY] = config.get(CONF_DELAY)
-        params['service_data'] = config.get("service_data", None)
-        self.log.info("service data set up: " + str(config))
+        params[CONF_SERVICE_DATA] = config.get(CONF_SERVICE_DATA, None)
+        params[CONF_SERVICE_DATA_OFF] = config.get(CONF_SERVICE_DATA_OFF, None)
         self.light_params_day = params
 
     @property
@@ -685,11 +698,11 @@ class Model():
         return self.debug_time_wrapper(self._end_time_private)
 
     def config_times(self, config):
-        if CONFIG_START_TIME in config and CONFIG_END_TIME in config:
+        if CONF_START_TIME in config and CONF_END_TIME in config:
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
-            self._start_time_private = config.get(CONFIG_START_TIME)
-            self._end_time_private = config.get(CONFIG_END_TIME)
-            self.log.debug("DEbugging start ==========================================")
+            self._start_time_private = config.get(CONF_START_TIME)
+            self._end_time_private = config.get(CONF_END_TIME)
+            # self.log.debug("Debugging start ==========================================")
             self.log_config()
 
             start_time_parsed = self.parse_time(self.start_time)
@@ -698,18 +711,18 @@ class Model():
 
             self.log.debug("futurize outputs %s", self.futurize(start_time_parsed))
 
-            self.log.debug("DEbugging end ==========================================")
+            # self.log.debug("Debugging end ==========================================")
             parsed_start = self.parse_time(self.start_time, aware=False)
             parsed_end = self.parse_time(self.end_time, aware=False)
             # parsed_start = datetime.now() + timedelta(seconds=5)
             # parsed_end = datetime.now() + timedelta(seconds=10)
             # FOR OPTIONAL DEBUGGING: subsequently use normal delay
             sparts = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_START_TIME))
+                '^(now\s*[+-]\s*\d+)', config.get(CONF_START_TIME))
             if sparts is not None:
                 self._start_time_private = sparts.group(1)
             eparts = re.search(
-                '^(now\s*[+-]\s*\d+)', config.get(CONFIG_END_TIME))
+                '^(now\s*[+-]\s*\d+)', config.get(CONF_END_TIME))
             if eparts is not None:
                 self._end_time_private = eparts.group(1)
 
@@ -837,11 +850,11 @@ class Model():
     # =====================================================
     def turn_on_control_entities(self):
         for e in self.controlEntities:
-            if self.lightParams.get('service_data') is not None:
+            if self.lightParams.get(CONF_SERVICE_DATA) is not None:
                 self.log.debug("Turning on %s with service parameters %s", e,
-                    self.lightParams.get('service_data'))
+                    self.lightParams.get(CONF_SERVICE_DATA))
                 self.call_service(e, 'turn_on',
-                                  **self.lightParams.get('service_data'))
+                                  **self.lightParams.get(CONF_SERVICE_DATA))
             else:
                 self.log.debug("Turning on %s (no parameters passed to service call)",
                     e)
@@ -857,7 +870,11 @@ class Model():
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off %s", e)
-                self.call_service(e, 'turn_off')
+                if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
+                    self.call_service(e, 'turn_off',
+                                      **self.lightParams.get(CONF_SERVICE_DATA_OFF))
+                else:
+                    self.call_service(e, 'turn_off')
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
@@ -1179,7 +1196,7 @@ class Model():
             start_time: now + 5 (3)
             end_time: now + 5 (6)
 
-            This function is used to wrap CONFIG_START_TIME and CONFIG_END_TIME
+            This function is used to wrap CONF_START_TIME and CONF_END_TIME
             and should only be called by the corresponding class properties!
 
             See config_times.

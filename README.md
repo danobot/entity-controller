@@ -1,7 +1,7 @@
 # Introduction
 This implementation of motion activated lighting implements a finite state machine to ensure that EntityController does not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v3.0.0` tested on Home Assistant `v0.88.0`.**
+**Latest stable version `v3.2.0` tested on Home Assistant `v0.88`.**
 
 [Donate to support development and show appreciation](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
@@ -89,6 +89,8 @@ override_example:
 
 **Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `entity_controller/enable` for a specific `entity_id`.
 
+### Specifying Custom Service Call Parameters
+Any custom service defined in the app configuration will be passed to the `turn_on` and `turn_off` calls of the control entities. Simply add a `service_data` or `service_data_off` field to the root or `night_mode` fields to pass custom service parameters along. An example is shown in _Night Mode_ documentation.
 
 ### Night Mode
 Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval or a dimmed `brightness` level at night (see *Specifying Custom Service Call Parameters* under *Advanced Configuration* for details).
@@ -117,7 +119,7 @@ By default, the app assumes you have a Type 1 motion sensor (event based), these
 
 In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 
-If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list).
+If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list). By default, the controller treats sensors as `event` sensors.
 
 Control entities are turned off when the following events occur (whichever happens last)
   * the timer expires and sensor is off
@@ -137,8 +139,6 @@ Idle -> Active Timer - [timer started] ... **[Timer expires] ... (sensor goes to
 Idle -> Active Timer -> [timer started] ... [original timer expires] ... (sensor goes to off) ... **[timer restarted] .. [timer expires]** -> Idle
 
 ## Advanced Configuration
-### Specifying Custom Service Call Parameters
-Any custom `service_data` defined in the app configuration will be passed to the `turn_on` call of the control entities. Simply add a `service_data` field to the root or `night_mode` fields to pass custom service parameters along.
 
 ### Exponential Backoff
 Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
