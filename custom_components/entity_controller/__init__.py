@@ -660,6 +660,8 @@ class Model():
                                                                   DEFAULT_DELAY))
             self.light_params_night['service_data'] = night_mode.get(
                 'service_data', self.light_params_day.get('service_data'))
+            self.light_params_night['service_data_off'] = night_mode.get(
+                'service_data_off', self.light_params_day.get('service_data_off'))
 
             if not "start_time" in night_mode:
                 self.log.error("Night mode requires a start_time parameter !")
@@ -671,7 +673,8 @@ class Model():
         params = {}
         params[CONF_DELAY] = config.get(CONF_DELAY)
         params['service_data'] = config.get("service_data", None)
-        self.log.info("service data set up: " + str(config))
+        params['service_data_off'] = config.get("service_data_off", None)
+        self.log.info("Service data set up: " + str(config))
         self.light_params_day = params
 
     @property
@@ -857,7 +860,11 @@ class Model():
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off %s", e)
-                self.call_service(e, 'turn_off')
+                if self.lightParams.get('service_data_off') is not None:
+                    self.call_service(e, 'turn_off',
+                                      **self.lightParams.get('service_data_off'))
+                else:
+                    self.call_service(e, 'turn_off')
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
