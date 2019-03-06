@@ -65,6 +65,13 @@ STATES = ['idle', 'overridden', 'constrained', 'blocked',
 
 _LOGGER = logging.getLogger(__name__)
 devices = []
+MODE_SCHEMA = vol.Schema({
+    vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
+    vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict),
+    vol.Required(CONF_START_TIME): cv.string,
+    vol.Required(CONF_END_TIME): cv.string,
+    vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int
+})
 
 ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES, 
                            CONF_CONTROL_ENTITY, CONF_CONTROL_ENTITY_ON), {
@@ -83,6 +90,7 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_CONTROL_ENTITY_OFF, default=None): cv.entity_ids,
     vol.Optional(CONF_STATE_ENTITIES, default=[]):  cv.entity_ids,
     vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
+    vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
     vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
     vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict)
     
@@ -90,7 +98,7 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: cv.schema_with_slug_keys(ENTITY_SCHEMA),
-}, extra=vol.ALLOW_EXTRA)
+})
 
 
 
