@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="3.3.0"></a>
+# [3.3.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.2.0...v3.3.0) (2019-03-06)
+
+
+### Bug Fixes
+
+* add True and False to state strings ([52ba126](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/52ba126))
+* config validation was not working ([330c4c7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/330c4c7))
+* revert defective change ([1c8208c](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/1c8208c))
+
+
+### Features
+
+* Support for custom service data for `turn_off` calls ([#36](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/36)) ([45f50cc](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/45f50cc))
+* **duration sensor:** updated config keys, added validations, added `sensor_resets_timer` and updated docs ([d7a8093](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/d7a8093))
+
+
+
 <a name="3.2.0"></a>
 # [3.2.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.1.4...v3.2.0) (2019-03-04)
 
