@@ -609,7 +609,8 @@ class Model():
 
     def config_off_entities(self, config):
 
-        self.offEntities = config.get(CONF_CONTROL_ENTITY_OFF, [])
+        self.offEntities = []
+        self.add(self.offEntities, config, CONF_CONTROL_ENTITY_OFF)
         if len(self.offEntities) > 0:
             self.log.info('Off Entities: ' + str(self.offEntities))
 
