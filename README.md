@@ -281,7 +281,19 @@ diagram_test:
 |constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
 
 Note that, unless you specifically define `state_entities` in your configuration, that `control_entities == state_entities`.
+
 # Debugging
+
+## Enabling Debug Logging
+Check the `logger` component. Adding the following should print debug logs for `entity_controller`.
+
+```
+logger:
+  default: info
+  logs:
+    custom_components.entity_controller: debug
+
+```
 ### Time constraint helpers
 You can use `soon` and `soon-after` to make the time equal the current time plus 5 and 10 seconds respectively. THis is for testing.
 
