@@ -109,7 +109,7 @@ async def async_setup(hass, config):
 
     myconfig = config[DOMAIN][0]
 
-    _LOGGER.info("If you have ANY issues with EntityController, please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
+    _LOGGER.info("If you have ANY issues with EntityController (v" + VERSION + "), please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
     _LOGGER.info("Domain Configuration: " + str(myconfig))
 
     machine = Machine(states=STATES,
@@ -609,7 +609,8 @@ class Model():
 
     def config_off_entities(self, config):
 
-        self.offEntities = config.get(CONF_CONTROL_ENTITY_OFF, [])
+        self.offEntities = []
+        self.add(self.offEntities, config, CONF_CONTROL_ENTITY_OFF)
         if len(self.offEntities) > 0:
             self.log.info('Off Entities: ' + str(self.offEntities))
 
@@ -698,12 +699,14 @@ class Model():
         return self.debug_time_wrapper(self._end_time_private)
 
     def config_times(self, config):
+        self._start_time_private = None
+        self._end_time_private = None
+        self.log_config()
         if CONF_START_TIME in config and CONF_END_TIME in config:
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONF_START_TIME)
             self._end_time_private = config.get(CONF_END_TIME)
             # self.log.debug("Debugging start ==========================================")
-            self.log_config()
 
             start_time_parsed = self.parse_time(self.start_time)
             self.log.debug("start_time_parsed: %s",
@@ -1244,8 +1247,8 @@ class Model():
         self.log.debug("        -------        Time        -------        ")
         self.log.debug("Start time:             %s", self._start_time_private)
         self.log.debug("End time:               %s", self._end_time_private)
-        self.log.debug("Start time (property):  %s", self.start_time)
-        self.log.debug("End time (property):    %s", self.end_time)
+        # self.log.debug("Start time (property):  %s", self.start_time)
+        # self.log.debug("End time (property):    %s", self.end_time)
         self.log.debug("DT Now:                 %s", dt.now())
         self.log.debug("datetime Now:           %s", datetime.now())
         self.log.debug("Next Sunrise:           %s", self.next_sunrise(True))
