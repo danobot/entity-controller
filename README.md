@@ -42,7 +42,7 @@ entity_controller:
     entity: light.table_lamp                  # required, [entity,entities,entity_on]
     delay: 300                                # optional, overwrites default delay of 180s
 ```
-**Note:** The top-level domain key `lightingsm` will be omitted in the following examples.
+**Note:** The top-level domain key `entity_controller` will be omitted in the following examples.
 
 ### Using Time Constraints
 You may wish to constrain at what time of day your motion lights are activated. You can use the `start_time` and `end_time` parameters for this.
