@@ -683,7 +683,7 @@ class Model():
     def config_normal_mode(self, config):
         self.log.info("Service data set up")
         params = {}
-        params[CONF_DELAY] = config.get(CONF_DELAY)
+        params[CONF_DELAY] = config.get(CONF_DELAY, DEFAULT_DELAY)
         params[CONF_SERVICE_DATA] = config.get(CONF_SERVICE_DATA, None)
         params[CONF_SERVICE_DATA_OFF] = config.get(CONF_SERVICE_DATA_OFF, None)
         self.light_params_day = params
