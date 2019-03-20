@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="3.3.3"></a>
+## [3.3.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.3.2...v3.3.3) (2019-03-20)
+
+
+### Bug Fixes
+
+* add default delay ([17e3811](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/17e3811)), closes [#47](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/47)
+* check state when exiting constrained ([012b94e](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/012b94e)), closes [#43](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/43)
+* update readme. closes [#45](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/issues/45) ([0bfed7e](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/0bfed7e))
+
+
+
 <a name="3.3.2"></a>
 ## [3.3.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.3.1...v3.3.2) (2019-03-20)
 
