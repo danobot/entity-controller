@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file. See [standa
 ### Bug Fixes
 
 * improve debug logging ([1bcccd1](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/1bcccd1))
-
+* **off entities** Array was populated incorrectly on start up.
 
 
 <a name="3.3.0"></a>
@@ -25,8 +25,6 @@ All notable changes to this project will be documented in this file. See [standa
 
 * add True and False to state strings ([52ba126](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/52ba126))
 * config validation was not working ([330c4c7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/330c4c7))
-* revert defective change ([1c8208c](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/1c8208c))
-
 
 ### Features
 
