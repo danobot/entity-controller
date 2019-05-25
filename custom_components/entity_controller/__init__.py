@@ -584,16 +584,14 @@ class Model():
         
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITY)
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
-        self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITY_ON)
 
         self.log.debug("Control Entities: " + str(self.controlEntities))
 
     def config_state_entities(self, config):
         self.stateEntities = []
-        self.add(self.stateEntities, config, CONF_STATE_ENTITIES)
-        if len(self.stateEntities) > 0:
-            self.stateEntities.extend(config.get(CONF_STATE_ENTITIES, [])) # for some reason, config validation is not returning default value!!!
+        self.add(self.stateEntities, config, CONF_STATE_ENTITIES) # adding optimistically
+        if len(self.stateEntities) > 0:                           # now checking whether they actually exist
             self.log.info("State Entities (explicitly defined): " + str(
                 self.stateEntities))
             event.async_track_state_change(self.hass, self.stateEntities,
@@ -852,7 +850,8 @@ class Model():
     # =====================================================
     def turn_on_control_entities(self):
         for e in self.controlEntities:
-            if self.lightParams.get(CONF_SERVICE_DATA) is not None:
+            # if light params are defined and the entity e is a light
+            if self.lightParams.get(CONF_SERVICE_DATA) is not None and 'light' in e:
                 self.log.debug("Turning on %s with service parameters %s", e,
                     self.lightParams.get(CONF_SERVICE_DATA))
                 self.call_service(e, 'turn_on',
@@ -872,7 +871,8 @@ class Model():
         else:
             for e in self.controlEntities:
                 self.log.debug("Turning off %s", e)
-                if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
+                # if light params are defined and the entity e is a light
+                if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None and 'light' in e:
                     self.call_service(e, 'turn_off',
                                       **self.lightParams.get(CONF_SERVICE_DATA_OFF))
                 else:
