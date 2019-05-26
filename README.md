@@ -1,7 +1,7 @@
 # Introduction
 This implementation of motion activated lighting implements a finite state machine to ensure that EntityController does not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v3.2.0` tested on Home Assistant `v0.88`.**
+**Latest stable version `v3.3.3` tested on Home Assistant `v0.93.1`.**
 
 [Donate to support development and show appreciation](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
@@ -39,7 +39,7 @@ The controller needs `sensors` to monitor (such as motion detectors, binary swit
 entity_controller:
   motion_light:
     sensor: binary_sensor.living_room_motion  # required, [sensors]
-    entity: light.table_lamp                  # required, [entity,entities,entity_on]
+    entity: light.table_lamp                  # required, [entity,entities]
     delay: 300                                # optional, overwrites default delay of 180s
 ```
 **Note:** The top-level domain key `entity_controller` will be omitted in the following examples.
@@ -92,13 +92,15 @@ override_example:
 ### Specifying Custom Service Call Parameters
 Any custom service defined in the app configuration will be passed to the `turn_on` and `turn_off` calls of the control entities. Simply add a `service_data` or `service_data_off` field to the root or `night_mode` fields to pass custom service parameters along. An example is shown in _Night Mode_ documentation.
 
+Note that all control entities must support the defined service data parameters. Some entities may reject unknown parameters and throw an error! In that case you may add those entities as activation/deactivation triggers instead.
+
 ### Night Mode
 Night mode allows you to use slightly different parameters at night. The use case for this is that you may want to use a shorter `delay` interval or a dimmed `brightness` level at night (see *Specifying Custom Service Call Parameters* under *Advanced Configuration* for details).
 
 ```yaml
 motion_light:
   sensor: binary_sensor.living_room_motion
-  entity_on: light.tv_led
+  entity: light.tv_led
   delay: 300
   service_data:
     brightness: 80
@@ -152,16 +154,21 @@ backoff_factor = 1.1
 
 ### Calling custom scripts
 
-You may want to call different entities for the `turn_on` and `turn_off` call. This is the case when using custom scripts. You can define `entity_on` and `entity_off`. The app will call the `turn_on` service on both and observe the state using `entity`. (You can pass along custom `service_data` as well to give script inputs.)
+You may want to use the activation and deactivation of the Entity Controller as a trigger for some other entity (most like a script). For the `turn_on`. You can define `trigger_on_activate` and `trigger_on_deactivate`. The controller will call the `turn_on` service on both and observe the state using `entity`. These trigger entities:
+* do not receive custom service data (as they may not require it)
+* have only the `turn_on` service is called on  (as they may not support anything else)
+* will not have ther state observed (as it may be meaningless, like for Script entities.)
+
+These are the primary reasons why you might need the trigger entities in your configuration.
 
 ```yaml
 motion_light:
   sensor: binary_sensor.living_room_motion
   entity: light.led                         # required
-  entity_on: script.fade_in_led             # required
-  entity_off: script.fade_out_led           # required if `turn_off` does not work on `entity_on`
-  
+  trigger_on_activate: script.fade_in_led             # required
+  trigger_on_deactivate: script.fade_out_led           # required if `turn_off` does not work for the entity you want to control, e.g. scripts
 ```
+
 ### Block Mode Time Restriction
 When `block_timeout` is defined, the controller will start a timer when the sensor is triggered and exit `blocked` state once the timeout is reached, thereby restricting the time that a controller can stay `blocked` mode. This is useful when you want the controller to turn off a light that was turned on manually.
 
