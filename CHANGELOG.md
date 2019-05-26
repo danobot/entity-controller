@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="4.0.0"></a>
+# [4.0.0](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.3.3...v4.0.0) (2019-05-26)
+
+
+### Bug Fixes
+
+* Configuration loaded with duplicate entities. Implementation of state entities was erroneous. ([414f6c7](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/414f6c7))
+
+
+### Features
+
+* Introduce trigger entities whose turn_on service is called when control entities are turned on or off. ([7dc01f6](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/commit/7dc01f6))
+
+
+### BREAKING CHANGES
+
+* rename entity_on to trigger_on_activate in your configurations!!!
+
+These trigger entities could be scripts that are called whenever control entities are being controlled in some way. For example, when the controller enters active state, control entities are switched on (as usual). At the same time, any defined trigger_on_activate entities will be turned on.
+
+
+
 <a name="3.3.3"></a>
 ## [3.3.3](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v3.3.2...v3.3.3) (2019-03-20)
 
