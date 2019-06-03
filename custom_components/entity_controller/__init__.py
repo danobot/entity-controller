@@ -25,7 +25,7 @@ from homeassistant.helpers.sun import get_astral_event_date
 
 DEPENDENCIES = ['light', 'sensor', 'binary_sensor', 'cover', 'fan',
                 'media_player']
-REQUIREMENTS = ['transitions==0.6.9']
+# REQUIREMENTS = ['transitions==0.6.9']
 
 DOMAIN = 'entity_controller'
 CONSTRAIN_START = 1
