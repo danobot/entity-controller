@@ -1,0 +1,11 @@
+{
+  "domain": "entity_controller",
+  "name": "Entity Contoller",
+  "documentation": "https://github.com/danobot/entity-controller/blob/master/README.md",
+  "requirements": [
+    "transitions==0.6.9"
+  ],
+  "dependencies": [
+  ],
+  "codeowners": ["@danobot"]
+}
