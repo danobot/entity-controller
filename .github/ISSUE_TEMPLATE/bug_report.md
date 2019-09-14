@@ -4,7 +4,7 @@ about: Create a report to help us improve
 
 ---
 
-Before opening a new issue, please take a moment to review our [**community guidelines**](https://github.com/react-boilerplate/react-boilerplate/blob/master/CONTRIBUTING.md) to make the contribution process easy and effective for everyone involved.
+Before opening a new issue, please read the documentation and search for keywords relating to your problem.
 
 ## Description
 A clear and concise description of what the bug is.
@@ -12,21 +12,16 @@ A clear and concise description of what the bug is.
 ## Configuration
 Include configuration of affected entity.
 
-## Logs
-Provide logs in DEBUG level. 
 ## Steps to reproduce
 Steps to reproduce the behavior:
-
-(Add link to a demo on https://jsfiddle.net or similar if possible)
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Actual Behaviour**
 
-## Versions
+## Logs
+Provide logs in DEBUG level. 
 
-- React-Boilerplate:
-- Node/NPM:
-- Browser:
+## Version
+If you are not using the latest version, please upgrade first.
