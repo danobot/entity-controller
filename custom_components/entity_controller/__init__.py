@@ -1,7 +1,7 @@
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v4.0.3
+Version:          v4.0.4
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -31,7 +31,7 @@ DOMAIN = 'entity_controller'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '4.0.3'
+VERSION = '4.0.4'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -73,7 +73,7 @@ MODE_SCHEMA = vol.Schema({
     vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int
 })
 
-ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES, 
+ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
                            CONF_CONTROL_ENTITY, CONF_TRIGGER_ON_ACTIVATE), {
     # vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
@@ -93,7 +93,7 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
     vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
     vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict)
-    
+
 }, extra=vol.ALLOW_EXTRA)
 
 PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
@@ -171,11 +171,11 @@ async def async_setup(hass, config):
     # Constrained
     machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
     machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
-    
+
     for key, config in myconfig.items():
         if not config:
             config = {}
-        
+
         _LOGGER.info("Config Item %s: %s", str(key), str(config))
         config["name"] = key
         m = None
@@ -371,7 +371,6 @@ class Model():
                         self.SENSOR_OFF_STATE) and self.is_duration_sensor() and self.is_active_timer():
             self.update(last_triggered_by=entity,
                         sensor_turned_off_at=datetime.now())
-  
 
             # If configured, reset timer when duration sensor goes off
             if self.config[CONF_SENSOR_RESETS_TIMER]:
@@ -602,9 +601,8 @@ class Model():
     # =====================================================
 
     def config_control_entities(self, config):
-
         self.controlEntities = []
-        
+
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITY)
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
 
@@ -789,9 +787,9 @@ class Model():
         #     self.entityOff = config.get(CONF_TRIGGER_ON_DEACTIVATE)
         # if CONF_TRIGGER_ON_ACTIVATE in config:
         #     self.entityOn = config.get(CONF_TRIGGER_ON_ACTIVATE)
-        
+
         self.config[CONF_SENSOR_RESETS_TIMER] = config.get(CONF_SENSOR_RESETS_TIMER)
-        
+
         self.block_timeout = config.get(CONF_BLOCK_TIMEOUT, None)
         self.image_prefix = config.get('image_prefix', '/fsm_diagram_')
         self.image_path = config.get('image_path', '/conf/temp')
@@ -813,7 +811,7 @@ class Model():
 
         if CONF_SENSOR_TYPE in config:
             self.sensor_type = config.get(CONF_SENSOR_TYPE)
-            
+
         self.update(sensor_type=self.sensor_type)
 
     # =====================================================
@@ -913,14 +911,13 @@ class Model():
         self.turn_off_special_entities()
         for e in self.controlEntities:
             self.log.debug("Turning off %s", e)
-            
+
             if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
                 self.call_service(e, 'turn_off',
                                     **self.lightParams.get(CONF_SERVICE_DATA_OFF))
             else:
                 self.call_service(e, 'turn_off')
 
-   
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
         end_time = (self._parse_time(end_time_str, name))["datetime"]

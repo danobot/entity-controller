@@ -4,10 +4,10 @@ issueConfigs:
 
   - content:
     - Description
-    - Steps to reproduce
-    - Versions
     - Configuration
+    - Steps to reproduce
     - Logs
+    - Version
 
   - content:
     - Is your feature request related to a problem
