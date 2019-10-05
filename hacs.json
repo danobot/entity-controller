@@ -1,0 +1,6 @@
+{
+  "name": "Entity Controller",
+  "content_in_root": true,
+  "filename": "custom_components/entity_controller/__init__.py",
+  "homeassistant": "0.90.1"
+}
