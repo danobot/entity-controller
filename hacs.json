@@ -1,5 +1,4 @@
 {
   "name": "Entity Controller",
-  "content_in_root": true,
   "homeassistant": "0.90.1"
 }
