@@ -11,6 +11,7 @@ import logging
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
+from homeassistant.core import callback
 from homeassistant.helpers import entity, service, event
 from homeassistant.const import (
     SUN_EVENT_SUNSET, SUN_EVENT_SUNRISE, CONF_NAME)
@@ -264,6 +265,7 @@ class EntityController(entity.Entity):
         self.attributes = att
         self.do_update()
 
+    @callback
     def do_update(self, wait=False, **kwargs):
         """ Schedules an entity state update with HASS """
         # _LOGGER.debug("Scheduled update with HASS")
@@ -357,6 +359,7 @@ class Model():
     # S T A T E   C H A N G E   C A L L B A C K S
     # =====================================================
 
+    @callback
     def sensor_state_change(self, entity, old, new):
         """ State change callback for sensor entities """
         self.log.debug("Sensor state change: " + new.state)
@@ -383,6 +386,7 @@ class Model():
                 self.log.debug("CONF_SENSOR_RESETS_TIMER - normal")
 
 
+    @callback
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
         self.log.debug("Override state change")
@@ -395,6 +399,7 @@ class Model():
                         self.OVERRIDE_OFF_STATE) and self.is_override_state_off() and self.is_overridden():
             self.enable()
 
+    @callback
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
         if self.is_active_timer():
@@ -818,12 +823,14 @@ class Model():
     #    E V E N T   C A L L B A C K S
     # =====================================================
 
+    @callback
     def constrain_entity(self, evt):
         """
             Event callback used on component setup if current time requires entity to start in constrained state.
         """
         self.constrain()
 
+    @callback
     def end_time_callback(self, evt):
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
@@ -847,6 +854,7 @@ class Model():
         # must be down here to make sure new callback is set regardless of exceptions
         self.constrain()
 
+    @callback
     def start_time_callback(self, evt):
         """
 
