@@ -50,10 +50,10 @@ release:
     - git config receive.advertisePushOptions true
     - git checkout -B "$CI_COMMIT_REF_NAME" "$CI_COMMIT_SHA"
     - npm run release
-    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab/HA/appdaemon-motion-lights.git --follow-tags master:master
+    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags master:master
     - git checkout develop
     - git merge master
-    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab/HA/appdaemon-motion-lights.git --follow-tags develop:develop
+    - git push http://${CI_USER}:${CI_ACCESS_TOKEN}@gitlab.danielha.tk:80/HA/appdaemon-motion-lights.git --follow-tags develop:develop
 # test:
 #   script:
 #     - docker build -t ci_test -f Dockerfile.ci-test .
