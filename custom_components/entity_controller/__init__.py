@@ -1162,8 +1162,9 @@ class Model():
             params = kwargs
 
         params['entity_id'] = entity
-
-        self.hass.services.call(domain, service, kwargs)
+        self.hass.async_create_task(
+            self.hass.services.async_call(domain, service, kwargs)
+        )
         self.update(service_data=kwargs)
 
     def matches(self, value, list):
