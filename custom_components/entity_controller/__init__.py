@@ -155,6 +155,9 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='sensor_off_duration',
                            source='active_timer', dest='idle',
                            conditions=['is_timer_expired'])
+
+    # The following two transitions must be kept seperate because they have 
+    # special conditional logic that cannot be combined.
     machine.add_transition(trigger='timer_expires', source='active_timer',
                            dest='idle', conditions=['is_event_sensor'])
     machine.add_transition(trigger='timer_expires', source='active_timer',
@@ -453,7 +456,7 @@ class Model():
         return True
 
     def timer_expire(self):
-        # self.log.debug("Timer expired")
+        self.log.debug("Timer expired")
         if self.is_duration_sensor() and self.is_sensor_on():  # Ignore timer expiry because duration sensor overwrites timer
             self.update(expires_at="pending sensor")
         else:
@@ -1152,6 +1155,7 @@ class Model():
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
+        self.log.debug("Calling service " + entity + " " + service)
         domain, e = entity.split('.')
         params = {}
         if kwargs is not None:
