@@ -1,7 +1,7 @@
 # Introduction
 This implementation of motion activated lighting implements a finite state machine to ensure that EntityController does not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v4.0.1` tested on Home Assistant `v0.96.5`.**
+**Latest stable version `v4.0.1` tested on Home Assistant `0.100.3`.**
 
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
@@ -15,13 +15,10 @@ Motion lights have the following requirements (R) that I discussed in detail [on
 
 That last one can be separated into the following two requirements:
 
-* (3.1) A light that is already on should not be affected by time outs.
+* (3.1) A light that is already on should not be affected by time outs. (EC should ignore it)
 * (3.2) A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
 
 This component is by far the most elegant solution I have found for this problem.
-
-# Breaking Changes in `v3.0.0`
-The component has been renamed to `entity_controller` and migrated to the new file/directory format. To update your configuration, hard-replace `lightingsm` with `entity_controller` in your YAML and Lovelace configuration. The directory/file format change may require you go into your `custom_components` folder and manually remove the `lightingsm.py` file and create the new directory structure.
 
 # Configuration
 The app is quite configurable. In its most basic form, you can define the following.
