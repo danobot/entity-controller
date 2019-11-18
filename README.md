@@ -1,27 +1,31 @@
 # Introduction
-This implementation of motion activated lighting implements a finite state machine to ensure that EntityController does not interfere with the rest of your home automation setup. The use cases for this component are endless because you can use any entity as inputs (there is no restriction to motion sensors and lights).
+Entity Controller (EC) is an implementation of "When This, Then That" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v4.0.1` tested on Home Assistant `0.100.3`.**
+**Latest stable version `v4.1.0` tested on Home Assistant `0.100.3`.**
 
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
-![Lighting SM State Diagram](images/lighting_sm.png)
+![Entity Controller State Diagram](images/state_diagram.png)
 # Requirements
-Motion lights have the following requirements (R) that I discussed in detail [on my blog](https://www.danielha.tk/2018/05/17/appdaemon-motion-lights.html).
+This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
+* (1) turn on **control entities** when **state entities** are triggered
+* (2) turn off **control entities** when **state entities** remain off for some time
+* (3) Do not interfere with manually controlled entities (tricky and not so obvious)
+* (3.1) An entity that is already on should not be affected by time outs. (EC should ignore it)
+* (3.2) An entity that is manually controlled within the time-out period should have its timer cancelled, and therefore stay on.
 
-1. turn on when motion is detected
-2. turn off when no motion is detected after some timeout
-3. Do not interfere with manually activated lights (tricky and less than obvious)
+In the original context of motion lighting, this means:
 
-That last one can be separated into the following two requirements:
+* (1) turn on light when motion is detected
+* (2) turn off light when no motion is detected for some time
+* (3) Do not interfere with manually activated lights 
+* (3.1) A light that is already on must not be controlled. (EC should ignore it)
+* (3.2) A light that is dimmed (or color changed) within the time-out period should have its EC timer cancelled, and therefore stay on.
 
-* (3.1) A light that is already on should not be affected by time outs. (EC should ignore it)
-* (3.2) A light that is switched on within the time-out period should have its timer cancelled, and therefore stay on.
-
-This component is by far the most elegant solution I have found for this problem.
+This FSM implementation is by far the most elegant solution I have found for this problem as the typical "if/else" algorythm got way out of hand and unmanagable.
 
 # Configuration
-The app is quite configurable. In its most basic form, you can define the following.
+The app is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
 
 |Configuration|Description|
 |---|---|
@@ -29,12 +33,13 @@ The app is quite configurable. In its most basic form, you can define the follow
 |`control` entities| The entities you wish to switch on and off depending on `sensor` entity states.|
 |`state` entities|Unless you wish to use scenes, you need not worry about `state` entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where `control` entities do not supply a usable state*. (As is the case with `scene`.) Optional.|
 |`override` entities| The entities used to override the entire EntityController logic. Optional.|
+
 ## Basic Configuration
 The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
 
 ```yaml
 entity_controller:
-  motion_light:
+  motion_light:                               # serves as a name
     sensor: binary_sensor.living_room_motion  # required, [sensors]
     entity: light.table_lamp                  # required, [entity,entities]
     delay: 300                                # optional, overwrites default delay of 180s
@@ -47,16 +52,16 @@ You may wish to constrain at what time of day your motion lights are activated. 
 motion_light:
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
-  start_time: '00:00:00'                # required
-  end_time: '00:30:00'                  # required
+  start_time: '00:00:00'                      # required
+  end_time: '00:30:00'                        # required
 ```
 Time values relative to sunset/sunrise are supported and use the following syntax:
 ```yaml
 motion_light_sun:
   sensor: binary_sensor.living_room_motion
   entity: light.table_lamp
-  start_time: sunset - 00:30:00                # required
-  end_time: sunrise + 00:30:00                 # required
+  start_time: sunset - 00:30:00               # required
+  end_time: sunrise + 00:30:00                # required
 ```
 
 ### Home Assistant State Entities
