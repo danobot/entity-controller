@@ -23,19 +23,25 @@ In the original context of motion lighting, this means:
 * (3.2) A light that is dimmed (or color changed) within the time-out period should have its EC timer cancelled, and therefore stay on.
 
 This FSM implementation is by far the most elegant solution I have found for this problem as the typical "if/else" algorythm got way out of hand and unmanagable.
+# Terminology
+Control entities
+: EC will control these entities by turning them on or off.
+
+State entities
+: EC will observe the state of these entities and use it to trigger events (in cases where control entities do not supply a sensible state, for example scripts)
 
 # Configuration
 The app is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
 
 |Configuration|Description|
 |---|---|
-|`sensor` entities| Used as triggers. When these entities turn on, your `control` entities will be switched on|
-|`control` entities| The entities you wish to switch on and off depending on `sensor` entity states.|
-|`state` entities|Unless you wish to use scenes, you need not worry about `state` entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where `control` entities do not supply a usable state*. (As is the case with `scene`.) Optional.|
-|`override` entities| The entities used to override the entire EntityController logic. Optional.|
+|control entities| The entities you wish to switch on and off depending on _sensor_ entity states.|
+|sensor entities| Used as triggers. When these entities turn on, your _control entities_ will be switched on|
+|state entities|Unless you wish to use non-stateful entities, you need not worry about state entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where control entities do not supply a usable state*. (As is the case with `scene`.) Optional.|
+|override entities| The entities used to override the entire EC logic. Optional.|
 
 ## Basic Configuration
-The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, etc) as well as an entity to control (such as a light).
+The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, weather, etc) as well as an entity to control (such as a light).
 
 ```yaml
 entity_controller:
@@ -65,16 +71,19 @@ motion_light_sun:
 ```
 
 ### Home Assistant State Entities
-Since `v1.1.0`, the app creates and updates entities representing the EntityController itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
+Since `v1.1.0`, the app creates and updates entities representing the EC itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
 
 ![HASS Entity State Attributes 1](images/state_attributes_1.png)
+
 ![HASS Entity State Attributes 2](images/state_attributes_2.png)
+
 ![HASS Entity State Attributes 3](images/state_attributes_3.png)
 
 These can be referenced in various `sensor` and `automation` configurations.
 
 ### Overrides
-You can define entities who block the motion light from turning on if those entities are in any defined `on` state. This allows you to enable/disable your app based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
+You can define entities which stop EC from transitioning into `active` state if those entities are in `on` state. This allows you to enable/disable your controller based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
+
 ```yaml
 override_example:
   sensor: 
@@ -89,7 +98,9 @@ override_example:
     - input_boolean.bedroom_motion_trigger
 ```
 
-**Note:** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `entity_controller/enable` for a specific `entity_id`.
+**Note 1** `input_boolean`s can be controlled in automations via the `input_boolean.turn_on`, `input_boolean.turn_off` and `input_boolean.toggle` services. This allows you to enable/disable your app based on automations! Services will be implemented in the future such as `entity_controller/enable` for a specific `entity_id`.
+
+**Note 2:** You will inevitably run into a situation where your entity produces new states that EC does not know about -- a vacuum might be in `vacuuming` state, as opposed to `on`. Check the section on "custom state strings" for information on how to get around this.
 
 ### Specifying Custom Service Call Parameters
 Any custom service defined in the app configuration will be passed to the `turn_on` and `turn_off` calls of the control entities. Simply add a `service_data` or `service_data_off` field to the root or `night_mode` fields to pass custom service parameters along. An example is shown in _Night Mode_ documentation.
@@ -156,7 +167,7 @@ backoff_factor = 1.1
 
 ### Calling custom scripts
 
-You may want to use the activation and deactivation of the Entity Controller as a trigger for some other entity (most like a script). For the `turn_on`. You can define `trigger_on_activate` and `trigger_on_deactivate`. The controller will call the `turn_on` service on both and observe the state using `entity`. These trigger entities:
+You may want to use the activation and deactivation of EC as a trigger for some other entity (most like a script). For the `turn_on`. You can define `trigger_on_activate` and `trigger_on_deactivate`. The controller will call the `turn_on` service on both and observe the state using `entity`. These trigger entities:
 * do not receive custom service data (as they may not require it)
 * have only the `turn_on` service is called on  (as they may not support anything else)
 * will not have ther state observed (as it may be meaningless, like for Script entities.)
@@ -192,14 +203,14 @@ blocked_mode_demo:
   block_timeout: 160                        # in seconds (like all other time measurements)
 ```
 
-**Note 1:** A controller enters the `blocked` state when a control entity is `on` while a sensor entity is triggered. This means the timer is not started at the moment the light is switched on. Instead, it is started when the sensor is activated. Therefore, if the light is turned off before the controller ever entered `blocked` mode, then the controller remains in `idle` state.
+**Note 1:** EC enters the `blocked` state when a control entity is `on` while a sensor entity is triggered. This means the timer is not started at the moment the light is switched on. Instead, it is started when the sensor is activated. Therefore, if the light is turned off before the controller ever entered `blocked` mode, then the controller remains in `idle` state.
 
-**Note 2:** The entity controller component is designed to avoid any interference with external automations that might affect control entities. Using the `block_timeout` directly violates this principle. If you see unintended interference, reconsider your configuration and remove the `block_timeout` functionality if necessary.
+**Note 2:** EC is designed to avoid any interference with external automations that might affect control entities. Using the `block_timeout` directly violates this principle. If you see unintended interference, reconsider your configuration and remove the `block_timeout` functionality if necessary.
 
 The easiest way to make sense of it is to set up a configuration and explore the different scenarios through every day use. Then re-read the explanation in this document and it will (hopefully) make sense.
 
 ### State Entities
-It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by EntityController. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
+It is possible to separate control entities and state entities. **Control entities** are the entities that are being turned on and off by EC. **State entities**, on the other hand, are used to observe state. In a basic configuration, your control entities are the same as your state entities (handled internally).
 
 The notion of separate `state entities` allows you to keep the entity that is being controlled separate from the one that is being observed.
 
@@ -248,7 +259,7 @@ mtn_lounge:
 
 **Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. This is the culprit of _advanced configurations_, use at your own risk. If you have problems, make your state entities the same as your control entities, and stick to state entities with a clear state (such as lights, media players etc.)
 
-### Customising State Strings
+### Custom State Strings
 The following code extract shows the default state strings that were made to represent the `on` and `off` states. These defaults can be overwritten for all entity types using the configuration keys `state_strings_on` and `state_strings_off`. For more granular control, use the entity specific configuration keys shown in the code extract below.
 
 ```python
@@ -282,8 +293,8 @@ diagram_test:
 
 |State|Description|
 |---|---|
-|idle|Entity observing states, nothing else.|
-|active|Momentary, intermediate state to `active_timer`. You won't see this state much as all.|
+|idle|EC is observing states, nothing else.|
+|active|Momentary, intermediate state to `active_timer`. You won't see EC in this state much at all.|
 |active_timer|Control entities have been switched on and timer is running|
 |overridden|Entity is overridden by an `override_entity`|
 |blocked|Entities in this state wanted to turn on (a sensor entity triggered) but were blocked because one or more `control_entites`/`state_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
@@ -314,9 +325,9 @@ soon_test_case:
   start_time: soon
   end_time: soon-after
 ```
-# About EntityController 
+# About Entity Controller 
 
-EntityController is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
+EC is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
 
 # Automatic updates
