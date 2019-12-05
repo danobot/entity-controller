@@ -175,6 +175,8 @@ async def async_setup(hass, config):
     # Constrained
     machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
     machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
+    # Enter blocked state when component is enabled and entity is on
+    machine.add_transition(trigger='blocked', source='constrained', dest='blocked')
 
     for key, config in myconfig.items():
         if not config:
