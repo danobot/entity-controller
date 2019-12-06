@@ -31,7 +31,7 @@ State entities
 : EC will observe the state of these entities and use it to trigger events (in cases where control entities do not supply a sensible state, for example scripts)
 
 # Configuration
-The app is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
+EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
 
 |Configuration|Description|
 |---|---|
@@ -71,7 +71,7 @@ motion_light_sun:
 ```
 
 ### Home Assistant State Entities
-Since `v1.1.0`, the app creates and updates entities representing the EC itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
+Since `v1.1.0`, EC creates and updates entities representing the EC itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
 
 ![HASS Entity State Attributes 1](images/state_attributes_1.png)
 
@@ -103,7 +103,7 @@ override_example:
 **Note 2:** You will inevitably run into a situation where your entity produces new states that EC does not know about -- a vacuum might be in `vacuuming` state, as opposed to `on`. Check the section on "custom state strings" for information on how to get around this.
 
 ### Specifying Custom Service Call Parameters
-Any custom service defined in the app configuration will be passed to the `turn_on` and `turn_off` calls of the control entities. Simply add a `service_data` or `service_data_off` field to the root or `night_mode` fields to pass custom service parameters along. An example is shown in _Night Mode_ documentation.
+Any custom service defined in EC configuration will be passed to the `turn_on` and `turn_off` calls of the control entities. Simply add a `service_data` or `service_data_off` field to the root or `night_mode` fields to pass custom service parameters along. An example is shown in _Night Mode_ documentation.
 
 Note that all control entities must support the defined service data parameters. Some entities may reject unknown parameters and throw an error! In that case you may add those entities as activation/deactivation triggers instead.
 
@@ -130,7 +130,7 @@ There are two types of motion sensors:
   1. Sends a signal when motion happens (instantaneous event)
   2. Sends a signal when motion happens, stays on for the duration of motion and sends an `off` signal when motion supposedly ceases. (duration)
 
-By default, the app assumes you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
+By default, EC assumes you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
 
 In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 

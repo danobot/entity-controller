@@ -1,7 +1,7 @@
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v4.1.0
+Version:          v4.1.1
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -32,7 +32,7 @@ DOMAIN = 'entity_controller'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '4.1.0'
+VERSION = '4.1.1'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -175,6 +175,8 @@ async def async_setup(hass, config):
     # Constrained
     machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
     machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
+    # Enter blocked state when component is enabled and entity is on
+    machine.add_transition(trigger='blocked', source='constrained', dest='blocked')
 
     for key, config in myconfig.items():
         if not config:
