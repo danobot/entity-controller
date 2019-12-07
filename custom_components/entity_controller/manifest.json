@@ -7,5 +7,6 @@
   ],
   "dependencies": [
   ],
-  "codeowners": ["@danobot"]
+  "codeowners": ["@danobot"],
+  "homeassistant": "0.102.3"
 }
