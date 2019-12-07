@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="4.1.3"></a>
+## [4.1.3](https://github.com/danobot/entity-controller/compare/v4.1.2...v4.1.3) (2019-12-07)
+
+
+
 <a name="4.1.2"></a>
 ## [4.1.2](https://gitlab.danielha.tk/HA/appdaemon-motion-lights/compare/v4.1.1...v4.1.2) (2019-12-07)
 
