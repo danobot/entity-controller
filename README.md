@@ -1,11 +1,12 @@
 # Introduction
 Entity Controller (EC) is an implementation of "When This, Then That" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v4.1.0` tested on Home Assistant `0.100.3`.**
+**Latest stable version `v4.1.1` tested on Home Assistant `0.102.3`.**
 
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
 ![Entity Controller State Diagram](images/state_diagram.png)
+
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
 * (1) turn on **control entities** when **state entities** are triggered

@@ -1,0 +1,85 @@
+@startuml
+
+[*] --> Idle
+[*] --> Constrained : SETUP [is_within_constrain_period]
+' ['idle', 'overridden', 'constrained', 'blocked', {'name': 'active', 'children': ['timer', 'stay_on'],
+
+' machine.add_transition(trigger='constrain', source='*', dest='constrained')
+Idle --> Constrained : CONSTRAIN
+Blocked --> Constrained : CONSTRAIN
+state Active {
+  [*] --> ActiveTimer : ENTER [!will_stay_on]
+  [*] --> ActiveStayOn : ENTER [will_stay_on]
+}
+Active --> Overridden : OVERRIDE
+Active --> Constrained : CONSTRAIN
+Overridden --> Constrained : CONSTRAIN
+' machine.add_transition(trigger='override',
+'                        source=['idle', 'active_timer', 'blocked'],
+'                        dest='overridden')
+Idle --> Overridden : OVERRIDE
+Blocked --> Overridden : OVERRIDE
+ActiveTimer --> Overridden : OVERRIDE
+' # Idle
+' machine.add_transition(trigger='sensor_on', source='idle', dest='active',
+'                        conditions=['is_state_entities_off'])
+Idle --> Active : SENSOR_ON [is_state_entities_off]
+
+' machine.add_transition(trigger='sensor_on', source='idle', dest='blocked',
+'                        conditions=['is_state_entities_on'])
+Idle --> Blocked : SENSOR_ON [is_state_entities_on]
+
+' # Blocked
+' machine.add_transition(trigger='enable', source='blocked', dest='idle')
+Blocked --> Idle : ENABLE
+' machine.add_transition(trigger='sensor_on', source='blocked',
+'                        dest='blocked')  # re-entering self-transition (on_enter callback executed.)
+Blocked --> Blocked : SENSOR_ON (required for on_enter callback)
+' # Overridden
+' machine.add_transition(trigger='enable', source='overridden', dest='idle')
+Overridden --> Idle : ENABLE
+' # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
+' Overridden --> None : SENSOR_OFF
+' machine.add_transition(trigger='enter', source='active',
+'                        dest='active_timer', unless='will_stay_on')
+
+' machine.add_transition(trigger='enter', source='active',
+'                        dest='active_stay_on', conditions='will_stay_on')
+
+' # Active Timer
+' machine.add_transition(trigger='sensor_on', source='active_timer',
+'                        dest=None, after='_reset_timer')
+
+' # machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
+' machine.add_transition(trigger='sensor_off_duration',
+'                        source='active_timer', dest='idle',
+'                        conditions=['is_timer_expired'])
+ActiveTimer --> Idle : SENSOR_OFF_DURATION [is_timer_expired]
+
+' # The following two transitions must be kept seperate because they have 
+' # special conditional logic that cannot be combined.
+' machine.add_transition(trigger='timer_expires', source='active_timer',
+'                        dest='idle', conditions=['is_event_sensor'])
+ActiveTimer --> Idle : TIMER_EXPIRES [is_event_sensor]
+' machine.add_transition(trigger='timer_expires', source='active_timer',
+'                        dest='idle',
+'                        conditions=['is_duration_sensor', 'is_sensor_off'])
+ActiveTimer --> Idle : TIMER_EXPIRES [is_duration_sensor, is_sensor_off]
+' machine.add_transition(trigger='block_timer_expires', source='blocked',
+'                        dest='idle')
+Blocked --> Idle : BLOCK_TIMER_EXPIRES
+' machine.add_transition(trigger='control', source='active_timer',
+'                        dest='idle', conditions=['is_state_entities_off'])
+ActiveTimer --> Idle : CONTROL [is_state_entities_off]
+' # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
+' machine.add_transition(trigger='timer_expires', source='active_stay_on',
+'                        dest=None)
+
+' # Constrained
+' machine.add_transition(trigger='enable', source='constrained', dest='idle', conditions=['is_override_state_off'])
+Constrained --> Idle : ENABLE [is_override_state_off]
+' machine.add_transition(trigger='enable', source='constrained', dest='overridden', conditions=['is_override_state_on'])
+Constrained --> Overridden : ENABLE [is_override_state_on]
+
+
+@enduml
