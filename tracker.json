@@ -1,6 +1,6 @@
 {
     "entity_controller": {
-      "version": "4.1.3",
+      "version": "4.1.4",
       "local_location": "/custom_components/entity_controller/__init__.py",
       "remote_location": "https://raw.githubusercontent.com/danobot/entity-controller/master/custom_components/entity_controller/__init__.py",
       "visit_repo": "https://github.com/danobot/entity-controller",
