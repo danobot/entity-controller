@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="4.1.6"></a>
+## [4.1.6](https://github.com/danobot/entity-controller/compare/v4.1.5...v4.1.6) (2019-12-17)
+
+
+### Bug Fixes
+
+* rollback implementation for [#98](https://github.com/danobot/entity-controller/issues/98), defective ([66a7a00](https://github.com/danobot/entity-controller/commit/66a7a00))
+
+
+
 <a name="4.1.5"></a>
 ## [4.1.5](https://github.com/danobot/entity-controller/compare/v4.1.4...v4.1.5) (2019-12-17)
 
