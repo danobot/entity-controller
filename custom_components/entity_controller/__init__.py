@@ -170,8 +170,8 @@ async def async_setup(hass, config):
                            dest='idle')
     machine.add_transition(trigger='control', source='active_timer',
                            dest='idle', conditions=['is_state_entities_off'])
-    machine.add_transition(trigger='control', source='active_timer',
-                           dest='blocked', conditions=['is_state_entities_on'])
+    # machine.add_transition(trigger='control', source='active_timer',
+    #                        dest='blocked', conditions=['is_state_entities_on'])
 
     # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     machine.add_transition(trigger='timer_expires', source='active_stay_on',
