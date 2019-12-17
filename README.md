@@ -7,6 +7,11 @@ Entity Controller (EC) is an implementation of "When This, Then That" using a fi
 
 ![Entity Controller State Diagram](images/state_diagram.png)
 
+# 📢 Are you a Python developer? 
+
+Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
+All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
+
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
 * (1) turn on **control entities** when **state entities** are triggered
