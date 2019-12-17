@@ -71,6 +71,7 @@ Blocked --> Idle : BLOCK_TIMER_EXPIRES
 ' machine.add_transition(trigger='control', source='active_timer',
 '                        dest='idle', conditions=['is_state_entities_off'])
 ActiveTimer --> Idle : CONTROL [is_state_entities_off]
+ActiveTimer --> Blocked : CONTROL [is_state_entities_on]
 ' # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
 ' machine.add_transition(trigger='timer_expires', source='active_stay_on',
 '                        dest=None)
