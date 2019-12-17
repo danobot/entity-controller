@@ -1,7 +1,7 @@
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v4.1.4
+Version:          v4.1.5
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -32,7 +32,7 @@ DOMAIN = 'entity_controller'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '4.1.4'
+VERSION = '4.1.5'
 SENSOR_TYPE_DURATION = 'duration'
 SENSOR_TYPE_EVENT = 'event'
 MODE_DAY = 'day'
@@ -64,7 +64,10 @@ STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
 
+FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
+logging.basicConfig(format=FORMAT)
 _LOGGER = logging.getLogger(__name__)
+
 devices = []
 MODE_SCHEMA = vol.Schema({
     vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
@@ -317,8 +320,9 @@ class Model():
         self.start = None
         self.end = None
         self.reset_count = None
+        logging.setFormatter(logging.Formatter(FORMAT))
         self.log = logging.getLogger(__name__ + '.' + config.get(CONF_NAME))
-        self.log.setLevel(logging.DEBUG)
+        
         self.log.debug(
             "Initialising EntityController entity with this configuration: " + str(
                 config))
