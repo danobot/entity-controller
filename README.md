@@ -3,14 +3,16 @@ Entity Controller (EC) is an implementation of "When This, Then That" using a fi
 
 **Latest stable version `v4.1.1` tested on Home Assistant `0.102.3`.**
 
+## 📢 Are you a seasoned Python developer? 📢
+
+Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
+
+All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
+
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
 ![Entity Controller State Diagram](images/state_diagram.png)
 
-# 📢 Are you a Python developer? 
-
-Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
-All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
 
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
@@ -312,14 +314,19 @@ Note that, unless you specifically define `state_entities` in your configuration
 
 ## Enabling Debug Logging
 Check the `logger` component. Adding the following should print debug logs for `entity_controller`.
+If you have multiple instances, you can narrow down logs by adding the instance name. e.g. `custom_components.entity_controller.motion_lounge`.
 
-```
+Note that the default logging is `critical` to allow you to focus on EC log output.
+
+```yaml
 logger:
-  default: info
+  default: critical
   logs:
     custom_components.entity_controller: debug
 
 ```
+
+
 ### Time constraint helpers
 You can use `soon` and `soon-after` to make the time equal the current time plus 5 and 10 seconds respectively. THis is for testing.
 
@@ -336,18 +343,12 @@ soon_test_case:
 EC is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
 
-# Automatic updates
-Use the `custom_updater` component to track updates.
-
-```yaml
-custom_updater:
-  track:
-    - components
-  component_urls:
-    - https://raw.githubusercontent.com/danobot/entity-controller/master/tracker.json
-```
+# Automatic updates using HACS
+EC is available on the Home Assistant Community Store (HACS). This is the recommended installation method to benefit from automated updates and quick release adoption. 
 
 # Contributions
-All contributions are welcome, including raising issues.
+All contributions are welcome, including raising issues. Expect to be involved in the resolution of any issues. 
+
+The `close-issue` bot is ruthless. Please provide all requested information to allow me to help you.
 
 
