@@ -2,7 +2,7 @@
 Entity Controller (EC) is an implementation of "When This, Then That" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
 
-![Entity Controller State Diagram](images/state_diagram.png)
+![Entity Controller State Diagram](https://github.com/danobot/entity-controller/blob/master/images/state_diagram.png?raw=true)
 
 ## Basic Configuration
 The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, weather, etc) as well as an entity to control (such as a light).
