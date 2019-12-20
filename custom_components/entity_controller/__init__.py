@@ -60,6 +60,7 @@ CONF_SENSOR_RESETS_TIMER = 'sensor_resets_timer'
 CONF_START_TIME = 'start_time'
 CONF_END_TIME = 'end_time'
 CONF_NIGHT_MODE = 'night_mode'
+CONF_STATE_ATTRIBUTES_IGNORE = 'state_attributes_ignore'
 STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
@@ -95,6 +96,7 @@ ENTITY_SCHEMA = vol.Schema(cv.has_at_least_one_key(CONF_CONTROL_ENTITIES,
     vol.Optional(CONF_STATE_ENTITIES, default=[]):  cv.entity_ids,
     vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
     vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
+    vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
     vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(dict), # Default must be none because we differentiate between set and unset
     vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict)
 
@@ -310,6 +312,7 @@ class Model():
         self.block_timer_handle = None
         self.sensor_type = None
         self.night_mode = None
+        self.state_attributes_ignore = []
         self.backoff = False
         self.backoff_count = 0
         self.light_params_day = {}
@@ -342,6 +345,7 @@ class Model():
         self.config_normal_mode(config)
         self.config_night_mode(
             config)  # must come after normal_mode (uses normal mode parameters if not set)
+        self.config_state_attributes_ignore(config)
         self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
@@ -413,6 +417,21 @@ class Model():
     @callback
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
+
+        # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
+        try:
+            if old.state == new.state:  # Only attributes changed
+                # Build two dictionaries of attributes, excluding the ones we don't want to monitor
+                old_temp = {key: old.attributes[key] for key in old.attributes if key not in self.state_attributes_ignore}
+                new_temp = {key: new.attributes[key] for key in new.attributes if key not in self.state_attributes_ignore}
+                if old_temp == new_temp:
+                    self.log.debug("insignificant attribute only change")
+                    return
+                self.log.debug("significant attribute only change")
+        except AttributeError:
+            # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
+            pass
+
         if self.is_active_timer():
             self.control()
 
@@ -719,6 +738,10 @@ class Model():
 
             if not "end_time" in night_mode:
                 self.log.error("Night mode requires a end_time parameter !")
+
+    def config_state_attributes_ignore(self, config):
+        self.add(self.state_attributes_ignore, config, CONF_STATE_ATTRIBUTES_IGNORE)
+        self.log.debug("Ignoring state changes that on the following attributes: %s", self.state_attributes_ignore)
 
     def config_normal_mode(self, config):
         self.log.info("Service data set up")
@@ -1304,6 +1327,7 @@ class Model():
         self.log.debug("State Entities:         %s", str(self.stateEntities))
         self.log.debug("Activate Trigger E.:    %s", str(self.triggerOnActivate))
         self.log.debug("Deactivate Trigger E.:  %s", str(self.triggerOnDeactivate))
+        self.log.debug("Ignored state attrs:    %s", str(self.state_attributes_ignore))
         self.log.debug("Light params:           %s", str(self.lightParams))
         self.log.debug("        -------        Time        -------        ")
         self.log.debug("Start time:             %s", self._start_time_private)
