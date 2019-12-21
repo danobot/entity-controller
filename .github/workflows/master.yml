@@ -1,0 +1,44 @@
+name: Release HA component
+
+on:
+  push:
+    branches: 
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setting up Node
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+    - name: Preparing release
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        npm install
+        npm run release
+        echo ::set-env name=PACKAGE_VERSION::$(node -p -e "require('./package.json').version")  
+      env:
+        CI: true
+    - name: Push to master
+      uses: ad-m/github-push-action@v0.5.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Merge back to develop
+      uses: ad-m/github-push-action@v0.5.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: develop
+    - name: Create Github Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: v${{ env.PACKAGE_VERSION }}
+        release_name: ${{ env.PACKAGE_VERSION }}
+        draft: false
+        prerelease: false
