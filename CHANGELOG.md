@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="4.2.0"></a>
+# [4.2.0](https://github.com/danobot/entity-controller/compare/v4.1.6...v4.2.0) (2019-12-21)
+
+
+### Features
+
+* Allow customization of which attribute changes are considered a manual change, closes [#109](https://github.com/danobot/entity-controller/issues/109) ([#112](https://github.com/danobot/entity-controller/issues/112)) ([f0ea2a1](https://github.com/danobot/entity-controller/commit/f0ea2a1))
+
+
+
 <a name="4.1.6"></a>
 ## [4.1.6](https://github.com/danobot/entity-controller/compare/v4.1.5...v4.1.6) (2019-12-17)
 
