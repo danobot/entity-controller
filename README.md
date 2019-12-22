@@ -1,5 +1,5 @@
 # Introduction
-Entity Controller (EC) is an implementation of "When This, Then That" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
+Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
 **Latest stable version `v4.1.1` tested on Home Assistant `0.102.3`.**
 
@@ -16,10 +16,10 @@ All the boilerplate for Pytest is set up, but I got stuck mocking the passage of
 
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
-* (1) turn on **control entities** when **state entities** are triggered
-* (2) turn off **control entities** when **state entities** remain off for some time
+* (1) turn on **control entities** when **sensor entities** are triggered
+* (2) turn off **control entities** when **sensor entities** remain off for some time
 * (3) Do not interfere with manually controlled entities (tricky and not so obvious)
-* (3.1) An entity that is already on should not be affected by time outs. (EC should ignore it)
+* (3.1) An entity that is already on should not be affected by time outs. (EC should ignore it and not start a timer)
 * (3.2) An entity that is manually controlled within the time-out period should have its timer cancelled, and therefore stay on.
 
 In the original context of motion lighting, this means:
@@ -27,29 +27,41 @@ In the original context of motion lighting, this means:
 * (1) turn on light when motion is detected
 * (2) turn off light when no motion is detected for some time
 * (3) Do not interfere with manually activated lights 
-* (3.1) A light that is already on must not be controlled. (EC should ignore it)
+* (3.1) A light that is already on must not be controlled. (EC should ignore it and not start a timer)
 * (3.2) A light that is dimmed (or color changed) within the time-out period should have its EC timer cancelled, and therefore stay on.
 
 This FSM implementation is by far the most elegant solution I have found for this problem as the typical "if/else" algorythm got way out of hand and unmanagable.
-# Terminology
-Control entities
-: EC will control these entities by turning them on or off.
 
-State entities
-: EC will observe the state of these entities and use it to trigger events (in cases where control entities do not supply a sensible state, for example scripts)
+## State Meaning
+
+|State|Description|
+|---|---|
+|idle|EC is observing states, nothing else.|
+|active|Momentary, intermediate state. You won't see EC in this state much at all.|
+|active_timer|Control entities have been switched on and timer is running|
+|active_stay_on|Control entities have been switched on and will remain on until they are switched off manually.|
+|overridden|Entity is overridden by an `override_entity`|
+|blocked|When a control entity is already in `on` state and a sensor entity is triggered, EC will enter the `blocked` state. This is to ensure the controller does not interfere with other automations or manual control. The idea is, if the entity is already on, then the problem is already taken care of. EC will return to **idle** state once all `control_entites` return to `off` state.|
+|constrained|Current time is outside of `start_time` and `end_time`. EC is inactive until `start_time`.|
+
+Note that `control_entities == state_entities` unless you specifically define `state_entities` in your configuration.
+
+
 
 # Configuration
 EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
 
 |Configuration|Description|
 |---|---|
-|control entities| The entities you wish to switch on and off depending on _sensor_ entity states.|
+|control entities| The entities you wish to switch on and off depending on _sensor_ entity states. EC will control these entities by turning them on or off.|
 |sensor entities| Used as triggers. When these entities turn on, your _control entities_ will be switched on|
 |state entities|Unless you wish to use non-stateful entities, you need not worry about state entities. Essentially, they allow you to define specific entities that will be used for state observation *in cases where control entities do not supply a usable state*. (As is the case with `scene`.) Optional.|
 |override entities| The entities used to override the entire EC logic. Optional.|
 
 ## Basic Configuration
 The controller needs `sensors` to monitor (such as motion detectors, binary switches, doors, weather, etc) as well as an entity to control (such as a light).
+
+![Basic Controller](images/basic.gif)
 
 ```yaml
 entity_controller:
@@ -59,6 +71,11 @@ entity_controller:
     delay: 300                                # optional, overwrites default delay of 180s
 ```
 **Note:** The top-level domain key `entity_controller` will be omitted in the following examples.
+
+**Blocked state demonstration**
+R3.1 is implemented using the **blocked** state. See demo below:
+
+![Block demo](images/blocked.gif)
 
 ### Using Time Constraints
 You may wish to constrain at what time of day your motion lights are activated. You can use the `start_time` and `end_time` parameters for this.
@@ -78,19 +95,20 @@ motion_light_sun:
   end_time: sunrise + 00:30:00                # required
 ```
 
-### Home Assistant State Entities
-Since `v1.1.0`, EC creates and updates entities representing the EC itself. Beyond basic state (e.g. active, idle, disabled, etc.), this provides additional  state attributes as shown below.
-
-![HASS Entity State Attributes 1](images/state_attributes_1.png)
-
-![HASS Entity State Attributes 2](images/state_attributes_2.png)
-
-![HASS Entity State Attributes 3](images/state_attributes_3.png)
-
-These can be referenced in various `sensor` and `automation` configurations.
+# Stay on
+This simple option will keep EC in **active_stay_on** state indefinitely until the control entity is manually turned off.
+```yaml
+override_example:
+  sensor: binary_sensor.lounge_motion
+  entity: light.lounge_lamp
+  delay: 5
+  stay: true
+```
 
 ### Overrides
 You can define entities which stop EC from transitioning into `active` state if those entities are in `on` state. This allows you to enable/disable your controller based on environmental conditions such as "when I am watching TV" or "when the train is late" (seriously...).
+
+![Override Demo](images/override.gif)
 
 ```yaml
 override_example:
@@ -138,33 +156,60 @@ There are two types of motion sensors:
   1. Sends a signal when motion happens (instantaneous event)
   2. Sends a signal when motion happens, stays on for the duration of motion and sends an `off` signal when motion supposedly ceases. (duration)
 
-By default, EC assumes you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used.
+By default, EC assumes you have a Type 1 motion sensor (event based), these are more useful in home automation because they supply raw, unfiltered and unprocessed data. No assumptions are made about how the motion event data will be used. Since entties are stateful, the motion sensor entity in the demo below is on for only a brief period. EC only cares about the state change from `off` to `on`. In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed. Check out my [`processor` component](https://github.com/danobot/mqtt_payload_processor) for more info.
 
-In the future, there will be support for listening to HA events as well, which means the need to create 'dummy' `binary_sensors` for motion sensors is removed.
 
-If your sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list). By default, the controller treats sensors as `event` sensors.
 
-Control entities are turned off when the following events occur (whichever happens last)
+If your motion sensor emits both `on` and `off` signals, then add `sensor_type: duration` to your configuration. This can be useful for motion sensors, door sensors and locks (not an exhaustive list). By default, the controller treats sensors as `event` sensors.
+
+Control entities are turned off when the following events occur (whichever happens last):
   * the timer expires and sensor is off
   * the sensor state changes to `off` and timer already expired
 
+The following demo shows the behaviour in those two scenarios:
+
+
+
 If you want the timer to be restarted one last time when the sensor returns to `off`, then add `sensor_resets_timer: True` to your entity configuration.
 
-Notation: `[ ]` indicate internal, `( )` indicates external, `...` indicates passage of time, `->` Indicates related action
+#### Sensor Type Demonstrations
+
+Notation for state transition demonstrations: 
+* `[ ]` indicate internal event, 
+* `( )` indicates external influence (sensor state change), 
+* `...` indicates passage of time,
+* `->` Indicates flow
 
 **Normal sensor**
-Idle -> Active Timer -> [timer started] ... [timer expires] -> Idle
+
+> Idle -> Active Timer -> [timer started] ... [timer expires] -> Idle
+
+![Event Demo](images/event.gif)
 
 **Duration Sensor**
-Idle -> Active Timer - [timer started] ... **[Timer expires] ... (sensor goes to off)** -> Idle
+
+> Idle -> Active Timer -> [timer started] ... **[timer expires] ... (sensor goes to off)** -> Idle
+
+![Duration Demo](images/duration.gif)
 
 **With `sensor_resets_timer`**
-Idle -> Active Timer -> [timer started] ... [original timer expires] ... (sensor goes to off) ... **[timer restarted] .. [timer expires]** -> Idle
+
+> Idle -> Active Timer -> [timer started] ... [timer expires] ... (sensor goes to off) ... **[timer restarted] ... [timer expires]** -> Idle
+
+![Duration Demo](images/duration_sensor_resets_timer.gif)
+
+### Home Assistant State Entities
+Since `v1.1.0`, EC creates and updates entities representing the EC itself. Beyond basic state (e.g. active, idle, overridden, etc.), this provides additional state attributes which update dynamically based on the state of the controller. See GIF animations for examples..
+
+These can be referenced in various `sensor` and `automation` configurations and extracted using `state-attributes-card` and template sensors.
 
 ## Advanced Configuration
 
 ### Exponential Backoff
 Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
+
+![Backoff demo](images/backoff.gif)
+
 The graph below shows the relationship between number of sensor triggers and timeout values for the shown parameters.
 ```
 delay = 60
@@ -196,11 +241,15 @@ When `block_timeout` is defined, the controller will start a timer when the sens
 The state sequence is as follows:
 
 **Without block_timeout:**
-Idle ... (sensor ON) -> Blocked ... **(control entity OFF)** -> Idle
-  
-**With block_timeout:**
-Idle ... (sensor ON) -> Blocked ... **(sensor ON) -> [Timer started] ... [Timer expires]** -> Idle
 
+> Idle ... (sensor ON) -> Blocked ... **(control entity OFF)** -> Idle
+  
+![block timeout demo](images/blocked.gif)
+**With block_timeout:**
+
+> Idle ... (sensor ON) -> Blocked ... **(sensor ON) -> [Timer started] ... [Timer expires]** -> Idle
+
+![block timeout demo](images/block_timeout.gif)
 
 
 **Example configuration:**
@@ -311,18 +360,6 @@ By default, any attribute change is considered significant and will qualify for 
         - brightness
         - color_temp
 ```
-# State Meaning
-
-|State|Description|
-|---|---|
-|idle|EC is observing states, nothing else.|
-|active|Momentary, intermediate state to `active_timer`. You won't see EC in this state much at all.|
-|active_timer|Control entities have been switched on and timer is running|
-|overridden|Entity is overridden by an `override_entity`|
-|blocked|Entities in this state wanted to turn on (a sensor entity triggered) but were blocked because one or more `control_entites`/`state_entities` are already in an `on` state. Entity will return to idle state once all `control_entites` (or `state_entities`, if configured) return to `off` state|
-|constrained|Current time is outside of `start_time` and `end_time`. Entity is inactive until `start_time`|
-
-Note that, unless you specifically define `state_entities` in your configuration, that `control_entities == state_entities`.
 
 # Debugging
 
