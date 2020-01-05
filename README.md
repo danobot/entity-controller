@@ -19,7 +19,7 @@ This component started out as an AppDaemon script implementation of motion activ
 * (1) turn on **control entities** when **sensor entities** are triggered
 * (2) turn off **control entities** when **sensor entities** remain off for some time
 * (3) Do not interfere with manually controlled entities (tricky and not so obvious)
-* (3.1) An entity that is already on should not be affected by time outs. (EC should ignore it and not start a timer)
+* (3.1) An entity that is already on should not be affected by time outs. (EC should ignore it and not start a timer,[Read more on my blog...](https://danielbkr.net/2018/03/20/motion-sensor-lights.html#problem-motion-lights-turn-off-manually-controlled-lights-after-time-out-period-expires))
 * (3.2) An entity that is manually controlled within the time-out period should have its timer cancelled, and therefore stay on.
 
 In the original context of motion lighting, this means:
@@ -393,6 +393,12 @@ soon_test_case:
 
 EC is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
+## Related Research and Development
+
+* [Motion Lighting - first steps (superceded)](https://danielbkr.net/2018/03/20/motion-sensor-lights.html)
+* [Motion Lighting requirements - A complete guide](https://danielbkr.net/2018/05/17/appdaemon-motion-lights.html)
+* [Home Assistant priority locks concept](https://danielbkr.net/2018/08/25/ha-priority-locks.html)
+* [How to: Set up Stateless Motion Binary Sensors](https://danielbkr.net/2018/03/19/rf-binary-sensors.html)
 
 # Automatic updates using HACS
 EC is available on the Home Assistant Community Store (HACS). This is the recommended installation method to benefit from automated updates and quick release adoption. 

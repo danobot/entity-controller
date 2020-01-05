@@ -417,7 +417,7 @@ class Model():
     @callback
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
-
+        self.log.trace("state_entity_state_change :: [%s] - old: %s, new: %s", str(entity), str(old), str(new))
         # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
             if old.state == new.state:  # Only attributes changed
@@ -428,8 +428,9 @@ class Model():
                     self.log.debug("insignificant attribute only change")
                     return
                 self.log.debug("significant attribute only change")
-        except AttributeError:
+        except AttributeError as a:
             # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
+            self.log.debug("Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: " + str(a))
             pass
 
         if self.is_active_timer():
@@ -741,7 +742,7 @@ class Model():
 
     def config_state_attributes_ignore(self, config):
         self.add(self.state_attributes_ignore, config, CONF_STATE_ATTRIBUTES_IGNORE)
-        self.log.debug("Ignoring state changes that on the following attributes: %s", self.state_attributes_ignore)
+        self.log.debug("Ignoring state changes on the following attributes: %s", self.state_attributes_ignore)
 
     def config_normal_mode(self, config):
         self.log.info("Service data set up")
