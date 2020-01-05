@@ -25,7 +25,7 @@ hide empty description
 
 ' machine.add_transition(trigger='constrain', source='*', dest='constrained')
 Idle --> Constrained : CONSTRAIN
-Blocked --> Constrained : CONSTRAIN
+Blocked -right-> Constrained : CONSTRAIN
 state Active {
   [*] --> ActiveTimer : ENTER [!will_stay_on]
   [*] --> ActiveStayOn : ENTER [will_stay_on]
@@ -37,7 +37,7 @@ Overridden -left-> Constrained : CONSTRAIN
 '                        source=['idle', 'active_timer', 'blocked'],
 '                        dest='overridden')
 Idle --> Overridden : OVERRIDE
-Blocked --> Overridden : OVERRIDE
+Blocked -right-> Overridden : OVERRIDE
 ActiveTimer --> Overridden : OVERRIDE
 ' # Idle
 ' machine.add_transition(trigger='sensor_on', source='idle', dest='active',
