@@ -36,8 +36,19 @@ Blocked --> Idle : ENABLE
 '                        dest='blocked')  # re-entering self-transition (on_enter callback executed.)
 Blocked --> Blocked : SENSOR_ON (required for on_enter callback)
 ' # Overridden
-' machine.add_transition(trigger='enable', source='overridden', dest='idle')
-Overridden --> Idle : ENABLE
+' machine.add_transition(trigger='enable', source='overridden', dest='idle',
+'            conditions=['is_state_entities_off'])
+Overridden --> Idle : ENABLE ['is_state_entities_off']
+' machine.add_transition(trigger='enable', source='overridden', dest='active',
+'            conditions=['is_state_entities_on', 'is_event_sensor'])
+Overridden --> Active : ENABLE ['is_state_entities_on', 'is_event_sensor']
+' machine.add_transition(trigger='enable', source='overridden', dest='active',
+'            conditions=['is_state_entities_on', 'is_sensor_on'])
+Overridden --> Active : ENABLE ['is_state_entities_on', 'is_sensor_on']
+' machine.add_transition(trigger='enable', source='overridden', dest='idle',
+'            conditions=['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off'])
+Overridden --> Idle : ENABLE ['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off']
+
 ' # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
 ' Overridden --> None : SENSOR_OFF
 ' machine.add_transition(trigger='enter', source='active',
@@ -65,9 +76,16 @@ ActiveTimer --> Idle : TIMER_EXPIRES [is_event_sensor]
 '                        dest='idle',
 '                        conditions=['is_duration_sensor', 'is_sensor_off'])
 ActiveTimer --> Idle : TIMER_EXPIRES [is_duration_sensor, is_sensor_off]
-' machine.add_transition(trigger='block_timer_expires', source='blocked',
-'                        dest='idle')
-Blocked --> Idle : BLOCK_TIMER_EXPIRES
+' machine.add_transition(trigger='block_timer_expires', source='blocked', dest='active',
+'            conditions=['is_state_entities_on', 'is_event_sensor'])
+Blocked --> Active : BLOCK_TIMER_EXPIRES ['is_state_entities_on', 'is_event_sensor']
+' machine.add_transition(trigger='block_timer_expires', source='blocked', dest='active',
+'            conditions=['is_state_entities_on', 'is_sensor_on'])
+Blocked --> Active : BLOCK_TIMER_EXPIRES ['is_state_entities_on', 'is_sensor_on']
+' machine.add_transition(trigger='block_timer_expires', source='blocked', dest='idle',
+'            conditions=['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off'])
+Blocked --> Idle : BLOCK_TIMER_EXPIRES ['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off'
+
 ' machine.add_transition(trigger='control', source='active_timer',
 '                        dest='idle', conditions=['is_state_entities_off'])
 ActiveTimer --> Idle : CONTROL [is_state_entities_off]
@@ -84,3 +102,4 @@ Constrained --> Overridden : ENABLE [is_override_state_on]
 
 
 @enduml
+

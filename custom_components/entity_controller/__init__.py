@@ -144,7 +144,15 @@ async def async_setup(hass, config):
                            dest='blocked')  # re-entering self-transition (on_enter callback executed.)
 
     # Overridden
-    machine.add_transition(trigger='enable', source='overridden', dest='idle')
+    machine.add_transition(trigger='enable', source='overridden', dest='idle',
+            conditions=['is_state_entities_off'])
+    # If a device leaving overridden is on, we do not necessarily want to shut it off immediately. We simply want EC to stop controlling it. To do that, we'll move it to active, to simulate an EC trigger, and we'll see if it exits on its own. This works for event sensors, of course, and it will also work for duration sensors if the current state is on. A duration sensor that is off now will never expire on its own, though, so in that case, we'll assume the target is 'idle'.
+    machine.add_transition(trigger='enable', source='overridden', dest='active',
+            conditions=['is_state_entities_on', 'is_event_sensor'])
+    machine.add_transition(trigger='enable', source='overridden', dest='active',
+            conditions=['is_state_entities_on', 'is_sensor_on']) # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
+    machine.add_transition(trigger='enable', source='overridden', dest='idle',
+            conditions=['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off'])
 
     # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
 
@@ -168,8 +176,14 @@ async def async_setup(hass, config):
     machine.add_transition(trigger='timer_expires', source='active_timer',
                            dest='idle',
                            conditions=['is_duration_sensor', 'is_sensor_off'])
-    machine.add_transition(trigger='block_timer_expires', source='blocked',
-                           dest='idle')
+    # machine.add_transition(trigger='block_timer_expires', source='blocked',
+                           # dest='idle')
+    machine.add_transition(trigger='block_timer_expires', source='blocked', dest='active',
+            conditions=['is_state_entities_on', 'is_event_sensor'])
+    machine.add_transition(trigger='block_timer_expires', source='blocked', dest='active',
+            conditions=['is_state_entities_on', 'is_sensor_on']) # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
+    machine.add_transition(trigger='block_timer_expires', source='blocked', dest='idle',
+            conditions=['is_state_entities_on', 'is_duration_sensor', 'is_sensor_off'])
     machine.add_transition(trigger='control', source='active_timer',
                            dest='idle', conditions=['is_state_entities_off'])
     # machine.add_transition(trigger='control', source='active_timer',
@@ -490,8 +504,7 @@ class Model():
             self.timer_expires()
 
     def block_timer_expire(self):
-        self.log.debug("Blocked Timer expired - Turn off all control entities.")
-        self.turn_off_control_entities()
+        self.log.debug("Blocked Timer expired")
         self.block_timer_expires()
 
     # =====================================================
@@ -592,6 +605,7 @@ class Model():
     # =====================================================
     def on_enter_idle(self):
         self.log.debug("Entering idle")
+        self.turn_off_control_entities()
         self.entity.reset_state()
 
     def on_exit_idle(self):
@@ -617,7 +631,6 @@ class Model():
         self._cancel_timer()  # cancel previous timer
         self.update(delay=self.lightParams.get(
             CONF_DELAY))  # no need to update immediately
-        self.turn_off_control_entities()
 
     def on_enter_blocked(self):
         self.update(blocked_at=datetime.now())
