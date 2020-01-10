@@ -4,8 +4,9 @@ about: Create a report to help us improve
 
 ---
 
-Before opening a new issue, please read the documentation and search for keywords relating to your problem. Do not delete the issue template headers. All information must be filled for an issue to be accepted.
-Since this is an open source project expect to be involved in the issue resolution because we depend on your support.
+
+<<< Do not delete the following template headers. All information must be filled in because we need it to analyse the problem. Your issue will be auto closed without this information.
+Before opening a new issue, please read the documentation and search for keywords relating to your problem. Since this is an open source project expect to be involved in the issue resolution because we depend on your support. >>>
 
 ## Description
 A clear and concise description of what the bug is.

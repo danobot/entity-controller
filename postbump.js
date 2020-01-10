@@ -10,22 +10,14 @@ const options = {
 var changes = replace.sync(options)
 
 
-const regex2 = new RegExp('"version": .*', 'i');
-
-const options2 = {
-    files: 'tracker.json',
-    from: regex2,
-    to: "\"version\": \""+v+"\",",
-};
-changes = replace.sync(options2)
 
 const regex3 = new RegExp('Version:          .*', 'i');
 
-const lightingsm_header = {
+const header_version = {
     files: 'custom_components/entity_controller/__init__.py',
     from: regex3,
     to: "Version:          v"+v,
 };
-changes = replace.sync(lightingsm_header)
+changes = replace.sync(header_version)
 
 console.log("chore(release): " + v)
