@@ -169,7 +169,7 @@ async def async_setup(hass, config):
                            source='active_timer', dest='idle',
                            conditions=['is_timer_expired'])
 
-    # The following two transitions must be kept seperate because they have 
+    # The following two transitions must be kept seperate because they have
     # special conditional logic that cannot be combined.
     machine.add_transition(trigger='timer_expires', source='active_timer',
                            dest='idle', conditions=['is_event_sensor'])
@@ -339,7 +339,7 @@ class Model():
         self.reset_count = None
         # logging.setFormatter(logging.Formatter(FORMAT))
         self.log = logging.getLogger(__name__ + '.' + config.get(CONF_NAME))
-        
+
         self.log.debug(
             "Initialising EntityController entity with this configuration: " + str(
                 config))
@@ -645,6 +645,10 @@ class Model():
     def on_exit_blocked(self):
         if self.block_timer_handle and self.block_timer_handle.is_alive():
             self.block_timer_handle.cancel()
+
+    def on_enter_constrained(self):
+        self.log.debug("Exiting constrained")
+        self.turn_off_control_entities()
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
