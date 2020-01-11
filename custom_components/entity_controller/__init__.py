@@ -169,7 +169,7 @@ async def async_setup(hass, config):
                            source='active_timer', dest='idle',
                            conditions=['is_timer_expired'])
 
-    # The following two transitions must be kept seperate because they have 
+    # The following two transitions must be kept seperate because they have
     # special conditional logic that cannot be combined.
     machine.add_transition(trigger='timer_expires', source='active_timer',
                            dest='idle', conditions=['is_event_sensor'])
@@ -339,7 +339,7 @@ class Model():
         self.reset_count = None
         # logging.setFormatter(logging.Formatter(FORMAT))
         self.log = logging.getLogger(__name__ + '.' + config.get(CONF_NAME))
-        
+
         self.log.debug(
             "Initialising EntityController entity with this configuration: " + str(
                 config))
@@ -431,7 +431,7 @@ class Model():
     @callback
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities """
-        self.log.trace("state_entity_state_change :: [%s] - old: %s, new: %s", str(entity), str(old), str(new))
+        self.log.debug("state_entity_state_change :: [%s] - old: %s, new: %s", str(entity), str(old), str(new))
         # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
             if old.state == new.state:  # Only attributes changed
