@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="5.0.1"></a>
+## [5.0.1](https://github.com/danobot/entity-controller/compare/v5.0.0...v5.0.1) (2020-01-11)
+
+
+### Bug Fixes
+
+* remove trace logging ([b50f08b](https://github.com/danobot/entity-controller/commit/b50f08b))
+
+
+
+<a name="5.0.0"></a>
+# [5.0.0](https://github.com/danobot/entity-controller/compare/v4.2.0...v5.0.0) (2020-01-10)
+
+
+* feat!: handle overrides better ([63f7aa8](https://github.com/danobot/entity-controller/commit/63f7aa8))
+
+
+### BREAKING CHANGES
+
+* Entering the override state will no longer turn off the control entities. This was implemented with the ratiionale that overriding an EC should not cause further interaction with the control entities. If the entities are on, they remain on when transitioning from active to override state. If the entities are off, they remain off going from other states in to override state.
+If your configuration relied on this previous behaviour it will be a breaking change for you. Its unlikely your config took advantage of this weird behaviour.
+
+
+
 <a name="4.2.0"></a>
 # [4.2.0](https://github.com/danobot/entity-controller/compare/v4.1.6...v4.2.0) (2019-12-21)
 
