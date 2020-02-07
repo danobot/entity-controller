@@ -344,8 +344,6 @@ async def async_setup(hass, config):
     return True
 
 class EntityController(ToggleEntity):
-
-class EntityController(ToggleEntity):
     def __init__(self, hass, config, machine):
         self.attributes = {}
         self._is_enabled
