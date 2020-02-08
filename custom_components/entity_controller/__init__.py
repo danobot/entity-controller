@@ -7,18 +7,30 @@ Issues Tracker:   Report issues on Github. Ensure you have the latest version. I
                     * YAML configuration (for the misbehaving entity)
                     * log entries at time of error and at time of initialisation
 """
+import functools as ft
 import logging
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
 
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
+
+from homeassistant.const import (
+    CONF_NAME,
+    SERVICE_TOGGLE,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    STATE_ON,
+    SUN_EVENT_SUNRISE,
+    SUN_EVENT_SUNSET,
+)
 from homeassistant.core import callback
-from homeassistant.helpers import entity, event, service
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import event, service
+from homeassistant.helpers.entity import ToggleEntity
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
+from homeassistant.loader import bind_hass
 from homeassistant.util import dt
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
@@ -39,6 +51,8 @@ MODE_NIGHT = "night"
 DEFAULT_DELAY = 180
 DEFAULT_BRIGHTNESS = 100
 DEFAULT_NAME = "Entity Timer"
+
+ATTR_COMMAND = "command"
 
 # CONF_NAME = 'slug'
 CONF_CONTROL_ENTITIES = "entities"
@@ -69,7 +83,7 @@ STATES = [
 
 _LOGGER = logging.getLogger(__name__)
 
-devices = []
+DEVICES = []
 MODE_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
@@ -115,6 +129,18 @@ ENTITY_SCHEMA = vol.Schema(
 )
 
 PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
+
+EC_SERVICE_ACTIVITY_SCHEMA = cv.make_entity_service_schema({})
+
+@bind_hass
+def is_on(hass, entity_id):
+    """Return if the controller is on based on the state machine."""
+    return hass.states.is_state(entity_id, STATE_ON)
+
+@bind_hass
+def is_on(hass, entity_id):
+    """Return if the controller is on based on the state machine."""
+    return hass.states.is_state(entity_id, STATE_ON)
 
 
 async def async_setup(hass, config):
@@ -291,18 +317,36 @@ async def async_setup(hass, config):
         m = EntityController(hass, config, machine)
         # machine.add_model(m.model)
         # m.model.after_model(config)
-        devices.append(m)
+        DEVICES.append(m)
 
-    await component.async_add_entities(devices)
+    await component.async_add_entities(DEVICES)
+
+    component.async_register_entity_service(
+        SERVICE_TURN_OFF, EC_SERVICE_ACTIVITY_SCHEMA, "async_turn_off"
+    )
+
+    component.async_register_entity_service(
+        SERVICE_TURN_ON, EC_SERVICE_ACTIVITY_SCHEMA, "async_turn_on"
+    )
+
+    component.async_register_entity_service(
+        SERVICE_TOGGLE, EC_SERVICE_ACTIVITY_SCHEMA, "async_toggle"
+    )
+
+    component.async_register_entity_service(
+        "control",
+        {vol.Required(ATTR_COMMAND): vol.All(cv.ensure_list, [cv.string])},
+        "async_service_control",
+    )
 
     _LOGGER.info("The %s component is ready!", DOMAIN)
 
     return True
 
-
-class EntityController(entity.Entity):
+class EntityController(ToggleEntity):
     def __init__(self, hass, config, machine):
         self.attributes = {}
+        self._is_enabled
         self.may_update = False
         self.model = None
         self.friendly_name = config.get(CONF_NAME, "Motion Light")
@@ -315,6 +359,23 @@ class EntityController(entity.Entity):
                 "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities"
             )
         event.async_call_later(hass, 1, self.do_update)
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if entity controller is enabled."""
+        return self._is_enabled
+
+    def turn_on(self, **kwargs) -> None:
+        """Enable the entity controller."""
+        self._is_enabled = True
+        # TODO: IMPLEMENT A TURN_ON FUNCTION TO ENABLE CONTROLLER.
+        raise NotImplementedError()
+
+    def turn_off(self, **kwargs) -> None:
+        """Disable the entity controller."""
+        self._is_enabled = False
+        # TODO: IMPLEMENT A TURN_OFF FUNCTION TO DISABLE CONTROLLER.
+        raise NotImplementedError()
 
     @property
     def state(self):
@@ -389,6 +450,17 @@ class EntityController(entity.Entity):
     async def async_added_to_hass(self):
         """Register update dispatcher."""
         self.may_update = True
+
+    def service_control(self, command, **kwargs):
+        """Executes service control on entity controller."""
+        _LOGGER.info("Service Control Called on %s with data %r", self.name, command)
+        # TODO: IMPLEMENT ACTUAL CONTROLS.
+
+    async def async_service_control(self, command, **kwargs):
+        """Executes service control on entity controller."""
+        return self.hass.async_add_executor_job(
+            ft.partial(self.service_control, command, **kwargs)
+        )
 
 
 class Model:
