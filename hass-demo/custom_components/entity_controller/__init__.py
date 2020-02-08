@@ -1,4 +1,9 @@
 """
+!!! IF YOU ARE LOOKING FOR THE PYTHON SCRIPT, THIS IS NOT THE CORRECT ONE           !!!
+!!! SEE custom_components/entity_controller/                                        !!!
+!!! YOU ARE VIEWING A SAMPLE HOME ASSISTANT INSTANCE WITH A SNAPSHOT OF EC v5.0.2   !!!
+!!! REPLACE WITH THIS FILE WITH VERSION YOU WANT TO TEST                            !!!
+
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
 Version:          v5.0.2
@@ -42,7 +47,7 @@ DOMAIN = "entity_controller"
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = "5.0.2"
+VERSION = "5.0.1"
 SENSOR_TYPE_DURATION = "duration"
 SENSOR_TYPE_EVENT = "event"
 MODE_DAY = "day"
