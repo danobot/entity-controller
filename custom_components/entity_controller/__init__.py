@@ -28,7 +28,17 @@ DEPENDENCIES = ['light', 'sensor', 'binary_sensor', 'cover', 'fan',
                 'media_player']
 # REQUIREMENTS = ['transitions==0.6.9']
 
-DOMAIN = 'entity_controller'
+from .const import (
+    DOMAIN,
+    STATES,
+    CONF_START_TIME,
+    CONF_END_TIME,
+)
+
+from .entity_services import (
+    async_setup_entity_services,
+)
+
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
@@ -57,13 +67,8 @@ CONF_BLOCK_TIMEOUT = 'block_timeout'
 CONF_SENSOR_TYPE_DURATION = 'sensor_type_duration'
 CONF_SENSOR_TYPE = 'sensor_type'
 CONF_SENSOR_RESETS_TIMER = 'sensor_resets_timer'
-CONF_START_TIME = 'start_time'
-CONF_END_TIME = 'end_time'
 CONF_NIGHT_MODE = 'night_mode'
 CONF_STATE_ATTRIBUTES_IGNORE = 'state_attributes_ignore'
-STATES = ['idle', 'overridden', 'constrained', 'blocked',
-          {'name': 'active', 'children': ['timer', 'stay_on'],
-           'initial': False}]
 
 FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 logging.basicConfig(format=FORMAT)
@@ -117,6 +122,8 @@ async def async_setup(hass, config):
 
     _LOGGER.info("If you have ANY issues with EntityController (v" + VERSION + "), please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues")
     _LOGGER.info("Domain Configuration: " + str(myconfig))
+
+    async_setup_entity_services(component)
 
     machine = Machine(states=STATES,
                       initial='idle',
@@ -219,6 +226,12 @@ async def async_setup(hass, config):
 
 
 class EntityController(entity.Entity):
+    from .entity_services import (
+        async_entity_service_clear_block as async_clear_block,
+        async_entitiy_service_set_stay_on as async_set_stay_on,
+        async_entitiy_service_set_stay_off as async_set_stay_off,
+        async_entity_service_set_night_mode as async_set_night_mode,
+    )
 
     def __init__(self, hass, config, machine):
         self.attributes = {}

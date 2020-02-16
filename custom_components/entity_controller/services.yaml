@@ -1,0 +1,35 @@
+clear_block:
+  description: Clears the blocked state of an Entity Controller, if set
+  fields:
+    entity_id:
+      description: Name(s) of entities to change.
+      example: 'entity_controller.motion_light'
+
+set_stay_on:
+  description: Change the stay to on
+  fields:
+    entity_id:
+      description: Name(s) of entities to change.
+      example: 'entity_controller.motion_light'
+
+set_stay_off:
+  description: Change the stay to off
+  fields:
+    entity_id:
+      description: Name(s) of entities to change.
+      example: 'entity_controller.motion_light'
+
+set_night_mode:
+  description: Change the night mode start and end times, does nothing 
+    if night mode is not defined in configuration. If both start_time and end_time
+    are not provided, it will set both to midnight, effectivly disabling night mode.
+  fields:
+    entity_id:
+      description: Name(s) of entities to change.
+      example: 'entity_controller.motion_light'
+    start_time:
+      description: new start time to set night mode to.
+      example: sunset - 00:30:00 or '18:30:00' or now or constraint (set same as day start)
+    end_time:
+      description: new end time to set night mode to.
+      example: sunset + 03:00:00 or '21:30:00' or now or constraint (set same as day end)
