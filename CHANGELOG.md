@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="5.1.0"></a>
+# [5.1.0](https://github.com/danobot/entity-controller/compare/v5.0.2...v5.1.0) (2020-03-02)
+
+
+### Features
+
+* basic services and control ([d1912b4](https://github.com/danobot/entity-controller/commit/d1912b4))
+* Initial services buildout ([#142](https://github.com/danobot/entity-controller/issues/142)) ([e5e18f5](https://github.com/danobot/entity-controller/commit/e5e18f5))
+
+
+
 <a name="5.0.2"></a>
 ## [5.0.2](https://github.com/danobot/entity-controller/compare/v5.0.1...v5.0.2) (2020-02-02)
 
