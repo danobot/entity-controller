@@ -1,0 +1,8 @@
+trigger_motion:
+  alias: Trigger Motion
+  sequence:
+    - service: input_boolean.turn_on
+      entity_id: input_boolean.motion_toggle
+    - delay: '00:00:01'
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.motion_toggle

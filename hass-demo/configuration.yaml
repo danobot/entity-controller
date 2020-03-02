@@ -1,0 +1,75 @@
+homeassistant:
+  name: Home
+  elevation: 25
+  unit_system: metric
+  time_zone: Australia/Perth
+  auth_providers:
+    - type: homeassistant
+
+  customize:
+    sensor.motion_sensor:
+      device_class: 'motion'
+
+
+frontend:
+config:
+history:
+logbook:
+sun:
+
+mqtt:
+  broker: !secret mqtt_host  #localhost
+  port: !secret mqtt_port
+  client_id: !secret mqtt_client_id
+  keepalive: 60
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  protocol: 3.1
+light: 
+  - platform: mqtt
+    name: "Table Lamp"
+    state_topic: "stat/son_lr_table_lamp/POWER"
+    command_topic: "cmnd/son_lr_table_lamp/POWER"
+    qos: 1
+
+input_boolean:
+  override_switch:
+    name: Override Switch
+    initial: off
+
+  motion_toggle:
+    name: Motion Toggle
+    initial: off
+
+
+sensor: 
+  - platform: template
+    sensors:
+      motion_sensor:
+        friendly_name: "Motion sensor"
+        value_template: "{{ states('input_boolean.motion_toggle') }}"    
+# Text to speech
+tts:
+  - platform: google_translate
+    service_name: google_say
+
+# Cloud
+cloud:
+
+script: !include scripts.yaml
+
+logger:
+  default: info
+  logs:
+    custom_components.entity_controller: debug
+
+entity_controller:
+  test_controller:
+    friendly_name: "Demo Test Controller"
+    sensors: 
+      - sensor.motion_sensor
+    entities:
+      - light.table_lamp
+    overrides:
+      - input_boolean.override_switch
+    delay: 10

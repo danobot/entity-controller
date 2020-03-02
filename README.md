@@ -204,6 +204,27 @@ Since `v1.1.0`, EC creates and updates entities representing the EC itself. Beyo
 These can be referenced in various `sensor` and `automation` configurations and extracted using `state-attributes-card` and template sensors.
 
 ## Advanced Configuration
+The following is an example coniguration used to control my outside light at night. The override is used to manually enable or disable this EC instance. Note that EC will call the `turn_on` service on its control entties, meaning you can use it to trigger different types of entities at the same time. My `buzz_short` script emits a short notification tone from a buzzer speaker attached to a Raspberry Pi GPIO pin. (See related [blog post](https://blog.danielbkr.net/2018/07/24/python-docker-mqtt-audio-buzzer.html) and [MQTT Audio Buzzer Repository](https://github.com/danobot/mqtt-audio-buzzer-rpi)).
+
+```yaml
+  mtn_outside:
+    sensor: 
+      - binary_sensor.backyard_motion
+      - binary_sensor.shed_door
+      - binary_sensor.kitchen_door
+      - binary_sensor.mtn_outside_2
+    entities:
+      - light.outside_light
+      - script.buzz_short
+    override: 
+      - input_boolean.outside_motion
+    state_entities:
+      - light.outside_light
+    delay: 120
+    backoff: true
+    start_time: 'sunset - 01:00:00'
+    end_time: 'sunrise + 01:00:00'
+```
 
 ### Exponential Backoff
 Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
@@ -316,6 +337,83 @@ mtn_lounge:
 
 **Note:** Using state entities can have unexpected consequences. For example, if you state entities do not overlap with control entities then your control entities will never turn off. This is the culprit of _advanced configurations_, use at your own risk. If you have problems, make your state entities the same as your control entities, and stick to state entities with a clear state (such as lights, media players etc.)
 
+## Automation Support and Services
+
+### Entity Services
+
+The entity controller support a few services that can be used to extend the customization of the entity.
+
+#### Stay
+
+```yaml
+service: entity_controller.set_stay_on
+  entity_id: entity_controller.motion
+```
+
+This service takes an entity id and will set the stay flag to on
+
+```yaml
+service: entity_controller.set_stay_off
+  entity_id: entity_controller.motion
+```
+
+This service takes an entity id and will clear the stay flag.
+
+**Note:** There is no attribute that exposes the stay flag state at this time.
+
+#### Clearing Blocking State
+
+```yaml
+service: entity_controller.clear_block
+  entity_id: entity_controller.motion
+```
+
+This service will clear the blocking state, if it is set, the same as if the block timer was run down.
+This allows for automations to react to the entity being blocked by a light on and clear the state is needed.
+
+**Example**
+```yaml
+automations:
+- id: example
+  trigger:
+  - platform: state
+      entity_id: entity_controller.motion
+      to: blocking
+      for: 00:01:00
+  action:
+  - service: entity_controller.clear_block
+    entity_id: entity_controller.motion
+```
+**Note:** The above example is functionally equivalent to setting a block timeout in the configuration.
+
+#### Set Night Mode
+
+```yaml
+service: entity_controller.set_night_mode
+  entity_id: entity_controller.motion
+  data:
+    start_time: now
+    end_time: constraint
+```
+
+This service is for customizing the night mode settings for more dynamic scripts. It will set the night mode start 
+and stop times to the times specified. If only one or both times are provided, only those times are changed. If 
+no time is provided night mode is effectivly disabled by setting both the start and end to midnight. This service takes
+the same time rules as the configuration, plus supports two additional options that make sense with automations.
+
+```yaml
+start_time: now
+```
+
+This will set the start (or end) night mode time to the current time. This is usefull for turning night mode on or off instantly.
+
+```yaml
+end_time: constraint
+```
+
+This will set the end (or start) night mode time to the appropriate constraint time (start or end.) This is handy for starting or making
+night mode last the same as the configured constraints. **Note:** This has no meaning if constraints are not set, so it would be equivilent to not providing a value.
+
 ### Custom State Strings
 The following code extract shows the default state strings that were made to represent the `on` and `off` states. These defaults can be overwritten for all entity types using the configuration keys `state_strings_on` and `state_strings_off`. For more granular control, use the entity specific configuration keys shown in the code extract below.
 
@@ -331,7 +429,6 @@ self.OVERRIDE_OFF_STATE = config.get("override_states_off", DEFAULT_OFF)
 self.STATE_ON_STATE = config.get("state_states_on", DEFAULT_ON)
 self.STATE_OFF_STATE = config.get("state_states_off", DEFAULT_OFF)
 ```
-
 ### Drawing State Machine Diagrams (not supported yet in `v2`)
 
 You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
