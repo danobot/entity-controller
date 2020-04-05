@@ -1,7 +1,7 @@
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v5.1.1
+Version:          v5.1.2
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -40,7 +40,7 @@ from .entity_services import (
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
 
-VERSION = '5.1.1'
+VERSION = '5.1.2'
 SENSOR_TYPE_DURATION = "duration"
 SENSOR_TYPE_EVENT = "event"
 MODE_DAY = "day"
