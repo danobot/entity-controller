@@ -1,10 +1,15 @@
 # Introduction
 Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v5.0.2` tested on Home Assistant `0.106.2`.**
+**Latest stable version `v5.1.1` tested on Home Assistant `0.106.2`.**
 
-## EC Demo House
-I created a demo instance which (over time) will showcase all the different EC features.
+## Video Demo
+I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
+
+[![Video](images/video_thumbnail.png)](https://youtu.be/HJQrA6sFlPs)
+
+## EC Demo Instance
+I created a demo instance which (over time) will showcase all the different EC features. 
 
 [Demo Instance](https://ec-demo.danielbkr.net)
 
@@ -19,6 +24,7 @@ Username:                 github
 Password:                 W8VfFdKU2zvS3GHV
 ```
 
+This instance may not be available at all times. Do not raise issues for this. All the confugration is available in the `hass-demo` directory.
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
 
 # Requirements
@@ -41,12 +47,6 @@ This FSM implementation is by far the most elegant solution I have found for thi
 
 ![Entity Controller State Diagram](images/state_diagram.png)
 
-## Video Demo
-I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
-
-[Youtube Link](https://youtu.be/HJQrA6sFlPs)
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/HJQrA6sFlPs" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## State Meaning
 
