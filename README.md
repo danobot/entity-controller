@@ -1,18 +1,25 @@
 # Introduction
 Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v4.1.1` tested on Home Assistant `0.102.3`.**
+**Latest stable version `v5.0.2` tested on Home Assistant `0.106.2`.**
 
-## 📢 Are you a seasoned Python developer? 📢
+## EC Demo House
+I created a demo instance which (over time) will showcase all the different EC features.
 
-Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
+[Demo Instance](https://ec-demo.danielbkr.net)
 
-All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
+**Browser login (Basic Auth)**
+```      
+Username:                 test
+Password:                 ecdemo
+```
+**Home Assistant Login**
+```
+Username:                 github
+Password:                 W8VfFdKU2zvS3GHV
+```
 
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
-
-![Entity Controller State Diagram](images/state_diagram.png)
-
 
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
@@ -32,6 +39,15 @@ In the original context of motion lighting, this means:
 
 This FSM implementation is by far the most elegant solution I have found for this problem as the typical "if/else" algorythm got way out of hand and unmanagable.
 
+![Entity Controller State Diagram](images/state_diagram.png)
+
+## Video Demo
+I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
+
+[Youtube Link](https://youtu.be/HJQrA6sFlPs)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/HJQrA6sFlPs" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ## State Meaning
 
 |State|Description|
@@ -46,6 +62,12 @@ This FSM implementation is by far the most elegant solution I have found for thi
 
 Note that `control_entities == state_entities` unless you specifically define `state_entities` in your configuration.
 
+
+## 📢 Are you a seasoned Python developer? 📢
+
+Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
+
+All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
 
 
 # Configuration
