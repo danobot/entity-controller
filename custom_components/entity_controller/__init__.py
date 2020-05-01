@@ -91,7 +91,7 @@ ENTITY_SCHEMA = vol.Schema(
     ),
     {
         # vol.Required(CONF_NAME): cv.string,
-		vol.Optional(ATTR_FRIENDLY_NAME): cv.string,
+        vol.Optional(ATTR_FRIENDLY_NAME): cv.string,
         vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
         vol.Optional(CONF_START_TIME): cv.string,
         vol.Optional(CONF_END_TIME): cv.string,
