@@ -14,9 +14,11 @@ from threading import Timer
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
+from homeassistant.const import (
+	CONF_NAME, ATTR_FRIENDLY_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET)
 from homeassistant.core import callback
 from homeassistant.helpers import entity, event, service
+from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt
@@ -89,6 +91,7 @@ ENTITY_SCHEMA = vol.Schema(
     ),
     {
         # vol.Required(CONF_NAME): cv.string,
+        vol.Optional(ATTR_FRIENDLY_NAME): cv.string,
         vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
         vol.Optional(CONF_START_TIME): cv.string,
         vol.Optional(CONF_END_TIME): cv.string,
@@ -315,9 +318,12 @@ class EntityController(entity.Entity):
         self.attributes = {}
         self.may_update = False
         self.model = None
+        self.entity_name = config.get(CONF_NAME, "Motion Light")
         self.friendly_name = config.get(CONF_NAME, "Motion Light")
         if "friendly_name" in config:
-            self.friendly_name = config.get("friendly_name")
+            self.friendly_name = config.get(ATTR_FRIENDLY_NAME)
+        self.entity_id = async_generate_entity_id(DOMAIN + ".{}", self.entity_name, hass=hass) 
+        
         try:
             self.model = Model(hass, config, machine, self)
         except AttributeError as e:
@@ -333,7 +339,7 @@ class EntityController(entity.Entity):
 
     @property
     def name(self):
-        """Return the state of the entity."""
+        """Return the name of the entity."""
         return self.friendly_name
 
     @property
@@ -1498,6 +1504,7 @@ class Model:
         self.log.debug("       C O N F I G U R A T I O N   D U M P        ")
         self.log.debug("--------------------------------------------------")
         self.log.debug("Entity Controller       %s", self.name)
+        self.log.debug("Friendly Name           %s", str(self.entity.friendly_name))
         self.log.debug("Sensor Entities         %s", str(self.sensorEntities))
         self.log.debug("Control Entities:       %s", str(self.controlEntities))
         self.log.debug("State Entities:         %s", str(self.stateEntities))
