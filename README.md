@@ -248,6 +248,45 @@ The following is an example coniguration used to control my outside light at nig
     end_time: 'sunrise + 01:00:00'
 ```
 
+### Transition Behaviours (beta)
+Transition Behaviours allow you to define what EC should do at these transition points.
+
+**Use Case:**
+> One use case for this is when lights turn on just before the end of the active period and then they never turn off because EC is constrained. For me, the light would be triggered by me walking into a room at 
+7am and the constrain period would begin at 7:16am. Since the light duration is 20 minutes, EC will never turn off the light because it is in `constrained` state at 7:20am. This is annoying because the lights stay on all day. I can use `end_time_action: "off"` to turn off all lights at 7:16am.
+
+
+#### Supported transition points:  
+More will be added in the future.
+
+|Key|Description|
+|---|---|
+|start_time_action|Triggered at the beginning of active period|
+|end_time_action|Triggered at the end of active period|
+
+#### Supported transition behaviours:  
+You must put these in quotes.
+
+|Key|Description|
+|---|---|
+|"on"| Control entities will be explicitly turned on. |
+|"off"| Control entities will be explicitly turned off. |
+|"ignore"| (default) Nothing special will happen (control left to state machine) |
+
+```yaml
+  mtn_outside:
+    sensor: 
+      - binary_sensor.mtn_kitchen
+    entities:
+      - light.kitchen_led
+    state_entities:
+      - light.outside_light
+    delay: 1200
+    start_time: '18:00:00'
+    end_time: '07:00:00'
+    end_time_action: "off"                   # will turn off all control entities at 7am if they are on.
+```
+
 ### Exponential Backoff
 Enabling the `backoff` option will cause `delay` timeouts to increase exponentially by a factor of `backoff_factor` up until a maximum timeout value of `backoff_max` is reached.
 
