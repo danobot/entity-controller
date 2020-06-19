@@ -2,6 +2,7 @@
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
 Version:          v5.1.2
+Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -14,16 +15,16 @@ from threading import Timer
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import (
-	CONF_NAME, ATTR_FRIENDLY_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET)
+from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
 from homeassistant.core import callback
 from homeassistant.helpers import entity, event, service
-from homeassistant.helpers.entity import async_generate_entity_id
+from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
+from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
 # REQUIREMENTS = ['transitions==0.6.9']
@@ -91,7 +92,6 @@ ENTITY_SCHEMA = vol.Schema(
     ),
     {
         # vol.Required(CONF_NAME): cv.string,
-        vol.Optional(ATTR_FRIENDLY_NAME): cv.string,
         vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
         vol.Optional(CONF_START_TIME): cv.string,
         vol.Optional(CONF_END_TIME): cv.string,
@@ -318,11 +318,9 @@ class EntityController(entity.Entity):
         self.attributes = {}
         self.may_update = False
         self.model = None
-        self.entity_name = config.get(CONF_NAME, "Motion Light")
         self.friendly_name = config.get(CONF_NAME, "Motion Light")
-        if ATTR_FRIENDLY_NAME in config:
-            self.friendly_name = config.get(ATTR_FRIENDLY_NAME)
-        self.entity_id = async_generate_entity_id(DOMAIN + ".{}", self.entity_name, hass=hass) 
+        if "friendly_name" in config:
+            self.friendly_name = config.get("friendly_name")
         try:
             self.model = Model(hass, config, machine, self)
         except AttributeError as e:
@@ -338,7 +336,7 @@ class EntityController(entity.Entity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
+        """Return the state of the entity."""
         return self.friendly_name
 
     @property
@@ -493,7 +491,7 @@ class Model:
     @callback
     def sensor_state_change(self, entity, old, new):
         """ State change callback for sensor entities """
-        self.log.debug("Sensor state change: " + new.state)
+        self.log.debug("%10s Sensor state change to: %s" % (entity, new.state))
         self.log.debug("state: " + self.state)
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
@@ -524,7 +522,7 @@ class Model:
     @callback
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
-        self.log.debug("Override state change")
+        self.log.debug("Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
         if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
             self.is_active()
             or self.is_active_timer()
@@ -1404,8 +1402,11 @@ class Model:
         )
 
     def add(self, list, e, key=None):
-        """ Adds e (which can be a string or list or config) to the list
+        """ Adds e (which can be a string or list or config or Template) to the list
             if e is defined.
+            If its a template, we have to create the Template object and register state listeners
+            self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
+
         """
         if e is not None:
             v = []
@@ -1414,10 +1415,17 @@ class Model:
                     v = e[key]
             else:
                 v = e
-
             if type(v) == str:
+
                 list.append(v)
             else:
+                # for st in v:
+                #     template = Template(st, self.hass)
+                #     self.log.debug("Template: %s"  % ( str(template)))
+                #     self.log.debug("Template: %s" % (str(template.ensure_valid())))
+                #     template.async_render()
+                #     # self.log.debug("Template rendered: %s"  % (str(template.result)))
+                #     self.log.debug("Template dir: %s"  % (str(dir(template))))
                 list.extend(v)
         else:
             self.log.debug("none")
@@ -1503,7 +1511,6 @@ class Model:
         self.log.debug("       C O N F I G U R A T I O N   D U M P        ")
         self.log.debug("--------------------------------------------------")
         self.log.debug("Entity Controller       %s", self.name)
-        self.log.debug("Friendly Name           %s", str(self.entity.friendly_name))
         self.log.debug("Sensor Entities         %s", str(self.sensorEntities))
         self.log.debug("Control Entities:       %s", str(self.controlEntities))
         self.log.debug("State Entities:         %s", str(self.stateEntities))
