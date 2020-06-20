@@ -1,14 +1,20 @@
-# Introduction
+[![License](https://img.shields.io/github/license/danobot/entity-controller.svg?style=flat-square)](https://github.com/danobot/entity-controller/blob/develop/COPYING)
+[![Blog](https://img.shields.io/badge/blog-The%20Budget%20Smart%20Home-orange?style=flat-square)](https://danielbkr.net/?utm_source=github&utm_medium=badge&utm_campaign=entity-controller)
+[![donate paypal](https://img.shields.io/badge/donate-PayPal-blue.svg?style=flat-square)](https://paypal.me/danielb160)
+[![donate gofundme](https://img.shields.io/badge/donate-GoFundMe-orange?style=flat-square)](https://gf.me/u/w62k93)
+
+
+# :wave: Introduction
 Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v5.1.1` tested on Home Assistant `0.106.2`.**
+**Latest stable version `v5.1.1` tested on Home Assistant `0.109.5`.**
 
-## Video Demo
+## :clapper: Video Demo
 I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
 
 [![Video](images/video_thumbnail.png)](https://youtu.be/HJQrA6sFlPs)
 
-## EC Demo Instance
+## :computer: EC Demo Instance
 I created a demo instance which (over time) will showcase all the different EC features. 
 
 [Demo Instance](https://ec-demo.danielbkr.net)
@@ -26,6 +32,9 @@ Password:                 W8VfFdKU2zvS3GHV
 
 This instance may not be available at all times. Do not raise issues for this. All the confugration is available in the `hass-demo` directory.
 [Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
+
+# :boom: Recent Breaking Changes :boom:
+* `v6.0.0` introduces a breaking change if you are relying on the entities `friendly_name` in other automations. See [#153](https://github.com/danobot/entity-controller/pull/153). The release PR is [#156](https://github.com/danobot/entity-controller/pull/156).
 
 # Requirements
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
@@ -61,14 +70,6 @@ This FSM implementation is by far the most elegant solution I have found for thi
 |constrained|Current time is outside of `start_time` and `end_time`. EC is inactive until `start_time`.|
 
 Note that `control_entities == state_entities` unless you specifically define `state_entities` in your configuration.
-
-
-## 📢 Are you a seasoned Python developer? 📢
-
-Help is needed over on issue #101 to get the goodness of automated unit testing going on this project. ✔️🌞💯 
-
-All the boilerplate for Pytest is set up, but I got stuck mocking the passage of time. 😅 [see #101 for details](https://github.com/danobot/entity-controller/issues/101)
-
 
 # Configuration
 EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
