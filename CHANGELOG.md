@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="6.0.0"></a>
+# [6.0.0](https://github.com/danobot/entity-controller/compare/v5.2.0...v6.0.0) (2020-06-20)
+
+
+### Features
+
+* transition behaviours and friendly name fix ([02a1ab4](https://github.com/danobot/entity-controller/commit/02a1ab4)), closes [#156](https://github.com/danobot/entity-controller/issues/156)
+
+
+### BREAKING CHANGES
+
+* The friendly name fix in #153 may break your configuration. Entities will be created based on the YAML section name but will respect friendly name in frontend.
+
+
+
 <a name="5.2.0"></a>
 # [5.2.0](https://github.com/danobot/entity-controller/compare/v5.1.2...v5.2.0) (2020-06-20)
 
