@@ -2,6 +2,7 @@
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
 Version:          v5.1.2
+Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
                     * YAML configuration (for the misbehaving entity)
@@ -17,11 +18,13 @@ import voluptuous as vol
 from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
 from homeassistant.core import callback
 from homeassistant.helpers import entity, event, service
+from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
+from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
 # REQUIREMENTS = ['transitions==0.6.9']
@@ -29,44 +32,50 @@ DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_playe
 from .const import (
     DOMAIN,
     STATES,
+
     CONF_START_TIME,
     CONF_END_TIME,
+    CONF_END_TIME_ACTION,
+    CONF_START_TIME_ACTION,
+    CONF_TRANSITION_BEHAVIOUR_ON,
+    CONF_TRANSITION_BEHAVIOUR_OFF,
+    CONF_TRANSITION_BEHAVIOUR_IGNORE,
+
+    SENSOR_TYPE_DURATION,
+    SENSOR_TYPE_EVENT,
+    MODE_DAY,
+    MODE_NIGHT,
+    DEFAULT_DELAY,
+    DEFAULT_BRIGHTNESS,
+    DEFAULT_NAME,
+    CONF_CONTROL_ENTITIES,
+    CONF_CONTROL_ENTITY,
+    CONF_TRIGGER_ON_ACTIVATE,
+    CONF_TRIGGER_ON_DEACTIVATE,
+    CONF_SENSOR,
+    CONF_SENSORS,
+    CONF_SERVICE_DATA,
+    CONF_SERVICE_DATA_OFF,
+    CONF_STATE_ENTITIES,
+    CONF_DELAY,
+    CONF_BLOCK_TIMEOUT,
+    CONF_SENSOR_TYPE_DURATION,
+    CONF_SENSOR_TYPE,
+    CONF_SENSOR_RESETS_TIMER,
+    CONF_NIGHT_MODE,
+    CONF_STATE_ATTRIBUTES_IGNORE,
+    CONSTRAIN_START,
+    CONSTRAIN_END
 )
 
 from .entity_services import (
     async_setup_entity_services,
 )
 
-CONSTRAIN_START = 1
-CONSTRAIN_END = 2
+
 
 VERSION = '5.1.2'
-SENSOR_TYPE_DURATION = "duration"
-SENSOR_TYPE_EVENT = "event"
-MODE_DAY = "day"
-MODE_NIGHT = "night"
 
-DEFAULT_DELAY = 180
-DEFAULT_BRIGHTNESS = 100
-DEFAULT_NAME = "Entity Timer"
-
-# CONF_NAME = 'slug'
-CONF_CONTROL_ENTITIES = "entities"
-CONF_CONTROL_ENTITY = "entity"
-CONF_TRIGGER_ON_ACTIVATE = "trigger_on_activate"
-CONF_TRIGGER_ON_DEACTIVATE = "trigger_on_deactivate"
-CONF_SENSOR = "sensor"
-CONF_SENSORS = "sensors"
-CONF_SERVICE_DATA = "service_data"
-CONF_SERVICE_DATA_OFF = "service_data_off"
-CONF_STATE_ENTITIES = "state_entities"
-CONF_DELAY = "delay"
-CONF_BLOCK_TIMEOUT = "block_timeout"
-CONF_SENSOR_TYPE_DURATION = "sensor_type_duration"
-CONF_SENSOR_TYPE = "sensor_type"
-CONF_SENSOR_RESETS_TIMER = "sensor_resets_timer"
-CONF_NIGHT_MODE = "night_mode"
-CONF_STATE_ATTRIBUTES_IGNORE = "state_attributes_ignore"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +104,9 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
         vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(
             vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)
+        ),
+        vol.Optional(CONF_END_TIME_ACTION, default=CONF_TRANSITION_BEHAVIOUR_IGNORE): vol.All(
+            vol.Lower, vol.Any(CONF_TRANSITION_BEHAVIOUR_ON, CONF_TRANSITION_BEHAVIOUR_OFF, CONF_TRANSITION_BEHAVIOUR_IGNORE)
         ),
         vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
         vol.Optional(CONF_SENSOR, default=[]): cv.entity_ids,
@@ -324,6 +336,7 @@ class EntityController(entity.Entity):
             _LOGGER.error(
                 "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities"
             )
+            raise e
         event.async_call_later(hass, 1, self.do_update)
 
     @property
@@ -431,6 +444,7 @@ class Model:
         self.start = None
         self.end = None
         self.reset_count = None
+        self.transition_behaviours = {}
         # logging.setFormatter(logging.Formatter(FORMAT))
         self.log = logging.getLogger(__name__ + "." + config.get(CONF_NAME))
 
@@ -488,7 +502,7 @@ class Model:
     @callback
     def sensor_state_change(self, entity, old, new):
         """ State change callback for sensor entities """
-        self.log.debug("Sensor state change: " + new.state)
+        self.log.debug("%10s Sensor state change to: %s" % (entity, new.state))
         self.log.debug("state: " + self.state)
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
@@ -519,7 +533,7 @@ class Model:
     @callback
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
-        self.log.debug("Override state change")
+        self.log.debug("Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
         if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
             self.is_active()
             or self.is_active_timer()
@@ -928,7 +942,6 @@ class Model:
     def config_times(self, config):
         self._start_time_private = None
         self._end_time_private = None
-        self.log_config()
         if CONF_START_TIME in config and CONF_END_TIME in config:
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONF_START_TIME)
@@ -970,6 +983,18 @@ class Model:
                     "Constrain period active. Scheduling transition to 'constrained'"
                 )
                 event.async_call_later(self.hass, 1, self.constrain_entity)
+            if CONF_END_TIME_ACTION in config:
+                self.store_transition_behaviour(CONF_END_TIME_ACTION, config.get(CONF_END_TIME_ACTION))
+            if CONF_START_TIME_ACTION in config:
+                self.store_transition_behaviour(CONF_START_TIME_ACTION, config.get(CONF_START_TIME_ACTION))
+
+        else:
+            if CONF_END_TIME_ACTION in config or CONF_START_TIME_ACTION in config:
+                self.log.error("You must define %s and %s in your config to use the %s or %s feature." % (CONF_START_TIME, CONF_END_TIME, CONF_END_TIME_ACTION, CONF_END_TIME_ACTION))
+        self.log_config()
+    
+   
+
 
     def config_override_entities(self, config):
         self.overrideEntities = []
@@ -1049,12 +1074,12 @@ class Model:
         )
         self.update(end_time=parsed_end)
         # must be down here to make sure new callback is set regardless of exceptions
+        self.do_transition_behaviour(CONF_END_TIME_ACTION)
         self.constrain()
 
     @callback
     def start_time_callback(self, evt):
         """
-
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
         self.log.debug("START TIME CALLBACK.")
@@ -1074,11 +1099,12 @@ class Model:
         )
 
         self.update(start_time=parsed_start)
-
+        
         if self.is_state_entities_on():
             self.blocked()
         else:
             self.enable()
+        self.do_transition_behaviour(CONF_START_TIME_ACTION)
 
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )
@@ -1399,8 +1425,11 @@ class Model:
         )
 
     def add(self, list, e, key=None):
-        """ Adds e (which can be a string or list or config) to the list
+        """ Adds e (which can be a string or list or config or Template) to the list
             if e is defined.
+            If its a template, we have to create the Template object and register state listeners
+            self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
+
         """
         if e is not None:
             v = []
@@ -1409,10 +1438,17 @@ class Model:
                     v = e[key]
             else:
                 v = e
-
             if type(v) == str:
+
                 list.append(v)
             else:
+                # for st in v:
+                #     template = Template(st, self.hass)
+                #     self.log.debug("Template: %s"  % ( str(template)))
+                #     self.log.debug("Template: %s" % (str(template.ensure_valid())))
+                #     template.async_render()
+                #     # self.log.debug("Template rendered: %s"  % (str(template.result)))
+                #     self.log.debug("Template dir: %s"  % (str(dir(template))))
                 list.extend(v)
         else:
             self.log.debug("none")
@@ -1519,4 +1555,30 @@ class Model:
         self.log.debug("Sunset:                 %s", self.sunset(True))
         self.log.debug("Sunset Diff (to now): %s", self.next_sunset() - dt.now())
         self.log.debug("Sunrise Diff(to now): %s", self.next_sunset() - dt.now())
+        self.log.debug("Transition Behaviours: %s", str(self.transition_behaviours))
         self.log.debug("--------------------------------------------------")
+
+    def store_transition_behaviour(self, key, behaviour):
+        """ manages transition_behaviour map """
+        self.transition_behaviours[key] = behaviour
+
+    def get_transition_behaviour(self, key):
+        """ manages transition_behaviour map """
+        if key in self.transition_behaviours:
+            return self.transition_behaviours[key]
+        else:
+            return None
+            
+    def do_transition_behaviour(self, behaviour):
+        """ Wrapper method for acting on transition behaviours such as at time of end constraint of state transitions from override state. """
+        self.log.debug("Performing Transition Behaviour %s" % (behaviour))
+        action = self.get_transition_behaviour(CONF_END_TIME_ACTION)
+        if action:
+            self.log.debug("Performing Transition Action %s" % (action))
+            if action == CONF_TRANSITION_BEHAVIOUR_ON or action:
+                self.log.debug("Performing Transition Action turning on")
+                self.turn_on_control_entities()
+            if action == CONF_TRANSITION_BEHAVIOUR_OFF or not action:
+                self.log.debug("Performing Transition Action turning off")
+                self.turn_off_control_entities()            
+            
