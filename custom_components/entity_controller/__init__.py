@@ -12,6 +12,7 @@ import logging
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
+import pprint
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -322,7 +323,7 @@ async def async_setup(hass, config):
         if not config:
             config = {}
 
-        _LOGGER.info("Config Item %s: %s", str(key), str(config))
+        # _LOGGER.info("Config Item %s: %s", str(key), str(config))
         config["name"] = key
         m = None
         m = EntityController(hass, config, machine)
@@ -358,7 +359,6 @@ class EntityController(entity.Entity):
             _LOGGER.error(
                 "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities" + e
             )
-            raise e
         event.async_call_later(hass, 1, self.do_update)
 
     @property
@@ -472,7 +472,9 @@ class Model:
 
         self.log.debug(
             "Initialising EntityController entity with this configuration: "
-            + str(config)
+        )
+        self.log.debug(
+            pprint.pformat(config)
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.log.debug("Controller name: " + str(self.name))
@@ -525,8 +527,8 @@ class Model:
     @callback
     def sensor_state_change(self, entity, old, new):
         """ State change callback for sensor entities """
-        self.log.debug("%10s Sensor state change to: %s" % (entity, new.state))
-        self.log.debug("state: " + self.state)
+        self.log.debug("%10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
+        self.log.debug("state: " +  pprint.pformat(self.state))
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
@@ -584,29 +586,31 @@ class Model:
         )
         # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
-            if old.state == new.state:  # Only attributes changed
-                # Build two dictionaries of attributes, excluding the ones we don't want to monitor
-                old_temp = {
-                    key: old.attributes[key]
-                    for key in old.attributes
-                    if key not in self.state_attributes_ignore
-                }
-                new_temp = {
-                    key: new.attributes[key]
-                    for key in new.attributes
-                    if key not in self.state_attributes_ignore
-                }
-                if old_temp == new_temp:
-                    self.log.debug("insignificant attribute only change")
-                    return
-                self.log.debug("significant attribute only change")
-        except AttributeError as a:
+            if not old or not new or old == 'off' or new == 'off':
+                pass
+            else:
+                if old.state == new.state:  # Only attributes changed
+                    # Build two dictionaries of attributes, excluding the ones we don't want to monitor
+                    old_temp = {
+                        key: old.attributes[key]
+                        for key in old.attributes
+                        if key not in self.state_attributes_ignore
+                    }
+                    new_temp = {
+                        key: new.attributes[key]
+                        for key in new.attributes
+                        if key not in self.state_attributes_ignore
+                    }
+                    if old_temp == new_temp:
+                        self.log.debug("insignificant attribute only change")
+                        return
+                    self.log.debug("significant attribute only change")
+        except Exception as e:
             # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
             self.log.debug(
                 "Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
-                + str(a)
+                + str(e)
             )
-            pass
 
         if self.is_active_timer():
             self.control()
@@ -853,9 +857,9 @@ class Model:
         }
 
         if CONF_BEHAVIOURS in config:
-            self.transition_behaviours = config[CONF_BEHAVIOURS]
+            self.transition_behaviours = {**self.transition_behaviours, **config[CONF_BEHAVIOURS]}
 
-        self.log.debug("Transition Behaviours: " + str(self.transition_behaviours))
+        self.log.debug("Transition Behaviours: " +  pprint.pformat(self.transition_behaviours))
 
     def config_control_entities(self, config):
         self.controlEntities = []
@@ -863,7 +867,7 @@ class Model:
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITY)
         self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
 
-        self.log.debug("Control Entities: " + str(self.controlEntities))
+        self.log.debug("Control Entities: " +  pprint.pformat(self.controlEntities))
 
     def config_state_entities(self, config):
         self.stateEntities = []
@@ -893,13 +897,13 @@ class Model:
         self.triggerOnDeactivate = []
         self.add(self.triggerOnDeactivate, config, CONF_TRIGGER_ON_DEACTIVATE)
         if len(self.triggerOnDeactivate) > 0:
-            self.log.info("Off Entities: " + str(self.triggerOnDeactivate))
+            self.log.info("Off Entities: " +  pprint.pformat(self.triggerOnDeactivate))
 
     def config_on_entities(self, config):
         self.triggerOnActivate = []
         self.add(self.triggerOnActivate, config, CONF_TRIGGER_ON_ACTIVATE)
         if len(self.triggerOnActivate) > 0:
-            self.log.info("On Entities: " + str(self.triggerOnActivate))
+            self.log.info("On Entities: " +  pprint.pformat(self.triggerOnActivate))
 
     def config_sensor_entities(self, config):
         self.sensorEntities = []
@@ -911,7 +915,7 @@ class Model:
                 "No sensor entities defined. You must define at least one sensor entity."
             )
 
-        self.log.debug("Sensor Entities: " + str(self.sensorEntities))
+        self.log.debug("Sensor Entities: " +  pprint.pformat(self.sensorEntities))
 
         event.async_track_state_change(
             self.hass, self.sensorEntities, self.sensor_state_change
@@ -1057,7 +1061,7 @@ class Model:
         self.add(self.overrideEntities, config, "overrides")
 
         if len(self.overrideEntities) > 0:
-            self.log.debug("Override Entities: " + str(self.overrideEntities))
+            self.log.debug("Override Entities: " +  pprint.pformat(self.overrideEntities))
             event.async_track_state_change(
                 self.hass, self.overrideEntities, self.override_state_change
             )
@@ -1612,7 +1616,7 @@ class Model:
         self.log.debug("Sunset:                 %s", self.sunset(True))
         self.log.debug("Sunset Diff (to now): %s", self.next_sunset() - dt.now())
         self.log.debug("Sunrise Diff(to now): %s", self.next_sunset() - dt.now())
-        self.log.debug("Transition Behaviours: %s", str(self.transition_behaviours))
+        self.log.debug("Transition Behaviours: %s",  str(self.transition_behaviours))
         self.log.debug("--------------------------------------------------")
 
     def store_transition_behaviour(self, key, behaviour):
@@ -1628,14 +1632,13 @@ class Model:
             
     def do_transition_behaviour(self, behaviour):
         """ Wrapper method for acting on transition behaviours such as at time of end constraint of state transitions from override state. """
-        self.log.debug("Performing Transition Behaviour %s" % (behaviour))
-        action = self.get_transition_behaviour(CONF_END_TIME_ACTION)
+        self.log.debug("%10s | Performing Transition Behaviour" % (behaviour))
+        action = self.get_transition_behaviour(behaviour)
         if action:
-            self.log.debug("Performing Transition Action %s" % (action))
-            if action == CONF_TRANSITION_BEHAVIOUR_ON or action:
-                self.log.debug("Performing Transition Action turning on")
+            self.log.debug("%10s | Action - %s" % (behaviour, action))
+            if action == CONF_TRANSITION_BEHAVIOUR_ON:
+                self.log.debug("%10s | Performing Action - Turning on" % (behaviour))
                 self.turn_on_control_entities()
-            if action == CONF_TRANSITION_BEHAVIOUR_OFF or not action:
-                self.log.debug("Performing Transition Action turning off")
-                self.turn_off_control_entities()            
-            
+            if action == CONF_TRANSITION_BEHAVIOUR_OFF:
+                self.log.debug("%10s | Performing Action - Turning off" % (behaviour))
+                self.turn_off_control_entities()
