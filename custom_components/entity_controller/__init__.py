@@ -585,6 +585,31 @@ class Model:
         )
         # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
+            # kept in case it causes problems
+            # if old.state == new.state:  # Only attributes changed
+            #     # Build two dictionaries of attributes, excluding the ones we don't want to monitor
+            #     old_temp = {
+            #         key: old.attributes[key]
+            #         for key in old.attributes
+            #         if key not in self.state_attributes_ignore
+            #     }
+            #     new_temp = {
+            #         key: new.attributes[key]
+            #         for key in new.attributes
+            #         if key not in self.state_attributes_ignore
+            #     }
+            #     if old_temp == new_temp:
+            #         self.log.debug("insignificant attribute only change")
+            #         return
+            #     self.log.debug("significant attribute only change")
+        # except AttributeError as a:
+            # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
+            # self.log.debug(
+            #     "Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
+            #     + str(a)
+            # )
+            # pass
+
             if not old or not new or old == 'off' or new == 'off':
                 pass
             else:
@@ -604,11 +629,11 @@ class Model:
                         self.log.debug("insignificant attribute only change")
                         return
                     self.log.debug("significant attribute only change")
-        except Exception as e:
+        except AttributeError as a:
             # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
             self.log.debug(
                 "Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
-                + str(e)
+                + str(a)
             )
 
         if self.is_active_timer():
