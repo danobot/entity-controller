@@ -11,6 +11,21 @@ SERVICE_SET_NIGHT_MODE = "set_night_mode"
 #configuration
 CONF_START_TIME = 'start_time'
 CONF_END_TIME = 'end_time'
+
+# Transition Behaviours
+CONF_BEHAVIOURS = 'behaviours'
+
+CONF_ON_ENTER_IDLE='on_enter_idle'
+CONF_ON_EXIT_IDLE='on_exit_idle'
+CONF_ON_ENTER_ACTIVE='on_enter_active'
+CONF_ON_EXIT_ACTIVE='on_exit_active'
+CONF_ON_ENTER_OVERRIDDEN = 'on_enter_overidden'
+CONF_ON_EXIT_OVERRIDDEN = 'on_exit_overidden'
+CONF_ON_ENTER_CONSTRAINED = 'on_enter_constrained'
+CONF_ON_EXIT_CONSTRAINED = 'on_exit_constrained'
+CONF_ON_ENTER_BLOCKED = 'on_enter_blocked'
+CONF_ON_EXIT_BLOCKED = 'on_exit_blocked'
+
 CONF_END_TIME_ACTION = 'end_time_action'
 CONF_START_TIME_ACTION = 'start_time_action'
 CONF_TRANSITION_BEHAVIOUR_ON = 'on'
