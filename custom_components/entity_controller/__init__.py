@@ -40,6 +40,19 @@ from .const import (
     CONF_TRANSITION_BEHAVIOUR_ON,
     CONF_TRANSITION_BEHAVIOUR_OFF,
     CONF_TRANSITION_BEHAVIOUR_IGNORE,
+    
+    # Behaviours
+    CONF_BEHAVIOURS,
+    CONF_ON_ENTER_IDLE,
+    CONF_ON_EXIT_IDLE,
+    CONF_ON_ENTER_ACTIVE,
+    CONF_ON_EXIT_ACTIVE,
+    CONF_ON_ENTER_OVERRIDDEN,
+    CONF_ON_EXIT_OVERRIDDEN,
+    CONF_ON_ENTER_CONSTRAINED,
+    CONF_ON_EXIT_CONSTRAINED,
+    CONF_ON_ENTER_BLOCKED,
+    CONF_ON_EXIT_BLOCKED,
 
     SENSOR_TYPE_DURATION,
     SENSOR_TYPE_EVENT,
@@ -105,6 +118,9 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(
             vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)
         ),
+        vol.Optional(CONF_START_TIME_ACTION, default=CONF_TRANSITION_BEHAVIOUR_IGNORE): vol.All(
+            vol.Lower, vol.Any(CONF_TRANSITION_BEHAVIOUR_ON, CONF_TRANSITION_BEHAVIOUR_OFF, CONF_TRANSITION_BEHAVIOUR_IGNORE)
+        ),
         vol.Optional(CONF_END_TIME_ACTION, default=CONF_TRANSITION_BEHAVIOUR_IGNORE): vol.All(
             vol.Lower, vol.Any(CONF_TRANSITION_BEHAVIOUR_ON, CONF_TRANSITION_BEHAVIOUR_OFF, CONF_TRANSITION_BEHAVIOUR_IGNORE)
         ),
@@ -121,10 +137,14 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
             dict
-        ),  # Default must be none because we differentiate between set and unset
+        ),  
+        vol.Optional(CONF_BEHAVIOURS, default=None): vol.Coerce(
+            dict
+        ),  
+        # Default must be none because we differentiate between set and unset
         vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict),
     },
-    extra=vol.ALLOW_EXTRA,
+    # extra=vol.ALLOW_EXTRA,
 )
 
 PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
@@ -184,33 +204,33 @@ async def async_setup(hass, config):
     )  # re-entering self-transition (on_enter callback executed.)
 
     # Overridden
-    machine.add_transition(
-        trigger="enable",
-        source="overridden",
-        dest="idle",
-        conditions=["is_state_entities_off"],
-    )
-    # If a device leaving overridden is on, we do not necessarily want to shut it off immediately. We simply want EC to stop controlling it. To do that, we'll move it to active, to simulate an EC trigger, and we'll see if it exits on its own. This works for event sensors, of course, and it will also work for duration sensors if the current state is on. A duration sensor that is off now will never expire on its own, though, so in that case, we'll assume the target is 'idle'.
-    machine.add_transition(
-        trigger="enable",
-        source="overridden",
-        dest="active",
-        conditions=["is_state_entities_on", "is_event_sensor"],
-    )
-    machine.add_transition(
-        trigger="enable",
-        source="overridden",
-        dest="active",
-        conditions=["is_state_entities_on", "is_sensor_on"],
-    )  # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
-    machine.add_transition(
-        trigger="enable",
-        source="overridden",
-        dest="idle",
-        conditions=["is_state_entities_on", "is_duration_sensor", "is_sensor_off"],
-    )
+    machine.add_transition(trigger='enable', source='overridden', dest='idle')
+    # machine.add_transition(
+    #     trigger="enable",
+    #     source="overridden",
+    #     dest="idle",
+    #     conditions=["is_state_entities_off"],
+    # )
+    # # If a device leaving overridden is on, we do not necessarily want to shut it off immediately. We simply want EC to stop controlling it. To do that, we'll move it to active, to simulate an EC trigger, and we'll see if it exits on its own. This works for event sensors, of course, and it will also work for duration sensors if the current state is on. A duration sensor that is off now will never expire on its own, though, so in that case, we'll assume the target is 'idle'.
+    # machine.add_transition(
+    #     trigger="enable",
+    #     source="overridden",
+    #     dest="active",
+    #     conditions=["is_state_entities_on", "is_event_sensor"],
+    # )
+    # machine.add_transition(
+    #     trigger="enable",
+    #     source="overridden",
+    #     dest="active",
+    #     conditions=["is_state_entities_on", "is_sensor_on"],
+    # )  # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
+    # machine.add_transition(
+    #     trigger="enable",
+    #     source="overridden",
+    #     dest="idle",
+    #     conditions=["is_state_entities_on", "is_duration_sensor", "is_sensor_off"],
+    # )
 
-    # machine.add_transition(trigger='sensor_off',           source=['overridden'],          dest=None)
 
     machine.add_transition(
         trigger="enter", source="active", dest="active_timer", unless="will_stay_on"
@@ -248,26 +268,28 @@ async def async_setup(hass, config):
         dest="idle",
         conditions=["is_duration_sensor", "is_sensor_off"],
     )
-    # machine.add_transition(trigger='block_timer_expires', source='blocked',
-    # dest='idle')
-    machine.add_transition(
-        trigger="block_timer_expires",
-        source="blocked",
-        dest="active",
-        conditions=["is_state_entities_on", "is_event_sensor"],
-    )
-    machine.add_transition(
-        trigger="block_timer_expires",
-        source="blocked",
-        dest="active",
-        conditions=["is_state_entities_on", "is_sensor_on"],
-    )  # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
-    machine.add_transition(
-        trigger="block_timer_expires",
-        source="blocked",
-        dest="idle",
-        conditions=["is_state_entities_on", "is_duration_sensor", "is_sensor_off"],
-    )
+    machine.add_transition(trigger='block_timer_expires', source='blocked',
+    dest='idle')
+    # machine.add_transition(
+    #     trigger="block_timer_expires",
+    #     source="blocked",
+    #     dest="active",
+    #     conditions=["is_state_entities_on", "is_event_sensor"],
+    # )
+    # machine.add_transition(
+    #     trigger="block_timer_expires",
+    #     source="blocked",
+    #     dest="active",
+    #     conditions=["is_state_entities_on", "is_sensor_on"],
+    # )  # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
+    # machine.add_transition(
+    #     trigger="block_timer_expires",
+    #     source="blocked",
+    #     dest="idle",
+    #     conditions=["is_state_entities_on", "is_duration_sensor", "is_sensor_off"],
+    # )
+
+
     machine.add_transition(
         trigger="control",
         source="active_timer",
@@ -334,7 +356,7 @@ class EntityController(entity.Entity):
             self.model = Model(hass, config, machine, self)
         except AttributeError as e:
             _LOGGER.error(
-                "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities"
+                "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities" + e
             )
             raise e
         event.async_call_later(hass, 1, self.do_update)
@@ -465,6 +487,7 @@ class Model:
         )  # must come after config_control_entities (uses control entities if not set)
         self.config_sensor_entities(config)
         self.config_override_entities(config)
+        self.config_transition_behaviours(config)
         self.config_off_entities(config)
         self.config_on_entities(config)
         self.config_normal_mode(config)
@@ -758,14 +781,19 @@ class Model:
     # =====================================================
     def on_enter_idle(self):
         self.log.debug("Entering idle")
-        self.turn_off_control_entities()
+        self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
         self.entity.reset_state()
 
     def on_exit_idle(self):
         self.log.debug("Exiting idle")
+        self.do_transition_behaviour(CONF_ON_EXIT_IDLE)
 
     def on_enter_overridden(self):
         self.log.debug("Now overridden")
+        self.do_transition_behaviour(CONF_ON_ENTER_OVERRIDDEN)
+
+    def on_exit_overridden(self):
+        self.do_transition_behaviour(CONF_ON_EXIT_OVERRIDDEN)
 
     def on_enter_active(self):
         self.update(last_triggered_at=str(datetime.now()))
@@ -775,7 +803,7 @@ class Model:
         self._start_timer()
 
         self.log.debug("light params before turning on: " + str(self.lightParams))
-        self.turn_on_control_entities()
+        self.do_transition_behaviour(CONF_ON_ENTER_ACTIVE)
         self.enter()
 
     def on_exit_active(self):
@@ -784,23 +812,50 @@ class Model:
         self.update(
             delay=self.lightParams.get(CONF_DELAY)
         )  # no need to update immediately
+        self.do_transition_behaviour(CONF_ON_EXIT_ACTIVE)
 
     def on_enter_blocked(self):
         self.update(blocked_at=datetime.now())
         self.update(blocked_by=self._state_entity_state())
 
+        self.do_transition_behaviour(CONF_ON_ENTER_BLOCKED)
         if self.block_timeout:
             self.block_timer_handle = Timer(self.block_timeout, self.block_timer_expire)
             self.block_timer_handle.start()
             self.update(block_timeout=self.block_timeout)
 
     def on_exit_blocked(self):
+        self.do_transition_behaviour(CONF_ON_EXIT_BLOCKED)
         if self.block_timer_handle and self.block_timer_handle.is_alive():
             self.block_timer_handle.cancel()
 
+    def on_enter_constrained(self):
+        self.do_transition_behaviour(CONF_ON_ENTER_CONSTRAINED)
+
+    def on_exit_constrained(self):
+        self.do_transition_behaviour(CONF_ON_EXIT_CONSTRAINED)
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
     # =====================================================
+
+    def config_transition_behaviours(self, config):
+        self.transition_behaviours = {
+            CONF_ON_ENTER_IDLE: CONF_TRANSITION_BEHAVIOUR_OFF,          # By default turn off
+            CONF_ON_EXIT_IDLE: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_ENTER_ACTIVE: CONF_TRANSITION_BEHAVIOUR_ON,         # By default turn on
+            CONF_ON_EXIT_ACTIVE: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_ENTER_OVERRIDDEN: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_EXIT_OVERRIDDEN: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_ENTER_CONSTRAINED: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_EXIT_CONSTRAINED: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_ENTER_BLOCKED: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+            CONF_ON_EXIT_BLOCKED: CONF_TRANSITION_BEHAVIOUR_IGNORE,
+        }
+
+        if CONF_BEHAVIOURS in config:
+            self.transition_behaviours = config[CONF_BEHAVIOURS]
+
+        self.log.debug("Transition Behaviours: " + str(self.transition_behaviours))
 
     def config_control_entities(self, config):
         self.controlEntities = []
@@ -1110,14 +1165,16 @@ class Model:
     #    H E L P E R   F U N C T I O N S        ( N E W )
     # =====================================================
 
-    def turn_off_special_entities(self):
+    def handleTriggerOnDeactivateEntities(self):
+        """ Entities that are defined outside of control entities via the `triggerOnDetivate` key. """
         if len(self.triggerOnDeactivate) > 0:
             self.log.info("Triggering Deactivation entities (no params passed along)")
             for e in self.triggerOnDeactivate:
                 self.log.debug("Triggering with turn_on call: %s", e)
                 self.call_service(e, "turn_on")
 
-    def turn_on_special_entities(self):
+    def handleTriggerOnActivateEntities(self):
+        """ Entities that are defined outside of control entities via the `triggerOnActivate` key. """
         if len(self.triggerOnActivate) > 0:
             self.log.info("Triggering Activation entities (no params passed along)")
             for e in self.triggerOnActivate:
@@ -1125,7 +1182,7 @@ class Model:
                 self.call_service(e, "turn_on")
 
     def turn_on_control_entities(self):
-        self.turn_on_special_entities()
+        self.handleTriggerOnActivateEntities()
 
         for e in self.controlEntities:
             # if light params are defined
@@ -1145,7 +1202,7 @@ class Model:
                 self.call_service(e, "turn_on")
 
     def turn_off_control_entities(self):
-        self.turn_off_special_entities()
+        self.handleTriggerOnDeactivateEntities()
         for e in self.controlEntities:
             self.log.debug("Turning off %s", e)
 
@@ -1424,20 +1481,20 @@ class Model:
             - get_astral_event_date(self.hass, sun, datetime.now())
         )
 
-    def add(self, list, e, key=None):
+    def add(self, list, config, key=None):
         """ Adds e (which can be a string or list or config or Template) to the list
             if e is defined.
             If its a template, we have to create the Template object and register state listeners
             self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
 
         """
-        if e is not None:
+        if config is not None:
             v = []
             if key is not None:
-                if key in e:  # must be in separate if statement
-                    v = e[key]
+                if key in config:  # must be in separate if statement
+                    v = config[key]
             else:
-                v = e
+                v = config
             if type(v) == str:
 
                 list.append(v)
@@ -1451,7 +1508,7 @@ class Model:
                 #     self.log.debug("Template dir: %s"  % (str(dir(template))))
                 list.extend(v)
         else:
-            self.log.debug("none")
+            self.log.debug("Tried to configure %s but supplied config was None" % (key))
         return len(v) > 0
 
     def futurize(self, timet):
