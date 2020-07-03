@@ -70,6 +70,10 @@ This FSM implementation is by far the most elegant solution I have found for thi
 |constrained|Current time is outside of `start_time` and `end_time`. EC is inactive until `start_time`.|
 
 Note that `control_entities == state_entities` unless you specifically define `state_entities` in your configuration.
+# Installation
+EC is distributed via the Home assistant Community Store (HACS). You need to set up HACS first if you are starting on a new Home Assistant installation. Once installed, EC can be found in the Integrations tab under "Entity Controller".
+
+![HACS](images/hacs.png)
 
 # Configuration
 EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
