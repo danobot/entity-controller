@@ -254,16 +254,41 @@ Transition Behaviours allow you to define what EC should do at these transition 
 
 **Use Case:**
 > One use case for this is when lights turn on just before the end of the active period and then they never turn off because EC is constrained. For me, the light would be triggered by me walking into a room at 
-7am and the constrain period would begin at 7:16am. Since the light duration is 20 minutes, EC will never turn off the light because it is in `constrained` state at 7:20am. This is annoying because the lights stay on all day. I can use `end_time_action: "off"` to turn off all lights at 7:16am.
+7am and the constrain period would begin at 7:16am. Since the light duration is 20 minutes, EC will never turn off the light because it is in `constrained` state at 7:20am. This is annoying because the lights stay on all day. I can use `on_enter_constrained: "off"` to turn off all lights at 7:16am (when the EC is constrained).
 
+```
+transition_behaviours:   # light triggers on then off
+    entities: 
+      - input_boolean.lamp
+    sensors:
+      - sensor.motion_sensor
+    overrides:
+      - input_boolean.override_switch
+    delay: 5
+    behaviours:
+      on_enter_constrained: "on"
+    start_time: sunset
+    end_time: "7:16:00"
+```
+**Notes about light flicker:** This can cause light flicker particularly for the `on_exit_*` behaviours. If your lights flicker, make sure you understand how this configuration is impacting them and use the `on_enter_*` behaviours instead.
 
+ 
 #### Supported transition points:  
-More will be added in the future.
+The following behaviours can be defined using the values `"on"`, `"off"` and the default being `"ignore"`. These must be in quotes to avoidconflicts with YAML truth values.
+
 
 |Key|Description|
 |---|---|
-|start_time_action|Triggered at the beginning of active period|
-|end_time_action|Triggered at the end of active period|
+|on_enter_idle||
+|on_exit_idle||
+|on_enter_active||
+|on_exit_active||
+|on_enter_overidden||
+|on_exit_overidden||
+|on_enter_constrained||
+|on_exit_constrained||
+|on_enter_blocked||
+|on_exit_blocked||
 
 #### Supported transition behaviours:  
 You must put these in quotes.

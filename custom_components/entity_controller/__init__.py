@@ -53,8 +53,6 @@ from .const import (
 
     CONF_START_TIME,
     CONF_END_TIME,
-    CONF_END_TIME_ACTION,
-    CONF_START_TIME_ACTION,
     CONF_TRANSITION_BEHAVIOUR_ON,
     CONF_TRANSITION_BEHAVIOUR_OFF,
     CONF_TRANSITION_BEHAVIOUR_IGNORE,
@@ -135,12 +133,6 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
         vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(
             vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)
-        ),
-        vol.Optional(CONF_START_TIME_ACTION, default=CONF_TRANSITION_BEHAVIOUR_IGNORE): vol.All(
-            vol.Lower, vol.Any(CONF_TRANSITION_BEHAVIOUR_ON, CONF_TRANSITION_BEHAVIOUR_OFF, CONF_TRANSITION_BEHAVIOUR_IGNORE)
-        ),
-        vol.Optional(CONF_END_TIME_ACTION, default=CONF_TRANSITION_BEHAVIOUR_IGNORE): vol.All(
-            vol.Lower, vol.Any(CONF_TRANSITION_BEHAVIOUR_ON, CONF_TRANSITION_BEHAVIOUR_OFF, CONF_TRANSITION_BEHAVIOUR_IGNORE)
         ),
         vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
         vol.Optional(CONF_SENSOR, default=[]): cv.entity_ids,
@@ -1083,14 +1075,7 @@ class Model:
                     "Constrain period active. Scheduling transition to 'constrained'"
                 )
                 event.async_call_later(self.hass, 1, self.constrain_entity)
-            if CONF_END_TIME_ACTION in config:
-                self.store_transition_behaviour(CONF_END_TIME_ACTION, config.get(CONF_END_TIME_ACTION))
-            if CONF_START_TIME_ACTION in config:
-                self.store_transition_behaviour(CONF_START_TIME_ACTION, config.get(CONF_START_TIME_ACTION))
 
-        else:
-            if CONF_END_TIME_ACTION in config or CONF_START_TIME_ACTION in config:
-                self.log.error("You must define %s and %s in your config to use the %s or %s feature." % (CONF_START_TIME, CONF_END_TIME, CONF_END_TIME_ACTION, CONF_END_TIME_ACTION))
         self.log_config()
     
    
@@ -1174,7 +1159,7 @@ class Model:
         )
         self.update(end_time=parsed_end)
         # must be down here to make sure new callback is set regardless of exceptions
-        self.do_transition_behaviour(CONF_END_TIME_ACTION)
+        self.do_transition_behaviour(CONF_ON_ENTER_CONSTRAINED)
         self.constrain()
 
     @callback
@@ -1204,7 +1189,7 @@ class Model:
             self.blocked()
         else:
             self.enable()
-        self.do_transition_behaviour(CONF_START_TIME_ACTION)
+        self.do_transition_behaviour(CONF_ON_EXIT_CONSTRAINED)
 
     # =====================================================
     #    H E L P E R   F U N C T I O N S        ( N E W )

@@ -43,8 +43,6 @@ CONF_ON_EXIT_CONSTRAINED = 'on_exit_constrained'
 CONF_ON_ENTER_BLOCKED = 'on_enter_blocked'
 CONF_ON_EXIT_BLOCKED = 'on_exit_blocked'
 
-CONF_END_TIME_ACTION = 'end_time_action'
-CONF_START_TIME_ACTION = 'start_time_action'
 CONF_TRANSITION_BEHAVIOUR_ON = 'on'
 CONF_TRANSITION_BEHAVIOUR_OFF = 'off'
 CONF_TRANSITION_BEHAVIOUR_IGNORE = 'ignore'
