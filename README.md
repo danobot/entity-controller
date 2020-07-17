@@ -31,12 +31,18 @@ Password:                 W8VfFdKU2zvS3GHV
 ```
 
 This instance may not be available at all times. Do not raise issues for this. All the confugration is available in the `hass-demo` directory.
-[Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
+
+
+## Support
+Maintaining and improving this integration is very time consuming because of the sheer number of supported use cases. If you use this component in your home please consider donating a few dollars or checking the issue tracker to help with the investigation of defects or the implementation of new features. I would be happy to receive your pull request.
+
+[![donate paypal](https://img.shields.io/badge/donate-PayPal-blue.svg?style=flat-square)](https://paypal.me/danielb160)
+[![donate gofundme](https://img.shields.io/badge/donate-GoFundMe-orange?style=flat-square)](https://gf.me/u/w62k93)
 
 # :boom: Recent Breaking Changes :boom:
 * `v6.0.0` introduces a breaking change if you are relying on the entities `friendly_name` in other automations. See [#153](https://github.com/danobot/entity-controller/pull/153). The release PR is [#156](https://github.com/danobot/entity-controller/pull/156).
 
-# Requirements
+# Features
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
 * (1) turn on **control entities** when **sensor entities** are triggered
 * (2) turn off **control entities** when **sensor entities** remain off for some time
