@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="6.1.0"></a>
+# [6.1.0](https://github.com/danobot/entity-controller/compare/v6.0.1...v6.1.0) (2020-08-30)
+
+
+### Bug Fixes
+
+* Change mdi:timer* to mdi:timer*-outline in prep for HA 0.115 ([#172](https://github.com/danobot/entity-controller/issues/172)) ([9f019b8](https://github.com/danobot/entity-controller/commit/9f019b8))
+
+
+### Features
+
+* Transition Behaviours Extended ([#159](https://github.com/danobot/entity-controller/issues/159)) ([aa8dab9](https://github.com/danobot/entity-controller/commit/aa8dab9))
+
+
+
 <a name="6.0.1"></a>
 ## [6.0.1](https://github.com/danobot/entity-controller/compare/v6.0.0...v6.0.1) (2020-08-30)
 
