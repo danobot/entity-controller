@@ -387,11 +387,11 @@ class EntityController(entity.Entity):
         if self.model.state == "active":
             return "mdi:check-circle"
         if self.model.state == "active_timer":
-            return "mdi:timer"
+            return "mdi:timer-outline"
         if self.model.state == "constrained":
             return "mdi:cancel"
         if self.model.state == "overridden":
-            return "mdi:timer-off"
+            return "mdi:timer-off-outline"
         if self.model.state == "blocked":
             return "mdi:close-circle"
         return "mdi:eye"
