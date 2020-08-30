@@ -1,3 +1,20 @@
+"""
+This file is part of Entity Controller.
+
+Entity Controller is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Entity Controller is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Entity Controller.  If not, see <https://www.gnu.org/licenses/>.
+
+"""
 """ Constants used by other files """
 
 DOMAIN = "entity_controller"
@@ -11,8 +28,21 @@ SERVICE_SET_NIGHT_MODE = "set_night_mode"
 #configuration
 CONF_START_TIME = 'start_time'
 CONF_END_TIME = 'end_time'
-CONF_END_TIME_ACTION = 'end_time_action'
-CONF_START_TIME_ACTION = 'start_time_action'
+
+# Transition Behaviours
+CONF_BEHAVIOURS = 'behaviours'
+
+CONF_ON_ENTER_IDLE='on_enter_idle'
+CONF_ON_EXIT_IDLE='on_exit_idle'
+CONF_ON_ENTER_ACTIVE='on_enter_active'
+CONF_ON_EXIT_ACTIVE='on_exit_active'
+CONF_ON_ENTER_OVERRIDDEN = 'on_enter_overidden'
+CONF_ON_EXIT_OVERRIDDEN = 'on_exit_overidden'
+CONF_ON_ENTER_CONSTRAINED = 'on_enter_constrained'
+CONF_ON_EXIT_CONSTRAINED = 'on_exit_constrained'
+CONF_ON_ENTER_BLOCKED = 'on_enter_blocked'
+CONF_ON_EXIT_BLOCKED = 'on_exit_blocked'
+
 CONF_TRANSITION_BEHAVIOUR_ON = 'on'
 CONF_TRANSITION_BEHAVIOUR_OFF = 'off'
 CONF_TRANSITION_BEHAVIOUR_IGNORE = 'ignore'

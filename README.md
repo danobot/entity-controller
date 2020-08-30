@@ -31,12 +31,18 @@ Password:                 W8VfFdKU2zvS3GHV
 ```
 
 This instance may not be available at all times. Do not raise issues for this. All the confugration is available in the `hass-demo` directory.
-[Buy me a coffee to support ongoing development](https://www.gofundme.com/danobot&rcid=r01-155117647299-36f7aa9cb3544199&pc=ot_co_campmgmt_w)
+
+
+## Support
+Maintaining and improving this integration is very time consuming because of the sheer number of supported use cases. If you use this component in your home please consider donating a few dollars or checking the issue tracker to help with the investigation of defects or the implementation of new features. I would be happy to receive your pull request.
+
+[![donate paypal](https://img.shields.io/badge/donate-PayPal-blue.svg?style=flat-square)](https://paypal.me/danielb160)
+[![donate gofundme](https://img.shields.io/badge/donate-GoFundMe-orange?style=flat-square)](https://gf.me/u/w62k93)
 
 # :boom: Recent Breaking Changes :boom:
 * `v6.0.0` introduces a breaking change if you are relying on the entities `friendly_name` in other automations. See [#153](https://github.com/danobot/entity-controller/pull/153). The release PR is [#156](https://github.com/danobot/entity-controller/pull/156).
 
-# Requirements
+# Features
 This component started out as an AppDaemon script implementation of motion activated lighting but it has since been generalised to be able to control any Home Assistant entity. I have discussed the original core requirements for motion lights [on my blog](https://www.danielbkr.net/2018/05/17/appdaemon-motion-lights.html). The basic responsibilities of EC are as follows:
 * (1) turn on **control entities** when **sensor entities** are triggered
 * (2) turn off **control entities** when **sensor entities** remain off for some time
@@ -70,6 +76,10 @@ This FSM implementation is by far the most elegant solution I have found for thi
 |constrained|Current time is outside of `start_time` and `end_time`. EC is inactive until `start_time`.|
 
 Note that `control_entities == state_entities` unless you specifically define `state_entities` in your configuration.
+# Installation
+EC is distributed via the Home assistant Community Store (HACS). You need to set up HACS first if you are starting on a new Home Assistant installation. Once installed, EC can be found in the Integrations tab under "Entity Controller".
+
+![HACS](images/hacs.png)
 
 # Configuration
 EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
@@ -254,16 +264,41 @@ Transition Behaviours allow you to define what EC should do at these transition 
 
 **Use Case:**
 > One use case for this is when lights turn on just before the end of the active period and then they never turn off because EC is constrained. For me, the light would be triggered by me walking into a room at 
-7am and the constrain period would begin at 7:16am. Since the light duration is 20 minutes, EC will never turn off the light because it is in `constrained` state at 7:20am. This is annoying because the lights stay on all day. I can use `end_time_action: "off"` to turn off all lights at 7:16am.
+7am and the constrain period would begin at 7:16am. Since the light duration is 20 minutes, EC will never turn off the light because it is in `constrained` state at 7:20am. This is annoying because the lights stay on all day. I can use `on_enter_constrained: "off"` to turn off all lights at 7:16am (when the EC is constrained).
 
+```
+transition_behaviours:   # light triggers on then off
+    entities: 
+      - input_boolean.lamp
+    sensors:
+      - sensor.motion_sensor
+    overrides:
+      - input_boolean.override_switch
+    delay: 5
+    behaviours:
+      on_enter_constrained: "on"
+    start_time: sunset
+    end_time: "7:16:00"
+```
+**Notes about light flicker:** This can cause light flicker particularly for the `on_exit_*` behaviours. If your lights flicker, make sure you understand how this configuration is impacting them and use the `on_enter_*` behaviours instead.
 
+ 
 #### Supported transition points:  
-More will be added in the future.
+The following behaviours can be defined using the values `"on"`, `"off"` and the default being `"ignore"`. These must be in quotes to avoidconflicts with YAML truth values.
+
 
 |Key|Description|
 |---|---|
-|start_time_action|Triggered at the beginning of active period|
-|end_time_action|Triggered at the end of active period|
+|on_enter_idle||
+|on_exit_idle||
+|on_enter_active||
+|on_exit_active||
+|on_enter_overidden||
+|on_exit_overidden||
+|on_enter_constrained||
+|on_exit_constrained||
+|on_enter_blocked||
+|on_exit_blocked||
 
 #### Supported transition behaviours:  
 You must put these in quotes.
