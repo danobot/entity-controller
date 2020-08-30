@@ -1,7 +1,7 @@
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v6.0.0
+Version:          v6.0.1
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
@@ -74,7 +74,7 @@ from .entity_services import (
 
 
 
-VERSION = '6.0.0'
+VERSION = '6.0.1'
 
 
 _LOGGER = logging.getLogger(__name__)
