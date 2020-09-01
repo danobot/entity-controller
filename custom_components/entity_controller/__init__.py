@@ -208,7 +208,7 @@ async def async_setup(hass, config):
     )
 
     # Blocked
-    machine.add_transition(trigger="enable", source="blocked", dest="idle")
+    machine.add_transition(trigger="enable", source="blocked", dest="idle", conditions=["is_state_entities_off"])
     machine.add_transition(
         trigger="sensor_on", source="blocked", dest="blocked"
     )  # re-entering self-transition (on_enter callback executed.)
@@ -263,7 +263,6 @@ async def async_setup(hass, config):
         dest="idle",
         conditions=["is_timer_expired"],
     )
-
     # The following two transitions must be kept seperate because they have
     # special conditional logic that cannot be combined.
     machine.add_transition(
@@ -309,8 +308,13 @@ async def async_setup(hass, config):
                            dest='blocked', conditions=['is_state_entities_on'])
 
     # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
-    machine.add_transition(trigger="timer_expires", source="active_stay_on", dest=None)
-
+    # machine.add_transition(trigger="timer_expires", source="active_stay_on", dest=None)
+    machine.add_transition(
+        trigger="enable",
+        source="active_stay_on",
+        dest="idle",
+        conditions=["is_state_entities_off"]
+    )
     # Constrained
     machine.add_transition(
         trigger="enable",
@@ -616,11 +620,12 @@ class Model:
         if self.is_active_timer():
             if datetime.now() > self.ignore_state_changes_until: # check if we are within the grace period after making a service call (this avoids EC blocking itself)
                 self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
+
                 self.control()
             else:
                 self.log.debug("state_entity_state_change :: This state change is within 2 seconds of calling a service. Ignoring this state change because its probably caused by EC itself.")
 
-        if self.is_blocked() and self.is_state_entities_off():
+        if self.is_blocked() or self.is_active_stay_on(): # if statement required to avoid MachineErrors, cleaner than adding transitions to all possible states.
             self.enable()
 
     def _start_timer(self):
@@ -666,11 +671,10 @@ class Model:
 
     def timer_expire(self):
         self.log.debug("timer_expire :: Timer expired")
-        if (
-            self.is_duration_sensor() and self.is_sensor_on()
-        ):  # Ignore timer expiry because duration sensor overwrites timer
+        if self.is_duration_sensor() and self.is_sensor_on():  # Ignore timer expiry because duration sensor overwrites timer
             self.update(expires_at="pending sensor")
         else:
+            self.log.debug("timer_expire :: Trigger timer_expires event")
             self.timer_expires()
 
     def block_timer_expire(self):
@@ -685,7 +689,7 @@ class Model:
             s = self.hass.states.get(e)
             try:
                 state = s.state
-            except AttributeError:
+            except AttributeError as e:
                 self.log.error(
                     "Configuration error! Override Entity ({}) does not exist. Please check for spelling and typos.".format(
                         e
@@ -710,7 +714,7 @@ class Model:
             s = self.hass.states.get(e)
             try:
                 state = s.state
-            except AttributeError:
+            except AttributeError as e:
                 self.log.error(
                     "Configuration error! Sensor Entity ({}) does not exist. Please check for spelling and typos.".format(
                         e
@@ -736,12 +740,13 @@ class Model:
             self.log.info(s)
             try:
                 state = s.state
-            except AttributeError:
+            except AttributeError as e:
                 self.log.error(
                     "Configuration error! State Entity ({}) does not exist. Please check for spelling and typos.".format(
                         e
                     )
                 )
+                state = 'off'
                 return None
 
             if self.matches(state, self.STATE_ON_STATE):
@@ -1084,8 +1089,6 @@ class Model:
             self.log.debug("config_other :: setting up backoff. Using delay as initial backoff value.")
             self.backoff_factor = config.get("backoff_factor", 1.1)
             self.backoff_max = config.get("backoff_max", 300)
-
-        self.stay = config.get("stay", False)
 
         if config.get(CONF_SENSOR_TYPE_DURATION):
             self.sensor_type = SENSOR_TYPE_DURATION
