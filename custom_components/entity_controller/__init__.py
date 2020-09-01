@@ -635,18 +635,21 @@ class Model:
                         if key not in self.state_attributes_ignore
                     }
                     if old_temp == new_temp:
-                        self.log.debug("insignificant attribute only change")
+                        self.log.debug("state_entity_state_change :: insignificant attribute only change")
                         return
-                    self.log.debug("significant attribute only change")
+                    self.log.debug("state_entity_state_change :: significant attribute only change")
         except AttributeError as a:
             # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
             self.log.debug(
-                "Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
+                "state_entity_state_change :: Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
                 + str(a)
             )
-
         if self.is_active_timer():
-            self.control()
+            if datetime.now() > self.ignore_state_changes_until: # check if we are within the grace period after making a service call (this avoids EC blocking itself)
+                self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
+                self.control()
+            else:
+                self.log.debug("state_entity_state_change :: This state change is within 2 seconds of calling a service. Ignoring this state change because its probably caused by EC itself.")
 
         if self.is_blocked() and self.is_state_entities_off():
             self.enable()
@@ -1096,6 +1099,7 @@ class Model:
         self.log.debug("Config other")
 
         self.do_draw = config.get("draw", False)
+        self.ignore_state_changes_until = datetime.now()
         self.homeassistant_turn_on_domains = ['group'] # domains that do not have their own turn_on service and rely on homeassistant.turn_on
         # if CONF_TRIGGER_ON_DEACTIVATE in config:
         #     self.entityOff = config.get(CONF_TRIGGER_ON_DEACTIVATE)
@@ -1472,12 +1476,15 @@ class Model:
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
-        self.log.debug("Calling service " + service + " on " + entity)
+        self.log.debug("call_service :: Calling service " + service + " on " + entity)
+        self.ignore_state_changes_until = datetime.now() + timedelta(seconds=2)
+        self.log.debug("call_service :: Setting ignore_state_changes_until to " + str(self.ignore_state_changes_until))
+
         domain, e = entity.split(".")
         if e == 'turn_on' and domain in homeassistant_turn_on_domains:
             domain = "homeassistant"
             service = "homeassistant.turn_on"
-            self.log.debug("Actualy calling service " + service + " on " + entity + " because the domain requires it.")
+            self.log.debug("call_service :: Actualy calling service " + service + " on " + entity + " because the domain requires it.")
         params = {}
         if kwargs is not None:
             params = kwargs
