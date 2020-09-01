@@ -509,12 +509,6 @@ class Model:
         self.config_other(config)
         self.prepare_service_data()
 
-        # def draw(self):
-        #     self.update()
-        #     if self.do_draw:
-        #         self.log.debug("Updating graph in state: " + self.state)
-        #         self.get_graph().draw(self.image_path + self.image_prefix + str(self.name)+'.png', prog='dot', format='png')
-
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
         # self.log.debug("Update called with {}".format(str(kwargs)))
@@ -535,8 +529,8 @@ class Model:
     @callback
     def sensor_state_change(self, entity, old, new):
         """ State change callback for sensor entities """
-        self.log.debug("%10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
-        self.log.debug("state: " +  pprint.pformat(self.state))
+        self.log.debug("sensor_state_change :: %10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
+        self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
@@ -553,7 +547,7 @@ class Model:
 
             # If configured, reset timer when duration sensor goes off
             if self.config[CONF_SENSOR_RESETS_TIMER]:
-                self.log.debug("CONF_SENSOR_RESETS_TIMER")
+                self.log.debug("sensor_state_change :: CONF_SENSOR_RESETS_TIMER")
                 self.update(
                     notes="The sensor turned off and reset the timeout. Timer started."
                 )
@@ -561,12 +555,12 @@ class Model:
             else:
                 # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
                 self.sensor_off_duration()
-                self.log.debug("CONF_SENSOR_RESETS_TIMER - normal")
+                self.log.debug("sensor_state_change :: CONF_SENSOR_RESETS_TIMER - normal")
 
     @callback
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
-        self.log.debug("Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
+        self.log.debug("override_state_change :: Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
         if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
             self.is_active()
             or self.is_active_timer()
@@ -594,31 +588,6 @@ class Model:
         )
         # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
-            # kept in case it causes problems
-            # if old.state == new.state:  # Only attributes changed
-            #     # Build two dictionaries of attributes, excluding the ones we don't want to monitor
-            #     old_temp = {
-            #         key: old.attributes[key]
-            #         for key in old.attributes
-            #         if key not in self.state_attributes_ignore
-            #     }
-            #     new_temp = {
-            #         key: new.attributes[key]
-            #         for key in new.attributes
-            #         if key not in self.state_attributes_ignore
-            #     }
-            #     if old_temp == new_temp:
-            #         self.log.debug("insignificant attribute only change")
-            #         return
-            #     self.log.debug("significant attribute only change")
-        # except AttributeError as a:
-            # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
-            # self.log.debug(
-            #     "Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
-            #     + str(a)
-            # )
-            # pass
-
             if not old or not new or old == 'off' or new == 'off':
                 pass
             else:
@@ -635,9 +604,9 @@ class Model:
                         if key not in self.state_attributes_ignore
                     }
                     if old_temp == new_temp:
-                        self.log.debug("state_entity_state_change :: insignificant attribute only change")
+                        self.log.debug("state_entity_state_change :: insignificant attribute change - Ignore the state change altogether")
                         return
-                    self.log.debug("state_entity_state_change :: significant attribute only change")
+                    self.log.debug("state_entity_state_change :: A significant attribute changed and will be handled")
         except AttributeError as a:
             # Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object.
             self.log.debug(
@@ -655,12 +624,12 @@ class Model:
             self.enable()
 
     def _start_timer(self):
-        self.log.info(self.lightParams)
+        self.log.info("_start_timer :: Light params: " + str(self.lightParams))
         if self.backoff_count == 0:
             self.previous_delay = self.lightParams.get(CONF_DELAY, DEFAULT_DELAY)
         else:
             self.log.debug(
-                "Backoff: %s,  count: %s, delay%s, factor: %s",
+                "_start_timer :: Backoff: %s,  count: %s, delay%s, factor: %s",
                 self.backoff,
                 self.backoff_count,
                 self.lightParams.get(CONF_DELAY, DEFAULT_DELAY),
@@ -676,9 +645,7 @@ class Model:
 
         # not able to use async_call_later because no known way to check whether timer is active.
         # self.timer_handle = event.async_call_later(self.hass, self.previous_delay, self.timer_expire)
-        # self.log.debug("Timer handle" + str(dir(self.timer_handle)))
         self.timer_handle = Timer(self.previous_delay, self.timer_expire)
-        # self.log.debug("Delay: " + str(self.previous_delay))
         self.timer_handle.start()
         self.update(expires_at=expiry_time)
 
@@ -687,11 +654,10 @@ class Model:
             self.timer_handle.cancel()
 
     def _reset_timer(self):
-        self.log.debug("Resetting timer" + str(self.backoff))
+        self.log.debug("_reset_timer :: Resetting timer: " + str(self.backoff))
         self._cancel_timer()
         self.update(reset_at=datetime.now())
         if self.backoff:
-            self.log.debug("inc backoff")
             self.backoff_count += 1
             self.update(backoff_count=self.backoff_count)
         self._start_timer()
@@ -699,7 +665,7 @@ class Model:
         return True
 
     def timer_expire(self):
-        self.log.debug("Timer expired")
+        self.log.debug("timer_expire :: Timer expired")
         if (
             self.is_duration_sensor() and self.is_sensor_on()
         ):  # Ignore timer expiry because duration sensor overwrites timer
@@ -708,7 +674,7 @@ class Model:
             self.timer_expires()
 
     def block_timer_expire(self):
-        self.log.debug("Blocked Timer expired")
+        self.log.debug("block_timer_expire :: Blocked Timer expired")
         self.block_timer_expires()
 
     # =====================================================
@@ -810,7 +776,6 @@ class Model:
 
     def is_timer_expired(self):
         expired = self.timer_handle.is_alive() == False
-        self.log.debug("is_timer_expired -> " + str(expired))
         return expired
 
     def does_sensor_reset_timer(self):
@@ -829,25 +794,28 @@ class Model:
         self.do_transition_behaviour(CONF_ON_EXIT_IDLE)
 
     def on_enter_overridden(self):
-        self.log.debug("Now overridden")
+        self.log.debug("Entering overridden")
         self.do_transition_behaviour(CONF_ON_ENTER_OVERRIDDEN)
 
     def on_exit_overridden(self):
+        self.log.debug("Exiting overridden")
         self.do_transition_behaviour(CONF_ON_EXIT_OVERRIDDEN)
 
     def on_enter_active(self):
+        self.log.debug("Entering active")
         self.update(last_triggered_at=str(datetime.now()))
         self.backoff_count = 0
         self.prepare_service_data()
 
         self._start_timer()
 
-        self.log.debug("light params before turning on: " + str(self.lightParams))
+        self.log.debug("on_enter_active :: light params before turning on: " + str(self.lightParams))
         self.do_transition_behaviour(CONF_ON_ENTER_ACTIVE)
         self.enter()
 
     def on_exit_active(self):
-        self.log.debug("Turning off entities, cancelling timer")
+        self.log.debug("Exiting active")
+        self.log.debug("on_exit_active :: Turning off entities, cancelling timer")
         self._cancel_timer()  # cancel previous timer
         self.update(
             delay=self.lightParams.get(CONF_DELAY)
@@ -855,6 +823,7 @@ class Model:
         self.do_transition_behaviour(CONF_ON_EXIT_ACTIVE)
 
     def on_enter_blocked(self):
+        self.log.debug("Entering blocked")
         self.update(blocked_at=datetime.now())
         self.update(blocked_by=self._state_entity_state())
 
@@ -865,14 +834,17 @@ class Model:
             self.update(block_timeout=self.block_timeout)
 
     def on_exit_blocked(self):
+        self.log.debug("Exiting blocked")
         self.do_transition_behaviour(CONF_ON_EXIT_BLOCKED)
         if self.block_timer_handle and self.block_timer_handle.is_alive():
             self.block_timer_handle.cancel()
 
     def on_enter_constrained(self):
+        self.log.debug("Entering constrained")
         self.do_transition_behaviour(CONF_ON_ENTER_CONSTRAINED)
 
     def on_exit_constrained(self):
+        self.log.debug("Exiting constrained")
         self.do_transition_behaviour(CONF_ON_EXIT_CONSTRAINED)
     # =====================================================
     #    C O N F I G U R A T I O N  &  V A L I D A T I O N
@@ -895,7 +867,7 @@ class Model:
         if CONF_BEHAVIOURS in config:
             self.transition_behaviours = {**self.transition_behaviours, **config[CONF_BEHAVIOURS]}
 
-        self.log.debug("Transition Behaviours: " +  pprint.pformat(self.transition_behaviours))
+        self.log.debug("config_transition_behaviours :: Transition Behaviours: " +  pprint.pformat(self.transition_behaviours))
 
     def config_control_entities(self, config):
         self.controlEntities = []
@@ -912,7 +884,7 @@ class Model:
         )  # adding optimistically
         if len(self.stateEntities) > 0:  # now checking whether they actually exist
             self.log.info(
-                "State Entities (explicitly defined): " + str(self.stateEntities)
+                "State Entities (explicitly defined - I hope you know what you are doing): " + str(self.stateEntities)
             )
             event.async_track_state_change(
                 self.hass, self.stateEntities, self.state_entity_state_change
@@ -922,7 +894,7 @@ class Model:
             # If no state entities are defined, use control entites as state
             self.stateEntities = self.controlEntities.copy()
             self.log.debug(
-                "Added Control Entities as state entities: " + str(self.stateEntities)
+                "Added Control Entities as state entities (default): " + str(self.stateEntities)
             )
             event.async_track_state_change(
                 self.hass, self.stateEntities, self.state_entity_state_change
@@ -1096,15 +1068,9 @@ class Model:
             )
 
     def config_other(self, config):
-        self.log.debug("Config other")
-
         self.do_draw = config.get("draw", False)
         self.ignore_state_changes_until = datetime.now()
         self.homeassistant_turn_on_domains = ['group'] # domains that do not have their own turn_on service and rely on homeassistant.turn_on
-        # if CONF_TRIGGER_ON_DEACTIVATE in config:
-        #     self.entityOff = config.get(CONF_TRIGGER_ON_DEACTIVATE)
-        # if CONF_TRIGGER_ON_ACTIVATE in config:
-        #     self.entityOn = config.get(CONF_TRIGGER_ON_ACTIVATE)
 
         self.config[CONF_SENSOR_RESETS_TIMER] = config.get(CONF_SENSOR_RESETS_TIMER)
 
@@ -1115,7 +1081,7 @@ class Model:
         self.stay = config.get("stay", False)
 
         if self.backoff:
-            self.log.debug("setting up backoff. Using delay as initial backoff value.")
+            self.log.debug("config_other :: setting up backoff. Using delay as initial backoff value.")
             self.backoff_factor = config.get("backoff_factor", 1.1)
             self.backoff_max = config.get("backoff_max", 300)
 
@@ -1147,21 +1113,17 @@ class Model:
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
         """
-        self.log.debug("END TIME CALLBACK.")
+        self.log.debug("end_time_callback :: Triggered")
         # must be reparsed to get up to date sunset/sunrise times
-        # if self.debug_day_length:
-        #     x = self.make_naive(dt.now() + timedelta(seconds=int(self.debug_day_length)))
-        #     self.log.debug("using debug day lengh %s", x)
-        #
-        # else:
         x = self.parse_time(self.end_time)
 
         parsed_end = self.futurize(x)
-        self.log.debug("END TIME CALLBACK. New callback set to %s (future)", parsed_end)
+        self.log.debug("end_time_callback :: New callback set to %s (future)", parsed_end)
         self.end_time_event_hook = event.async_track_point_in_time(
             self.hass, self.end_time_callback, parsed_end
         )
         self.update(end_time=parsed_end)
+
         # must be down here to make sure new callback is set regardless of exceptions
         self.do_transition_behaviour(CONF_ON_ENTER_CONSTRAINED)
         self.constrain()
@@ -1171,7 +1133,7 @@ class Model:
         """
             Called when `start_time` is reached, will change state to `idle` and schedule `end_time` callback.
         """
-        self.log.debug("START TIME CALLBACK.")
+        self.log.debug("start_time_callback :: Triggered")
         # must be reparsed to get up to date sunset/sunrise times
         # if self.debug_day_length:
         #     x = self.make_naive(dt.now() + timedelta(seconds=int(self.debug_day_length)))
@@ -1181,7 +1143,7 @@ class Model:
 
         parsed_start = self.futurize(x)
         self.log.debug(
-            "START TIME CALLBACK." " New callback set to %s (future)", parsed_start
+            "start_time_callback :: New callback set to %s (future)" % parsed_start
         )
         self.start_time_event_hook = event.async_track_point_in_time(
             self.hass, self.start_time_callback, parsed_start
@@ -1202,7 +1164,7 @@ class Model:
     def handleTriggerOnDeactivateEntities(self):
         """ Entities that are defined outside of control entities via the `triggerOnDetivate` key. """
         if len(self.triggerOnDeactivate) > 0:
-            self.log.info("Triggering Deactivation entities (no params passed along)")
+            self.log.info("handleTriggerOnDeactivateEntities :: Triggering Deactivation entities (no params passed along)")
             for e in self.triggerOnDeactivate:
                 self.log.debug("Triggering with turn_on call: %s", e)
                 self.call_service(e, "turn_on")
@@ -1210,7 +1172,7 @@ class Model:
     def handleTriggerOnActivateEntities(self):
         """ Entities that are defined outside of control entities via the `triggerOnActivate` key. """
         if len(self.triggerOnActivate) > 0:
-            self.log.info("Triggering Activation entities (no params passed along)")
+            self.log.info("handleTriggerOnActivateEntities :: Triggering Activation entities (no params passed along)")
             for e in self.triggerOnActivate:
                 self.log.debug("Triggering with turn_on call: %s", e)
                 self.call_service(e, "turn_on")
@@ -1222,7 +1184,7 @@ class Model:
             # if light params are defined
             if self.lightParams.get(CONF_SERVICE_DATA) is not None:
                 self.log.debug(
-                    "Turning on %s with service parameters %s",
+                    "turn_on_control_entities :: Turning on %s with service parameters %s",
                     e,
                     self.lightParams.get(CONF_SERVICE_DATA),
                 )
@@ -1231,14 +1193,14 @@ class Model:
                 )
             else:
                 self.log.debug(
-                    "Turning on %s (no parameters passed to service call)", e
+                    "turn_on_control_entities :: Turning on %s (no parameters passed to service call)", e
                 )
                 self.call_service(e, "turn_on")
 
     def turn_off_control_entities(self):
         self.handleTriggerOnDeactivateEntities()
         for e in self.controlEntities:
-            self.log.debug("Turning off %s", e)
+            self.log.debug("turn_off_control_entities :: Turning off %s", e)
 
             if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
                 self.call_service(
@@ -1540,13 +1502,6 @@ class Model:
 
                 list.append(v)
             else:
-                # for st in v:
-                #     template = Template(st, self.hass)
-                #     self.log.debug("Template: %s"  % ( str(template)))
-                #     self.log.debug("Template: %s" % (str(template.ensure_valid())))
-                #     template.async_render()
-                #     # self.log.debug("Template rendered: %s"  % (str(template.result)))
-                #     self.log.debug("Template dir: %s"  % (str(dir(template))))
                 list.extend(v)
         else:
             self.log.debug("Tried to configure %s but supplied config was None" % (key))
@@ -1606,14 +1561,10 @@ class Model:
             sign = parts.group(1)
             first_delay = parts.group(3)
             delay = parts.group(2)
-            # self.log.debug("Group 1: %s", sign)
-            # self.log.debug("Group 2 (delay): %s", delay)
-            # self.log.debug("Group 3 (first delay): %s", first_delay)
             now = dt.now()
             self.log.debug("now %s", now)
             delta = timedelta(seconds=int(delay))
             if first_delay is not None:
-                # self.log.debug("first delay defined")
                 delta = timedelta(seconds=int(first_delay))
             if sign == "-":
                 now = now - delta
@@ -1642,8 +1593,6 @@ class Model:
         self.log.debug("        -------        Time        -------        ")
         self.log.debug("Start time:             %s", self._start_time_private)
         self.log.debug("End time:               %s", self._end_time_private)
-        # self.log.debug("Start time (property):  %s", self.start_time)
-        # self.log.debug("End time (property):    %s", self.end_time)
         self.log.debug("DT Now:                 %s", dt.now())
         self.log.debug("datetime Now:           %s", datetime.now())
         self.log.debug("Next Sunrise:           %s", self.next_sunrise(True))
