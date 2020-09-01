@@ -1446,10 +1446,9 @@ class Model:
         self.log.debug("call_service :: Setting ignore_state_changes_until to " + str(self.ignore_state_changes_until))
 
         domain, e = entity.split(".")
-        if e == 'turn_on' and domain in homeassistant_turn_on_domains:
+        if service in ['turn_on','turn_off'] and domain in self.homeassistant_turn_on_domains:
             domain = "homeassistant"
-            service = "homeassistant.turn_on"
-            self.log.debug("call_service :: Actualy calling service " + service + " on " + entity + " because the domain requires it.")
+            self.log.debug("call_service :: Actually calling service %s on %s via the %s domain because the entity domain requires it." % (service, entity, domain))
         params = {}
         if kwargs is not None:
             params = kwargs
