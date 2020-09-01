@@ -1096,7 +1096,7 @@ class Model:
         self.log.debug("Config other")
 
         self.do_draw = config.get("draw", False)
-
+        self.homeassistant_turn_on_domains = ['group'] # domains that do not have their own turn_on service and rely on homeassistant.turn_on
         # if CONF_TRIGGER_ON_DEACTIVATE in config:
         #     self.entityOff = config.get(CONF_TRIGGER_ON_DEACTIVATE)
         # if CONF_TRIGGER_ON_ACTIVATE in config:
@@ -1472,8 +1472,12 @@ class Model:
 
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
-        self.log.debug("Calling service " + entity + " " + service)
+        self.log.debug("Calling service " + service + " on " + entity)
         domain, e = entity.split(".")
+        if e == 'turn_on' and domain in homeassistant_turn_on_domains:
+            domain = "homeassistant"
+            service = "homeassistant.turn_on"
+            self.log.debug("Actualy calling service " + service + " on " + entity + " because the domain requires it.")
         params = {}
         if kwargs is not None:
             params = kwargs
