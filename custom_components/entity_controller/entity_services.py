@@ -35,8 +35,8 @@ import homeassistant.util.dt as dt_util
 
 from .const import (
     SERVICE_CLEAR_BLOCK,
-    SERVICE_SET_STAY_ON,
-    SERVICE_SET_STAY_OFF,
+    SERVICE_ENABLE_STAY_MODE,
+    SERVICE_DISABLE_STAY_MODE,
     SERVICE_SET_NIGHT_MODE,
     CONF_START_TIME,
     CONF_END_TIME,
@@ -49,8 +49,8 @@ def async_setup_entity_services(component: EntityComponent):
 
     component.logger.debug("Setting up entity services")
     component.async_register_entity_service(SERVICE_CLEAR_BLOCK, {}, "async_clear_block")
-    component.async_register_entity_service(SERVICE_SET_STAY_ON, {}, "async_set_stay_on")
-    component.async_register_entity_service(SERVICE_SET_STAY_OFF, {}, "async_set_stay_off")
+    component.async_register_entity_service(SERVICE_ENABLE_STAY_MODE, {}, "async_enable_stay_mode")
+    component.async_register_entity_service(SERVICE_DISABLE_STAY_MODE, {}, "async_disable_stay_mode")
     component.async_register_entity_service(
         SERVICE_SET_NIGHT_MODE, 
         { vol.Optional(CONF_START_TIME): cv.string, vol.Optional(CONF_END_TIME): cv.string },
@@ -67,16 +67,12 @@ def async_entity_service_clear_block(self):
     self.model.log.debug("Clearing Blocked state")
     self.model.block_timer_expires()
 
-def async_entitiy_service_set_stay_on(self):
-    """ Changes the stay attribute with a custom value """
-
-    self.model.log.debug("Changing stay to on")
+def async_entity_service_enable_stay_mode(self):
+    self.model.log.debug("Enable stay mode - Control entities will remain on until manually turned off")
     self.model.stay = True
 
-def async_entitiy_service_set_stay_off(self):
-    """ Changes the stay attribute with a custom value """
-
-    self.model.log.debug("Changing stay to off")
+def async_entity_service_disable_stay_mode(self):
+    self.model.log.debug("Disable stay mode - Control entities will be managed by EC")
     self.model.stay = False
 
 def async_entity_service_set_night_mode(self, start_time=None, end_time=None):
