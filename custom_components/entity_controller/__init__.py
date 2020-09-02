@@ -1083,7 +1083,7 @@ class Model:
         self.image_prefix = config.get("image_prefix", "/fsm_diagram_")
         self.image_path = config.get("image_path", "/conf/temp")
         self.backoff = config.get("backoff", False)
-        self.stay = config.get("stay", False)
+        self.stay = config.get("stay_mode", False)
 
         if self.backoff:
             self.log.debug("config_other :: setting up backoff. Using delay as initial backoff value.")
