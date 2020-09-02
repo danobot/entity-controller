@@ -40,6 +40,7 @@ Maintaining and improving this integration is very time consuming because of the
 [![donate gofundme](https://img.shields.io/badge/donate-GoFundMe-orange?style=flat-square)](https://gf.me/u/w62k93)
 
 # :boom: Recent Breaking Changes :boom:
+* `v7.0.0` The configuration entry for stay mode was renamed from `stay` to `stay_mode`. Entity services have been renamed as well for consistency (see docs) [PR #176](https://github.com/danobot/entity-controller/pull/176), [Issue #143](https://github.com/danobot/entity-controller/issues/143).
 * `v6.0.0` introduces a breaking change if you are relying on the entities `friendly_name` in other automations. See [#153](https://github.com/danobot/entity-controller/pull/153). The release PR is [#156](https://github.com/danobot/entity-controller/pull/156).
 
 # Features
@@ -529,7 +530,7 @@ self.STATE_OFF_STATE = config.get("state_states_off", DEFAULT_OFF)
 
 ### Customize which attribute changes are considered "manual control"
 
-By default, any attribute change is considered significant and will qualify for entering the `blocked` state. However, in certain cases, you might want to ignore certain changes. For example, when using a component like f.lux or circadianlighting, the brightness and color temperature will be updated automatically, and this is not indicative of a  state change that EC should act upon. For these cases, add a `state_attributes_ignore` field with the attributes EC should not monitor.
+By default, any attribute change is considered significant and will qualify for entering the `blocked` state. However, in certain cases, you might want to ignore certain changes. For example, when using a component like f.lux or circadianlighting, the brightness and color temperature will be updated automatically, and this is not indicative of a manual change. For these cases, add a `state_attributes_ignore` field:
 
 ```yaml
   mtn_office:
@@ -569,6 +570,9 @@ soon_test_case:
   start_time: soon
   end_time: soon-after
 ```
+# About Entity Controller 
+
+EC is a complete rewrite of the original application (version 0), using the Python `transitions` library to implement a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine). This cleans up code logic considerably due to the nature of this application architecture.
 
 ## Related Research and Development
 
