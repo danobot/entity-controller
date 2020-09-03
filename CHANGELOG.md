@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="6.1.1"></a>
+## [6.1.1](https://github.com/danobot/entity-controller/compare/v6.1.0...v6.1.1) (2020-09-03)
+
+
+### Bug Fixes
+
+* [#164](https://github.com/danobot/entity-controller/issues/164) active stay on never returning to idle state. ([75b1660](https://github.com/danobot/entity-controller/commit/75b1660))
+* [#173](https://github.com/danobot/entity-controller/issues/173) call homeassistant.turn_on for groups ([afab88f](https://github.com/danobot/entity-controller/commit/afab88f))
+* [#173](https://github.com/danobot/entity-controller/issues/173) include turn_off service and use the correct variable ([c54f2f0](https://github.com/danobot/entity-controller/commit/c54f2f0))
+* [#174](https://github.com/danobot/entity-controller/issues/174) and [#98](https://github.com/danobot/entity-controller/issues/98) implements crude way to avoid getting blocked by ECs own service calls (and subsequent state changes) ([13f751b](https://github.com/danobot/entity-controller/commit/13f751b))
+* add load-beta.sh script for loading files from develop branch ([67ec478](https://github.com/danobot/entity-controller/commit/67ec478))
+* Fixes [#174](https://github.com/danobot/entity-controller/issues/174) and [#98](https://github.com/danobot/entity-controller/issues/98) where changing a control entity does not transition EC to blocked state (R3.2) ([f4c3275](https://github.com/danobot/entity-controller/commit/f4c3275))
+
+
+
 <a name="6.1.0"></a>
 # [6.1.0](https://github.com/danobot/entity-controller/compare/v6.0.1...v6.1.0) (2020-08-30)
 
