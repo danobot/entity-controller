@@ -82,7 +82,7 @@ EC is distributed via the Home assistant Community Store (HACS). You need to set
 ![HACS](images/hacs.png)
 
 # Configuration
-EC is very configurable. The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
+EC is ~very~ ~extremely~ _overwhelmingly_ configurable (too much for one developer to handle in their spare time). The following documentation section explain the different ways you can configure EC. In its most basic form, you can define:
 
 |Configuration|Description|
 |---|---|
