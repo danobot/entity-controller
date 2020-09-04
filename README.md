@@ -40,6 +40,7 @@ Maintaining and improving this integration is very time consuming because of the
 [![donate gofundme](https://img.shields.io/badge/donate-GoFundMe-orange?style=flat-square)](https://gf.me/u/w62k93)
 
 # :boom: Recent Breaking Changes :boom:
+* `v7.0.0` The configuration entry for stay mode was renamed from `stay` to `stay_mode`. Entity services have been renamed as well for consistency (see docs) [PR #176](https://github.com/danobot/entity-controller/pull/176), [Issue #143](https://github.com/danobot/entity-controller/issues/143).
 * `v6.0.0` introduces a breaking change if you are relying on the entities `friendly_name` in other automations. See [#153](https://github.com/danobot/entity-controller/pull/153). The release PR is [#156](https://github.com/danobot/entity-controller/pull/156).
 
 # Features
@@ -128,14 +129,14 @@ motion_light_sun:
   end_time: sunrise + 00:30:00                # required
 ```
 
-# Stay on
-This simple option will keep EC in **active_stay_on** state indefinitely until the control entity is manually turned off.
+# Stay Mode
+This simple option will make EC give up control of entities after the initial trigger. EC will stay in `active_stay_on` state state indefinitely until the control entity is manually turned off.
 ```yaml
 override_example:
   sensor: binary_sensor.lounge_motion
   entity: light.lounge_lamp
   delay: 5
-  stay: true
+  stay_mode: on
 ```
 
 ### Overrides
@@ -354,7 +355,7 @@ motion_light:
 ```
 
 ### Block Mode Time Restriction
-When `block_timeout` is defined, the controller will start a timer when the sensor is triggered and exit `blocked` state once the timeout is reached, thereby restricting the time that a controller can stay `blocked` mode. This is useful when you want the controller to turn off a light that was turned on manually.
+When `block_timeout` is defined, the controller will start a timer when the sensor is triggered and exit `blocked` state once the timeout is reached, thereby restricting the time that a controller can remain in `blocked` mode. This is useful when you want the controller to turn off a light that was turned on manually.
 
 The state sequence is as follows:
 
@@ -440,21 +441,21 @@ mtn_lounge:
 
 The entity controller support a few services that can be used to extend the customization of the entity.
 
-#### Stay
+#### Stay Mode
 
 ```yaml
-service: entity_controller.set_stay_on
+service: entity_controller.enable_stay_mode
   entity_id: entity_controller.motion
 ```
 
-This service takes an entity id and will set the stay flag to on
+This service takes an entity id and will enable stay mode which means that control entities will not be turned off once EC is triggered. All control entities must be manually turned off (or via other automations) before EC will return to `idle` state.
 
 ```yaml
-service: entity_controller.set_stay_off
+service: entity_controller.disable_stay_mode
   entity_id: entity_controller.motion
 ```
 
-This service takes an entity id and will clear the stay flag.
+This service takes an entity id and will disable stay mode. This does not transition EC to `idle` state if it is already in `active_stay_on` state. In this case you must turn off all entities manually.
 
 **Note:** There is no attribute that exposes the stay flag state at this time.
 
@@ -525,20 +526,6 @@ self.OVERRIDE_ON_STATE = config.get("override_states_on", DEFAULT_ON)
 self.OVERRIDE_OFF_STATE = config.get("override_states_off", DEFAULT_OFF)
 self.STATE_ON_STATE = config.get("state_states_on", DEFAULT_ON)
 self.STATE_OFF_STATE = config.get("state_states_off", DEFAULT_OFF)
-```
-### Drawing State Machine Diagrams (not supported yet in `v2`)
-
-You can generate state machine diagrams that update based on the state of the motion light. These produce a file in the file system that can be targeted by `file` based cameras.
-```yaml
-diagram_test:
-  sensors: 
-    - binary_sensor.motion_detected
-  entities:
-    - light.tv_led
-  draw: True                                # required, default is False
-  image_path: '/conf/temp'                  # optional, default shown
-  image_prefix: '/fsm_diagram_'             # optional, default shown
-
 ```
 
 ### Customize which attribute changes are considered "manual control"
