@@ -94,7 +94,8 @@ from .const import (
     CONF_NIGHT_MODE,
     CONF_STATE_ATTRIBUTES_IGNORE,
     CONSTRAIN_START,
-    CONSTRAIN_END
+    CONSTRAIN_END,
+    CONF_IGNORE_STATE_CHANGES_UNTIL
 )
 
 from .entity_services import (
@@ -143,6 +144,7 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_TRIGGER_ON_DEACTIVATE, default=None): cv.entity_ids,
         vol.Optional(CONF_STATE_ENTITIES, default=[]): cv.entity_ids,
         vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
+        vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
         vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
         vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
@@ -302,7 +304,7 @@ async def async_setup(hass, config):
         trigger="control",
         source="active_timer",
         dest="idle",
-        conditions=["is_state_entities_off"],
+        conditions=["is_state_entities_off"]
     )
     machine.add_transition(trigger='control', source='active_timer',
                            dest='blocked', conditions=['is_state_entities_on'])
@@ -457,6 +459,7 @@ class Model:
         self.config = (
             {}
         )  # new way of storing configuration (avoids having an attribue for each)
+        self.config = config
         self.debug_day_length = config.get("day_length", None)
         self.stateEntities = []
         self.controlEntities = []
@@ -618,12 +621,11 @@ class Model:
                 + str(a)
             )
         if self.is_active_timer():
-            if datetime.now() > self.ignore_state_changes_until: # check if we are within the grace period after making a service call (this avoids EC blocking itself)
-                self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
-
-                self.control()
+            if self.is_within_grace_period(): # check if we are within the grace period after making a service call (this avoids EC blocking itself)
+                self.log.debug("state_entity_state_change :: This state change is within %i seconds of calling a service. Ignoring this state change because its probably caused by EC itself." % self.config.get(CONF_IGNORE_STATE_CHANGES_UNTIL, 2))
             else:
-                self.log.debug("state_entity_state_change :: This state change is within 2 seconds of calling a service. Ignoring this state change because its probably caused by EC itself.")
+                self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
+                self.control()
 
         if self.is_blocked() or self.is_active_stay_on(): # if statement required to avoid MachineErrors, cleaner than adding transitions to all possible states.
             self.enable()
@@ -705,6 +707,11 @@ class Model:
 
     def is_override_state_off(self):
         return self._override_entity_state() is None
+
+    def is_within_grace_period(self):
+        """ Dtermines if the last service call EC made was within the last 2 seconds. 
+        This is important or else EC will react to state changes caused by EC itself which results in going into blocked state."""
+        return datetime.now() < self.ignore_state_changes_until
 
     def is_override_state_on(self):
         return self._override_entity_state() is not None
@@ -1442,7 +1449,7 @@ class Model:
     def call_service(self, entity, service, **kwargs):
         """ Helper for calling HA services with the correct parameters """
         self.log.debug("call_service :: Calling service " + service + " on " + entity)
-        self.ignore_state_changes_until = datetime.now() + timedelta(seconds=2)
+        self.ignore_state_changes_until = datetime.now() + timedelta(seconds=self.config.get(CONF_IGNORE_STATE_CHANGES_UNTIL, 2))
         self.log.debug("call_service :: Setting ignore_state_changes_until to " + str(self.ignore_state_changes_until))
 
         domain, e = entity.split(".")
