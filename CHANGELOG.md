@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="7.0.0"></a>
+# [7.0.0](https://github.com/danobot/entity-controller/compare/v6.1.1...v7.0.0) (2020-09-04)
+
+
+* feat!: rename stay mode to make the feature easier to understand (#176) (#177) ([9f7ec54](https://github.com/danobot/entity-controller/commit/9f7ec54)), closes [#176](https://github.com/danobot/entity-controller/issues/176) [#177](https://github.com/danobot/entity-controller/issues/177)
+
+
+### BREAKING CHANGES
+
+* Check the docs for new `stay_mode` configuration field and the name changes to the related services.
+
+
+
 <a name="6.1.1"></a>
 ## [6.1.1](https://github.com/danobot/entity-controller/compare/v6.1.0...v6.1.1) (2020-09-03)
 
