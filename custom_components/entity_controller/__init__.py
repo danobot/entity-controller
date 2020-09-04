@@ -353,8 +353,8 @@ async def async_setup(hass, config):
 class EntityController(entity.Entity):
     from .entity_services import (
         async_entity_service_clear_block as async_clear_block,
-        async_entitiy_service_set_stay_on as async_set_stay_on,
-        async_entitiy_service_set_stay_off as async_set_stay_off,
+        async_entity_service_enable_stay_mode as async_enable_stay_mode,
+        async_entity_service_disable_stay_mode as async_disable_stay_mode,
         async_entity_service_set_night_mode as async_set_night_mode,
     )
 
@@ -1083,7 +1083,7 @@ class Model:
         self.image_prefix = config.get("image_prefix", "/fsm_diagram_")
         self.image_path = config.get("image_path", "/conf/temp")
         self.backoff = config.get("backoff", False)
-        self.stay = config.get("stay", False)
+        self.stay = config.get("stay_mode", False)
 
         if self.backoff:
             self.log.debug("config_other :: setting up backoff. Using delay as initial backoff value.")
