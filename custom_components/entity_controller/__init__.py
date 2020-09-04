@@ -26,6 +26,7 @@ Issues Tracker:   Report issues on Github. Ensure you have the latest version. I
                     * log entries at time of error and at time of initialisation
 """
 import logging
+from random import randrange
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
@@ -127,7 +128,10 @@ ENTITY_SCHEMA = vol.Schema(
     ),
     {
         # vol.Required(CONF_NAME): cv.string,
-        vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
+        vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): vol.All(
+            vol.Lower, vol.Any(cv.positive_int, cv.template)
+        ),
+        # vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
         vol.Optional(CONF_START_TIME): cv.string,
         vol.Optional(CONF_END_TIME): cv.string,
         vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
@@ -457,6 +461,7 @@ class Model:
         self.config = (
             {}
         )  # new way of storing configuration (avoids having an attribue for each)
+        self.config = config
         self.debug_day_length = config.get("day_length", None)
         self.stateEntities = []
         self.controlEntities = []
@@ -470,7 +475,7 @@ class Model:
         self.state_attributes_ignore = []
         self.backoff = False
         self.backoff_count = 0
-        self.light_params_day = {}
+        # self.light_params_day = {}
         self.light_params_night = {}
         self.lightParams = {}
         self.name = None
@@ -504,7 +509,6 @@ class Model:
         self.config_transition_behaviours(config)
         self.config_off_entities(config)
         self.config_on_entities(config)
-        self.config_normal_mode(config)
         self.config_night_mode(
             config
         )  # must come after normal_mode (uses normal mode parameters if not set)
@@ -992,14 +996,37 @@ class Model:
             "Ignoring state changes on the following attributes: %s",
             self.state_attributes_ignore,
         )
-
-    def config_normal_mode(self, config):
-        self.log.info("Service data set up")
+    
+    @property
+    def light_params_day(self):
         params = {}
-        params[CONF_DELAY] = config.get(CONF_DELAY, DEFAULT_DELAY)
-        params[CONF_SERVICE_DATA] = config.get(CONF_SERVICE_DATA, None)
-        params[CONF_SERVICE_DATA_OFF] = config.get(CONF_SERVICE_DATA_OFF, None)
-        self.light_params_day = params
+        delay = self.config.get(CONF_DELAY)
+        self.log.debug("Delay value: " + str(delay))
+        params[CONF_DELAY] = delay
+        if type(delay) == str:
+            self.log.debug("Its a string")
+            rendered = self.read_template(delay)
+            self.log.debug("Delay value rendered: " + str(rendered))
+            params[CONF_DELAY] = rendered
+
+        params[CONF_SERVICE_DATA] = self.config.get(CONF_SERVICE_DATA, None)
+        params[CONF_SERVICE_DATA_OFF] = self.config.get(CONF_SERVICE_DATA_OFF, None)
+        return params
+
+
+    def read_template(self, template):
+        t = Template(template, hass=self.hass)
+        t.ensure_valid()
+        # calling t.render() halts the whole program. using async-render is not possible here because we have to do something with the result.
+        return template
+
+    # def config_normal_mode(self, config):
+    #     self.log.info("Service data set up")
+    #     params = {}
+    #     params[CONF_DELAY] = config.get(CONF_DELAY, DEFAULT_DELAY)
+    #     params[CONF_SERVICE_DATA] = config.get(CONF_SERVICE_DATA, None)
+    #     params[CONF_SERVICE_DATA_OFF] = config.get(CONF_SERVICE_DATA_OFF, None)
+    #     self.light_params_day = params
 
     @property
     def start_time(self):
