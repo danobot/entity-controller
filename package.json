@@ -23,7 +23,7 @@
   },
   "standard-version": {
     "scripts": {
-      "precommit": "node postbump.js; git add tracker.json custom_components/entity_controller/__init__.py "
+      "precommit": "node postbump.js; git add custom_components/entity_controller/__init__.py "
     }
   }
 }
