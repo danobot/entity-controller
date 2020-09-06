@@ -7,7 +7,7 @@
 # :wave: Introduction
 Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version `v6.0.0` tested on Home Assistant `0.112.1`.**
+**Latest stable version `v6.1.1` tested on Home Assistant `0.112.1`.**
 
 ## :clapper: Video Demo
 I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
@@ -540,6 +540,23 @@ By default, any attribute change is considered significant and will qualify for 
     state_attributes_ignore:
         - brightness
         - color_temp
+```
+
+## Troubleshooting
+
+### EC goes into blocked state
+Check how long it takes your control entities to actually turn on after the service call is dispatched. The default `grace_period` is 2 seconds.
+This means EC will make the call to turn on all entities and then it will ignore any state updates that come in for 2 seconds (default). The reason for this is that without this grace period, EC would actually block itself because it would interpret the state updates as manual control.
+
+Unfortunately, it is not possible to detect *who* called a service in Home Assistant. If that was the case we could simply ignore any service calls originating from EC itself.
+
+To solve your issue with EC ending up in `blocked` state, you can take a look at increasing the `grace_period` to something like 5 seconds. If your lights have a lot of latency then increasing this period will most likely resolve your issue.
+
+```yaml
+grace_period_ec:
+  sensor: binary_sensor.living_room_motion
+  entity: light.tv_backlight
+  grace_period: 5                           # default is 2
 ```
 
 # Debugging

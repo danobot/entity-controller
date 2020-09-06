@@ -79,3 +79,4 @@ CONSTRAIN_END = 2
 STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
+CONF_IGNORE_STATE_CHANGES_UNTIL = "grace_period"
