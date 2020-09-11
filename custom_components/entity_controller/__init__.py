@@ -577,12 +577,20 @@ class Model:
             self.update(overridden_by=entity)
             self.override()
             self.update(overridden_at=str(datetime.now()))
+        
         if (
             self.matches(new.state, self.OVERRIDE_OFF_STATE)
             and self.is_override_state_off()
             and self.is_overridden()
         ):
-            self.enable()
+            if self.is_state_entities_off():
+                self.log.debug("override_state_change :: State entities are OFF which is why we are good to go to 'idle' state.")
+
+                self.enable()
+            else:
+                self.log.debug("override_state_change :: State entities are ON which is why we should go to blocked state (rather than 'idle'). This indicates some manual control occured while EC was in overridden state.")
+                self.blocked()
+                
 
     @callback
     def state_entity_state_change(self, entity, old, new):
