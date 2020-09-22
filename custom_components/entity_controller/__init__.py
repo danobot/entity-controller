@@ -93,6 +93,7 @@ from .const import (
     CONF_SENSOR_RESETS_TIMER,
     CONF_NIGHT_MODE,
     CONF_STATE_ATTRIBUTES_IGNORE,
+    CONF_IGNORED_EVENT_SOURCES,
     CONSTRAIN_START,
     CONSTRAIN_END
 )
@@ -146,6 +147,7 @@ ENTITY_SCHEMA = vol.Schema(
         # vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
         vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
         vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
+        vol.Optional(CONF_IGNORED_EVENT_SOURCES, default=[]): cv.ensure_list,
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
             dict
         ),  
@@ -492,6 +494,8 @@ class Model:
             pprint.pformat(config)
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
+        self.ignored_event_sources = [self.name]
+
         self.context = Context(parent_id=DOMAIN, id=self.name)
 
         machine.add_model(
@@ -586,19 +590,19 @@ class Model:
         
     @callback
     def state_entity_state_change(self, entity, old, new):
-        """ State change callback for state entities """
+        """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
-            "state_entity_state_change :: [%s] - old: %s, new: %s, context id: %s",
+            "state_entity_state_change :: [Entity: %s]\n\tOld state: %s\n\tNew State: %s\n\tTriggered by context: %s",
             str(entity),
             str(old),
             str(new),
             str(new.context.id)
         )
-        if new.context.id == self.context.id:
-            self.log.debug("state_entity_state_change :: Ignoring this state change because I caused it myself with a service call.")
+        if new.context.id == self.context.id or new.context.id in self.ignored_event_sources:
+            self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
             return
 
-        # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
+        #  If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
             if not old or not new or old == 'off' or new == 'off':
                 pass
@@ -996,7 +1000,12 @@ class Model:
                 self.log.error("Night mode requires a end_time parameter !")
 
     def config_state_attributes_ignore(self, config):
+        self.add(self.ignored_event_sources, config, CONF_IGNORED_EVENT_SOURCES)
         self.add(self.state_attributes_ignore, config, CONF_STATE_ATTRIBUTES_IGNORE)
+        self.log.debug(
+            "Ignoring events (state changes) caused by the following entities): %s",
+            self.ignored_event_sources,
+        )
         self.log.debug(
             "Ignoring state changes on the following attributes: %s",
             self.state_attributes_ignore,
