@@ -72,6 +72,7 @@ CONF_SENSOR_TYPE = "sensor_type"
 CONF_SENSOR_RESETS_TIMER = "sensor_resets_timer"
 CONF_NIGHT_MODE = "night_mode"
 CONF_STATE_ATTRIBUTES_IGNORE = "state_attributes_ignore"
+CONF_IGNORED_EVENT_SOURCES = "ignored_event_sources"
 MODE_DAY = 'day'
 MODE_NIGHT = 'night'
 CONSTRAIN_START = 1
