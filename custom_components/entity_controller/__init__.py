@@ -34,7 +34,7 @@ import pprint
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
-from homeassistant.core import callback
+from homeassistant.core import callback, Context
 from homeassistant.helpers import entity, event, service
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
@@ -93,9 +93,9 @@ from .const import (
     CONF_SENSOR_RESETS_TIMER,
     CONF_NIGHT_MODE,
     CONF_STATE_ATTRIBUTES_IGNORE,
+    CONF_IGNORED_EVENT_SOURCES,
     CONSTRAIN_START,
-    CONSTRAIN_END,
-    CONF_IGNORE_STATE_CHANGES_UNTIL
+    CONSTRAIN_END
 )
 
 from .entity_services import (
@@ -144,9 +144,10 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_TRIGGER_ON_DEACTIVATE, default=None): cv.entity_ids,
         vol.Optional(CONF_STATE_ENTITIES, default=[]): cv.entity_ids,
         vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
-        vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
+        # vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
         vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
         vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
+        vol.Optional(CONF_IGNORED_EVENT_SOURCES, default=[]): cv.ensure_list,
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
             dict
         ),  
@@ -456,6 +457,7 @@ class Model:
     def __init__(self, hass, config, machine, entity):
         self.hass = hass  # backwards reference to hass object
         self.entity = entity  # backwards reference to entity containing this model
+
         self.config = (
             {}
         )  # new way of storing configuration (avoids having an attribue for each)
@@ -492,7 +494,9 @@ class Model:
             pprint.pformat(config)
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
-        self.log.debug("Controller name: " + str(self.name))
+        self.ignored_event_sources = [self.name]
+
+        self.context = Context(parent_id=DOMAIN, id=self.name)
 
         machine.add_model(
             self
@@ -583,17 +587,22 @@ class Model:
             and self.is_overridden()
         ):
             self.enable()
-
+        
     @callback
     def state_entity_state_change(self, entity, old, new):
-        """ State change callback for state entities """
+        """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
-            "state_entity_state_change :: [%s] - old: %s, new: %s",
+            "state_entity_state_change :: [Entity: %s]\n\tOld state: %s\n\tNew State: %s\n\tTriggered by context: %s",
             str(entity),
             str(old),
             str(new),
+            str(new.context.id)
         )
-        # This can be called with either a state change or an attribute change. If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
+        if new.context.id == self.context.id or new.context.id in self.ignored_event_sources:
+            self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
+            return
+
+        #  If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
         try:
             if not old or not new or old == 'off' or new == 'off':
                 pass
@@ -621,11 +630,8 @@ class Model:
                 + str(a)
             )
         if self.is_active_timer():
-            if self.is_within_grace_period(): # check if we are within the grace period after making a service call (this avoids EC blocking itself)
-                self.log.debug("state_entity_state_change :: This state change is within %i seconds of calling a service. Ignoring this state change because its probably caused by EC itself." % self.config.get(CONF_IGNORE_STATE_CHANGES_UNTIL, 2))
-            else:
-                self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
-                self.control()
+            self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
+            self.control()
 
         if self.is_blocked() or self.is_active_stay_on(): # if statement required to avoid MachineErrors, cleaner than adding transitions to all possible states.
             self.enable()
@@ -708,10 +714,10 @@ class Model:
     def is_override_state_off(self):
         return self._override_entity_state() is None
 
-    def is_within_grace_period(self):
-        """ Dtermines if the last service call EC made was within the last 2 seconds. 
-        This is important or else EC will react to state changes caused by EC itself which results in going into blocked state."""
-        return datetime.now() < self.ignore_state_changes_until
+    # def is_within_grace_period(self):
+    #     """ Dtermines if the last service call EC made was within the last 2 seconds. 
+    #     This is important or else EC will react to state changes caused by EC itself which results in going into blocked state."""
+    #     return datetime.now() < self.ignore_state_changes_until
 
     def is_override_state_on(self):
         return self._override_entity_state() is not None
@@ -994,7 +1000,12 @@ class Model:
                 self.log.error("Night mode requires a end_time parameter !")
 
     def config_state_attributes_ignore(self, config):
+        self.add(self.ignored_event_sources, config, CONF_IGNORED_EVENT_SOURCES)
         self.add(self.state_attributes_ignore, config, CONF_STATE_ATTRIBUTES_IGNORE)
+        self.log.debug(
+            "Ignoring events (state changes) caused by the following entities): %s",
+            self.ignored_event_sources,
+        )
         self.log.debug(
             "Ignoring state changes on the following attributes: %s",
             self.state_attributes_ignore,
@@ -1446,25 +1457,25 @@ class Model:
                 self.update(mode=MODE_DAY)  # only show when night mode set up
         self.update(delay=self.lightParams.get(CONF_DELAY))
 
-    def call_service(self, entity, service, **kwargs):
+    def call_service(self, entity, service, **service_data):
         """ Helper for calling HA services with the correct parameters """
         self.log.debug("call_service :: Calling service " + service + " on " + entity)
-        self.ignore_state_changes_until = datetime.now() + timedelta(seconds=self.config.get(CONF_IGNORE_STATE_CHANGES_UNTIL, 2))
-        self.log.debug("call_service :: Setting ignore_state_changes_until to " + str(self.ignore_state_changes_until))
+        # self.ignore_state_changes_until = datetime.now() + timedelta(seconds=self.config.get(CONF_IGNORE_STATE_CHANGES_UNTIL, 2))
+        # self.log.debug("call_service :: Setting ignore_state_changes_until to " + str(self.ignore_state_changes_until))
 
         domain, e = entity.split(".")
         if service in ['turn_on','turn_off'] and domain in self.homeassistant_turn_on_domains:
             domain = "homeassistant"
             self.log.debug("call_service :: Actually calling service %s on %s via the %s domain because the entity domain requires it." % (service, entity, domain))
         params = {}
-        if kwargs is not None:
-            params = kwargs
+        if service_data is not None:
+            params = service_data
 
         params["entity_id"] = entity
         self.hass.async_create_task(
-            self.hass.services.async_call(domain, service, kwargs)
+            self.hass.services.async_call(domain, service, service_data, context=self.context)
         )
-        self.update(service_data=kwargs)
+        self.update(service_data=service_data)
 
     def matches(self, value, list):
         """
