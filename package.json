@@ -1,6 +1,6 @@
 {
   "name": "entity-controller",
-  "version": "8.0.0",
+  "version": "9.0.0",
   "description": "Entity Controller (EC) is an implementation of 'When This, Then That' using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home.",
   "main": "index.js",
   "directories": {

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.0.0"></a>
+# [9.0.0](https://github.com/danobot/entity-controller/compare/v8.0.0...v9.0.0) (2020-10-01)
+
+
+### Features
+
+* Implement Home Assistant Context API to avoid EC blocking itself (replaces grace_period) and ability to ignore event sources ([#193](https://github.com/danobot/entity-controller/issues/193)) ([738968d](https://github.com/danobot/entity-controller/commit/738968d)), closes [#192](https://github.com/danobot/entity-controller/issues/192) [#192](https://github.com/danobot/entity-controller/issues/192)
+
+
+* fix!: Spelling of overridden ([0359947](https://github.com/danobot/entity-controller/commit/0359947))
+
+
+### BREAKING CHANGES
+
+* Fix the spelling of `on_enter_overidden` and `on_exit_overidden` to become `on_enter_overridden` and `on_exit_overridden` respectively.
+
+
+
 <a name="8.0.0"></a>
 # [8.0.0](https://github.com/danobot/entity-controller/compare/v7.0.0...v8.0.0) (2020-09-07)
 
