@@ -496,7 +496,8 @@ class Model:
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.ignored_event_sources = [self.name]
 
-        self.context = Context(parent_id=DOMAIN, id=self.name)
+        self.context = Context(parent_id=DOMAIN, id="%s.%s" % (DOMAIN, self.name))
+
 
         machine.add_model(
             self
@@ -592,11 +593,11 @@ class Model:
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
-            "state_entity_state_change :: [Entity: %s]\n\tOld state: %s\n\tNew State: %s\n\tTriggered by context: %s",
+            "state_entity_state_change :: [ Entity: %s, Context: %s ]\n\tOld state: %s\n\tNew State: %s",
             str(entity),
+            str(new.context),
             str(old),
-            str(new),
-            str(new.context.id)
+            str(new)
         )
         if new.context.id == self.context.id or new.context.id in self.ignored_event_sources:
             self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
