@@ -21,9 +21,6 @@ Maintainer:       Daniel Mason
 Version:          v9.0.0
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
-Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
-                    * YAML configuration (for the misbehaving entity)
-                    * log entries at time of error and at time of initialisation
 """
 import logging
 import re
@@ -45,7 +42,6 @@ from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
-# REQUIREMENTS = ['transitions==0.6.9']
 
 from .const import (
     DOMAIN,
