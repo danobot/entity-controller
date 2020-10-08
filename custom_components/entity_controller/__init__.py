@@ -21,9 +21,6 @@ Maintainer:       Daniel Mason
 Version:          v9.0.0
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
-Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
-                    * YAML configuration (for the misbehaving entity)
-                    * log entries at time of error and at time of initialisation
 """
 import logging
 import re
@@ -45,7 +42,6 @@ from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
-# REQUIREMENTS = ['transitions==0.6.9']
 
 from .const import (
     DOMAIN,
@@ -496,7 +492,8 @@ class Model:
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.ignored_event_sources = [self.name]
 
-        self.context = Context(parent_id=DOMAIN, id=self.name)
+        self.context = Context(parent_id=DOMAIN, id="%s.%s" % (DOMAIN, self.name))
+
 
         machine.add_model(
             self
@@ -592,11 +589,11 @@ class Model:
     def state_entity_state_change(self, entity, old, new):
         """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
-            "state_entity_state_change :: [Entity: %s]\n\tOld state: %s\n\tNew State: %s\n\tTriggered by context: %s",
+            "state_entity_state_change :: [ Entity: %s, Context: %s ]\n\tOld state: %s\n\tNew State: %s",
             str(entity),
+            str(new.context),
             str(old),
-            str(new),
-            str(new.context.id)
+            str(new)
         )
         if new.context.id == self.context.id or new.context.id in self.ignored_event_sources:
             self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
