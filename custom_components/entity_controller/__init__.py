@@ -164,14 +164,11 @@ async def async_setup(hass, config):
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
 
-    myconfig = config[DOMAIN][0]
-
     _LOGGER.info(
         "If you have ANY issues with EntityController (v"
         + VERSION
         + "), please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues"
     )
-    _LOGGER.info("Domain Configuration: " + str(myconfig))
 
     async_setup_entity_services(component)
 
@@ -330,17 +327,19 @@ async def async_setup(hass, config):
     # Enter blocked state when component is enabled and entity is on
     machine.add_transition(trigger="blocked", source="constrained", dest="blocked")
 
-    for key, config in myconfig.items():
-        if not config:
-            config = {}
+    for myconfig in config[DOMAIN]:
+        _LOGGER.info("Domain Configuration: " + str(myconfig))
+        for key, config in myconfig.items():
+            if not config:
+                config = {}
 
-        # _LOGGER.info("Config Item %s: %s", str(key), str(config))
-        config["name"] = key
-        m = None
-        m = EntityController(hass, config, machine)
-        # machine.add_model(m.model)
-        # m.model.after_model(config)
-        devices.append(m)
+            # _LOGGER.info("Config Item %s: %s", str(key), str(config))
+            config["name"] = key
+            m = None
+            m = EntityController(hass, config, machine)
+            # machine.add_model(m.model)
+            # m.model.after_model(config)
+            devices.append(m)
 
     await component.async_add_entities(devices)
 
