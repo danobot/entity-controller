@@ -18,7 +18,7 @@ along with Entity Controller.  If not, see <https://www.gnu.org/licenses/>.
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v9.0.1
+Version:          v9.0.2
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 """
@@ -101,7 +101,7 @@ from .entity_services import (
 
 
 
-VERSION = '9.0.1'
+VERSION = '9.0.2'
 
 
 _LOGGER = logging.getLogger(__name__)
