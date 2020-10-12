@@ -42,7 +42,6 @@ from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
-
 from .const import (
     DOMAIN,
     STATES,
@@ -91,7 +90,9 @@ from .const import (
     CONF_STATE_ATTRIBUTES_IGNORE,
     CONF_IGNORED_EVENT_SOURCES,
     CONSTRAIN_START,
-    CONSTRAIN_END
+    CONSTRAIN_END,
+    
+    CONTEXT_ID_CHARACTER_LIMIT
 )
 
 from .entity_services import (
@@ -490,8 +491,8 @@ class Model:
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.ignored_event_sources = [self.name]
-
-        self.context = Context(parent_id=DOMAIN, id="%s.%s" % (DOMAIN, self.name))
+        id = "ec.%s" % (self.name)
+        self.context = Context(parent_id=DOMAIN, id=id[:CONTEXT_ID_CHARACTER_LIMIT])
 
 
         machine.add_model(
