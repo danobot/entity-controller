@@ -24,7 +24,7 @@ Steps to reproduce the behavior:
 3.
 4.
 
-### Expected behavior
+## Expected behavior
 This is how the component _should_ work:
 
 1. 
@@ -32,7 +32,7 @@ This is how the component _should_ work:
 3. 
 4. 
 
-### Actual Behaviour
+## Actual Behaviour
 This is what _actually_ happened:
 
 1. 
