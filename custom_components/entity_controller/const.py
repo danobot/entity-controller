@@ -81,3 +81,6 @@ STATES = ['idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
 CONF_IGNORE_STATE_CHANGES_UNTIL = "grace_period"
+
+
+CONTEXT_ID_CHARACTER_LIMIT = 36

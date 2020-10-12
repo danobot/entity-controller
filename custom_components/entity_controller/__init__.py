@@ -42,7 +42,6 @@ from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
-
 from .const import (
     DOMAIN,
     STATES,
@@ -91,7 +90,9 @@ from .const import (
     CONF_STATE_ATTRIBUTES_IGNORE,
     CONF_IGNORED_EVENT_SOURCES,
     CONSTRAIN_START,
-    CONSTRAIN_END
+    CONSTRAIN_END,
+    
+    CONTEXT_ID_CHARACTER_LIMIT
 )
 
 from .entity_services import (
@@ -164,14 +165,11 @@ async def async_setup(hass, config):
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
 
-    myconfig = config[DOMAIN][0]
-
     _LOGGER.info(
         "If you have ANY issues with EntityController (v"
         + VERSION
         + "), please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues"
     )
-    _LOGGER.info("Domain Configuration: " + str(myconfig))
 
     async_setup_entity_services(component)
 
@@ -330,17 +328,19 @@ async def async_setup(hass, config):
     # Enter blocked state when component is enabled and entity is on
     machine.add_transition(trigger="blocked", source="constrained", dest="blocked")
 
-    for key, config in myconfig.items():
-        if not config:
-            config = {}
+    for myconfig in config[DOMAIN]:
+        _LOGGER.info("Domain Configuration: " + str(myconfig))
+        for key, config in myconfig.items():
+            if not config:
+                config = {}
 
-        # _LOGGER.info("Config Item %s: %s", str(key), str(config))
-        config["name"] = key
-        m = None
-        m = EntityController(hass, config, machine)
-        # machine.add_model(m.model)
-        # m.model.after_model(config)
-        devices.append(m)
+            # _LOGGER.info("Config Item %s: %s", str(key), str(config))
+            config["name"] = key
+            m = None
+            m = EntityController(hass, config, machine)
+            # machine.add_model(m.model)
+            # m.model.after_model(config)
+            devices.append(m)
 
     await component.async_add_entities(devices)
 
@@ -491,8 +491,8 @@ class Model:
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.ignored_event_sources = [self.name]
-
-        self.context = Context(parent_id=DOMAIN, id="%s.%s" % (DOMAIN, self.name))
+        id = "ec.%s" % (self.name)
+        self.context = Context(parent_id=DOMAIN, id=id[:CONTEXT_ID_CHARACTER_LIMIT])
 
 
         machine.add_model(
