@@ -490,8 +490,8 @@ class Model:
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
         self.ignored_event_sources = [self.name]
-
-        self.context = Context(parent_id=DOMAIN, id="%s.%s" % (DOMAIN, self.name))
+        id = "ec.%s" % (self.name)
+        self.context = Context(parent_id=DOMAIN, id=id[:33])
 
 
         machine.add_model(
