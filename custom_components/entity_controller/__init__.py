@@ -595,7 +595,12 @@ class Model:
             str(old),
             str(new)
         )
-        if new.context.id == self.context.id or new.context.id in self.ignored_event_sources:
+        def regex_match(context_id):
+            return any(
+                re.match(pattern + r"\b", context_id) is not None
+                for pattern in self.ignored_event_sources
+            )
+        if new.context.id == self.context.id or regex_match(new.context.id):
             self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
             return
 
