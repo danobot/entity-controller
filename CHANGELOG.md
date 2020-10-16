@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.1.0"></a>
+# [9.1.0](https://github.com/danobot/entity-controller/compare/v9.0.2...v9.1.0) (2020-10-16)
+
+
+### Features
+
+* Allow 'ignored_event_sources' to contain Regex patterns to support integrations with dynamic context ids ([34df56e](https://github.com/danobot/entity-controller/commit/34df56e)), closes [/github.com/home-assistant/core/pull/40626#issuecomment-709373896](https://github.com//github.com/home-assistant/core/pull/40626/issues/issuecomment-709373896)
+
+
+
 <a name="9.0.2"></a>
 ## [9.0.2](https://github.com/danobot/entity-controller/compare/v9.0.1...v9.0.2) (2020-10-12)
 
