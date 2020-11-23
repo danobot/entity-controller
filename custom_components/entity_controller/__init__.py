@@ -446,6 +446,10 @@ class EntityController(entity.Entity):
         """Register update dispatcher."""
         self.may_update = True
 
+    @property
+    def should_poll(self) -> bool:
+        """EntityController will push its state to HA"""
+        return False
 
 class Model:
     """ Represents the transitions state machine model """
