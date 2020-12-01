@@ -18,6 +18,7 @@ along with Entity Controller.  If not, see <https://www.gnu.org/licenses/>.
 """ Constants used by other files """
 
 DOMAIN = "entity_controller"
+DOMAIN_SHORT = "ec"
 
 # services
 SERVICE_CLEAR_BLOCK = "clear_block"
