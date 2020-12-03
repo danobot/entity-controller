@@ -12,5 +12,5 @@
     "script"
   ],
   "codeowners": ["@danobot"],
-  "homeassistant": "0.102.3"
+  "homeassistant": "0.117.0"
 }
