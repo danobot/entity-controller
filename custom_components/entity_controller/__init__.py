@@ -22,11 +22,13 @@ Version:          v9.1.0
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 """
+import hashlib
 import logging
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
 import pprint
+from typing import Optional
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -37,6 +39,7 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt
+import homeassistant.util.uuid as uuid_util
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
@@ -44,6 +47,7 @@ from homeassistant.helpers.service import async_call_from_config
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
 from .const import (
     DOMAIN,
+    DOMAIN_SHORT,
     STATES,
 
     CONF_START_TIME,
@@ -446,6 +450,10 @@ class EntityController(entity.Entity):
         """Register update dispatcher."""
         self.may_update = True
 
+    @property
+    def should_poll(self) -> bool:
+        """EntityController will push its state to HA"""
+        return False
 
 class Model:
     """ Represents the transitions state machine model """
@@ -482,6 +490,8 @@ class Model:
         self.transition_behaviours = {}
         # logging.setFormatter(logging.Formatter(FORMAT))
         self.log = logging.getLogger(__name__ + "." + config.get(CONF_NAME))
+        self.ignored_event_sources = []
+        self.context = None
 
         self.log.debug(
             "Initialising EntityController entity with this configuration: "
@@ -490,10 +500,7 @@ class Model:
             pprint.pformat(config)
         )
         self.name = config.get(CONF_NAME, "Unnamed Entity Controller")
-        self.ignored_event_sources = [self.name]
-        id = "ec.%s" % (self.name)
-        self.context = Context(parent_id=DOMAIN, id=id[:CONTEXT_ID_CHARACTER_LIMIT])
-
+        self.ignored_event_sources = []
 
         machine.add_model(
             self
@@ -543,6 +550,7 @@ class Model:
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
         ):
+            self.set_context(new.context)
             self.update(last_triggered_by=entity)
             self.sensor_on()
 
@@ -551,6 +559,7 @@ class Model:
             and self.is_duration_sensor()
             and self.is_active_timer()
         ):
+            self.set_context(new.context)
             self.update(last_triggered_by=entity, sensor_turned_off_at=datetime.now())
 
             # If configured, reset timer when duration sensor goes off
@@ -575,6 +584,7 @@ class Model:
             or self.is_idle()
             or self.is_blocked()
         ):
+            self.set_context(new.context)
             self.update(overridden_by=entity)
             self.override()
             self.update(overridden_at=str(datetime.now()))
@@ -583,6 +593,7 @@ class Model:
             and self.is_override_state_off()
             and self.is_overridden()
         ):
+            self.set_context(new.context)
             self.enable()
         
     @callback
@@ -595,12 +606,7 @@ class Model:
             str(old),
             str(new)
         )
-        def regex_match(context_id):
-            return any(
-                re.match(pattern + r"\b", context_id) is not None
-                for pattern in self.ignored_event_sources
-            )
-        if new.context.id == self.context.id or regex_match(new.context.id):
+        if self.is_ignored_context(new.context):
             self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
             return
 
@@ -631,6 +637,7 @@ class Model:
                 "state_entity_state_change :: Most likely one of the states, either new or old, is 'off', so there's no attributes dict attached to the state object: "
                 + str(a)
             )
+        self.set_context(new.context)
         if self.is_active_timer():
             self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
             self.control()
@@ -806,6 +813,8 @@ class Model:
     # =====================================================
     def on_enter_idle(self):
         self.log.debug("Entering idle")
+        # Entering idle due to no events, set a new context with no parent
+        self.set_context(None)
         self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
         self.entity.reset_state()
 
@@ -1478,6 +1487,36 @@ class Model:
             self.hass.services.async_call(domain, service, service_data, context=self.context)
         )
         self.update(service_data=service_data)
+
+    def set_context(self, parent: Optional[Context] = None) -> None:
+        """Set the context used when calling other services.
+
+        The new ID is linked to the context (`parent`) of the triggering event
+        and will be unique per trigger.
+        """
+        # Unique name per EC instance, but short enough to fit within id length
+        name_hash = hashlib.sha1(self.name.encode("UTF-8")).hexdigest()[:6]
+        unique_id = uuid_util.random_uuid_hex()
+        context_id = f"{DOMAIN_SHORT}_{name_hash}_{unique_id}"
+        # Restrict id length to database field size
+        context_id = context_id[:CONTEXT_ID_CHARACTER_LIMIT]
+        # parent_id only exists for a non-None parent
+        parent_id = parent.id if parent else None
+        self.context = Context(parent_id=parent_id, id=context_id)
+        # Set the EC entity's context so the logbook can identify the source of
+        # events that will be generated by this object.
+        self.entity.async_set_context(self.context)
+
+    def is_ignored_context(self, context: Context) -> bool:
+        """Should the event with the given `context` be ignored?"""
+        if any(re.match(pattern + r"\b", context.id) is not None
+               for pattern in self.ignored_event_sources):
+            # Matched an ignore_event_source regex pattern
+            return True
+        if context.id.startswith(f"{DOMAIN_SHORT}_"):
+            # This is an EC-generated event
+            return True
+        return False
 
     def matches(self, value, list):
         """
