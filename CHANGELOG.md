@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.2.0"></a>
+# [9.2.0](https://github.com/danobot/entity-controller/compare/v9.1.0...v9.2.0) (2020-12-04)
+
+
+### Bug Fixes
+
+* HA does not need to poll EC for state ([#220](https://github.com/danobot/entity-controller/issues/220)) ([e8b833d](https://github.com/danobot/entity-controller/commit/e8b833d))
+* missing service exceptions during startup ([#221](https://github.com/danobot/entity-controller/issues/221)) ([48d5602](https://github.com/danobot/entity-controller/commit/48d5602))
+
+
+### Features
+
+* Use unique Contexts to track cause and effect ([#222](https://github.com/danobot/entity-controller/issues/222)) ([56302ff](https://github.com/danobot/entity-controller/commit/56302ff))
+
+
+
 <a name="9.1.0"></a>
 # [9.1.0](https://github.com/danobot/entity-controller/compare/v9.0.2...v9.1.0) (2020-10-16)
 
