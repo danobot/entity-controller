@@ -23,6 +23,7 @@ jobs:
         echo ::set-env name=PACKAGE_VERSION::$(node -p -e "require('./package.json').version")  
       env:
         CI: true
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     - name: Push to master
       uses: ad-m/github-push-action@v0.5.0
       with:
