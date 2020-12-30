@@ -548,6 +548,7 @@ class Model:
         self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
         if self.matches(new.state, old.state):
+            self.log.debug("state_sensor_state_change :: Ignore attribute only change")
             return
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
@@ -1528,9 +1529,18 @@ class Model:
         try:
             index = list.index(value)
             return True
-        except:
+        except ValueError:
             return False
-
+        except TypeError:
+            self.log.debug("entity state matching :: new.state NoneType")
+            return False
+        except AttributeError:
+            self.log.debug("entity state matching :: old.state NoneType")
+            return False
+        except:
+            self.log.debug("entity state matching :: exeption")
+            return False
+            
     def five_seconds_from_now(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
 
