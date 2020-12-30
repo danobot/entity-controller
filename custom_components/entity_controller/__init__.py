@@ -550,6 +550,10 @@ class Model:
         self.log.debug("sensor_state_change :: %10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
         self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
+        if self.matches(new.state, old.state):
+            self.log.debug("state_sensor_state_change :: Ignore attribute only change")
+            return
+
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
         ):
@@ -1543,7 +1547,16 @@ class Model:
             return True
         except ValueError:
             return False
-
+        except TypeError:
+            self.log.debug("entity state matching :: new.state NoneType")
+            return False
+        except AttributeError:
+            self.log.debug("entity state matching :: old.state NoneType")
+            return False
+        except:
+            self.log.debug("entity state matching :: exeption")
+            return False
+            
     def five_seconds_from_now(self, sun):
         """ Returns a timedelta that will result in a sunrise trigger in 5 seconds time"""
 
