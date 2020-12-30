@@ -87,6 +87,8 @@ from .const import (
     CONF_STATE_ENTITIES,
     CONF_DELAY,
     CONF_BLOCK_TIMEOUT,
+    CONF_NOBLOCK,
+    CONF_FORCEOFF,
     CONF_SENSOR_TYPE_DURATION,
     CONF_SENSOR_TYPE,
     CONF_SENSOR_RESETS_TIMER,
@@ -145,6 +147,8 @@ ENTITY_SCHEMA = vol.Schema(
         vol.Optional(CONF_TRIGGER_ON_DEACTIVATE, default=None): cv.entity_ids,
         vol.Optional(CONF_STATE_ENTITIES, default=[]): cv.entity_ids,
         vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
+        vol.Optional(CONF_NOBLOCK, default=[]): cv.entity_ids,
+        vol.Optional(CONF_FORCEOFF, default=[]): cv.entity_ids,
         # vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
         vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
         vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
@@ -209,10 +213,9 @@ async def async_setup(hass, config):
     )
 
     # Blocked
+    machine.add_transition(trigger="sensor_on", source="blocked", dest="active",  conditions="is_state_entities_off")
     machine.add_transition(trigger="enable", source="blocked", dest="idle", conditions=["is_state_entities_off"])
-    machine.add_transition(
-        trigger="sensor_on", source="blocked", dest="blocked"
-    )  # re-entering self-transition (on_enter callback executed.)
+    machine.add_transition(trigger="sensor_on", source="blocked", dest="blocked" )  # re-entering self-transition (on_enter callback executed.)
 
     # Overridden
     # machine.add_transition(trigger='enable', source='overridden', dest='idle')
@@ -772,6 +775,8 @@ class Model:
                 return None
 
             if self.matches(state, self.STATE_ON_STATE):
+                self.innitialonEntities.append(e)
+            if self.matches(state, self.STATE_ON_STATE) and not e in self.noblockEntities:
                 self.log.debug("State entities are ON. [%s]", e)
                 return e
         self.log.debug("State entities are OFF.")
@@ -908,6 +913,12 @@ class Model:
 
     def config_state_entities(self, config):
         self.stateEntities = []
+        self.noblockEntities = []
+        self.forceoffEntities = []
+        self.innitialonEntities = []
+
+        self.add(self.noblockEntities, config, CONF_NOBLOCK)
+        self.add(self.forceoffEntities, config, CONF_FORCEOFF)
         self.add(
             self.stateEntities, config, CONF_STATE_ENTITIES
         )  # adding optimistically
@@ -1233,6 +1244,10 @@ class Model:
         self.handleTriggerOnDeactivateEntities()
         for e in self.controlEntities:
             self.log.debug("turn_off_control_entities :: Turning off %s", e)
+            self.log.debug("turn_off_control_entities :: forceoff: %s - was on: %s", self.forceoffEntities, self.innitialonEntities)
+            if not e in self.forceoffEntities and e in self.innitialonEntities:
+                continue
+                self.log.debug("turn_off_control_entities :: was on and do not force off")
 
             if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
                 self.call_service(
@@ -1240,6 +1255,7 @@ class Model:
                 )
             else:
                 self.call_service(e, "turn_off")
+        self.innitialonEntities = []
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
