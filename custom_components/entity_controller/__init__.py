@@ -1528,7 +1528,7 @@ class Model:
         try:
             index = list.index(value)
             return True
-        except ValueError:
+        except:
             return False
 
     def five_seconds_from_now(self, sun):
