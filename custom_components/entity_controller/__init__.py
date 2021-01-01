@@ -210,6 +210,7 @@ async def async_setup(hass, config):
 
     # Blocked
     machine.add_transition(trigger="enable", source="blocked", dest="idle", conditions=["is_state_entities_off"])
+    machine.add_transition(trigger="sensor_on", source="blocked", dest="active",  conditions="is_state_entities_off")
     machine.add_transition(
         trigger="sensor_on", source="blocked", dest="blocked"
     )  # re-entering self-transition (on_enter callback executed.)
