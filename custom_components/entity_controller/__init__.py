@@ -777,7 +777,7 @@ class Model:
 
             if self.matches(state, self.STATE_ON_STATE) and self.state == "idle" :
                 self.innitialonEntities.append(e)
-            if self.matches(state, self.STATE_ON_STATE) and not ( e in self.noblockEntities and self.state != "active_time" ):
+            if self.matches(state, self.STATE_ON_STATE) and not ( e in self.noblockEntities and self.state != "active_timer" ):
                 self.log.debug("State entities are ON. [%s]", e)
                 return e
         self.log.debug("State entities are OFF.")
