@@ -547,6 +547,14 @@ class Model:
         self.log.debug("sensor_state_change :: %10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
         self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
+        try:
+            if new.state == old.state:
+                self.log.debug("sensor_state_change :: Ignore attribute only change")
+                return
+        except Exception as e:
+            self.log.debug("sensor_state_change :: old or new state: %s" , e)
+            return
+
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
         ):
