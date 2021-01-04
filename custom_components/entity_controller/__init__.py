@@ -551,9 +551,9 @@ class Model:
             if new.state == old.state:
                 self.log.debug("sensor_state_change :: Ignore attribute only change")
                 return
-        except Exception as e:
-            self.log.debug("sensor_state_change :: old or new state: %s" , e)
-            return
+        except AttributeError:
+            self.log.debug("sensor_state_change :: old NoneType")
+            pass
 
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
