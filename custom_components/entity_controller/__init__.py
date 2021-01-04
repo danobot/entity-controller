@@ -774,9 +774,10 @@ class Model:
                 )
                 state = 'off'
                 return None
-
-            if self.matches(state, self.STATE_ON_STATE) and self.state == "idle" :
-                self.innitialonEntities.append(e)
+            #save control entities that are on so we can leave them on if they are none blocking entities
+            if self.matches(state, self.STATE_ON_STATE) and self.state == "idle":
+                self.initialonEntities.append(e)
+            #only check control entities that are on when EC transitions to active and skip enities that should not block EC
             if self.matches(state, self.STATE_ON_STATE) and not ( e in self.noblockEntities and self.state != "active_timer" ):
                 self.log.debug("State entities are ON. [%s]", e)
                 return e
@@ -916,8 +917,10 @@ class Model:
         self.stateEntities = []
         self.noblockEntities = []
         self.forceoffEntities = []
-        self.innitialonEntities = []
+        self.initialonEntities = []
         self.add(self.noblockEntities, config, CONF_NOBLOCK)
+        #no point in having force off entities that are not in noblock 
+        self.add(self.noblockEntities, config, CONF_FORCEOFF)
         self.add(self.forceoffEntities, config, CONF_FORCEOFF)
         self.add(
             self.stateEntities, config, CONF_STATE_ENTITIES
@@ -1245,7 +1248,7 @@ class Model:
         for e in self.controlEntities:
             self.log.debug("turn_off_control_entities :: Turning off %s", e)
 
-            if not e in self.forceoffEntities and e in self.innitialonEntities:
+            if not e in self.forceoffEntities and e in self.initialonEntities:
                 self.log.debug("do not turn off %s: not force and was on", e)
                 continue
             if self.lightParams.get(CONF_SERVICE_DATA_OFF) is not None:
@@ -1254,7 +1257,7 @@ class Model:
                 )
             else:
                 self.call_service(e, "turn_off")
-        self.innitialonEntities = []
+        self.initialonEntities = []
 
     def now_is_between(self, start_time_str, end_time_str, name=None):
         start_time = (self._parse_time(start_time_str, name))["datetime"]
