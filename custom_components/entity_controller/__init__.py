@@ -372,7 +372,7 @@ class EntityController(entity.Entity):
             self.model = Model(hass, config, machine, self)
         except AttributeError as e:
             _LOGGER.error(
-                "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities" + e
+                "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities." + e
             )
         event.async_call_later(hass, 1, self.do_update)
 
@@ -706,10 +706,10 @@ class Model:
             s = self.hass.states.get(e)
             try:
                 state = s.state
-            except AttributeError as e:
+            except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! Override Entity ({}) does not exist. Please check for spelling and typos.".format(
-                        e
+                    "Configuration error! Override Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                        e, ex
                     )
                 )
                 return None
@@ -736,10 +736,10 @@ class Model:
             s = self.hass.states.get(e)
             try:
                 state = s.state
-            except AttributeError as e:
+            except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! Sensor Entity ({}) does not exist. Please check for spelling and typos.".format(
-                        e
+                    "Configuration error! Sensor Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                        e, ex
                     )
                 )
                 return None
@@ -762,10 +762,10 @@ class Model:
             self.log.info(s)
             try:
                 state = s.state
-            except AttributeError as e:
+            except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! State Entity ({}) does not exist. Please check for spelling and typos.".format(
-                        e
+                    "Configuration error! State Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                        e, ex
                     )
                 )
                 state = 'off'
