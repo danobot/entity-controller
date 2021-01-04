@@ -207,6 +207,7 @@ async def async_setup(hass, config):
         dest="blocked",
         conditions=["is_state_entities_on"],
     )
+    machine.add_transition(trigger="enable", source="idle", dest=None, conditions=["is_state_entities_off"])
 
     # Blocked
     machine.add_transition(trigger="enable", source="blocked", dest="idle", conditions=["is_state_entities_off"])
@@ -708,7 +709,7 @@ class Model:
                 state = s.state
             except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! Override Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                    "Potential configuration error: Override Entity ({}) does not exist (yet). Please check for spelling and typos. {}".format(
                         e, ex
                     )
                 )
@@ -738,7 +739,7 @@ class Model:
                 state = s.state
             except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! Sensor Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                    "Potential configuration error: Sensor Entity ({}) does not exist (yet). Please check for spelling and typos. {}".format(
                         e, ex
                     )
                 )
@@ -764,7 +765,7 @@ class Model:
                 state = s.state
             except AttributeError as ex:
                 self.log.error(
-                    "Configuration error! State Entity ({}) does not exist. Please check for spelling and typos. {}".format(
+                    "Potential configuration error: State Entity ({}) does not exist (yet). Please check for spelling and typos. {}".format(
                         e, ex
                     )
                 )
@@ -1182,7 +1183,7 @@ class Model:
         )
 
         self.update(start_time=parsed_start)
-        
+
         if self.is_state_entities_on():
             self.blocked()
         else:
