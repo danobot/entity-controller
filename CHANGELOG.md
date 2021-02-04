@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.2.1"></a>
+## [9.2.1](https://github.com/danobot/entity-controller/compare/v9.2.0...v9.2.1) (2021-02-04)
+
+
+### Bug Fixes
+
+* error messages used wrong variable ([9f20fb5](https://github.com/danobot/entity-controller/commit/9f20fb5))
+* warn about potential configuration errors (could also mean entity is still initialising after reboot) ([7545d2e](https://github.com/danobot/entity-controller/commit/7545d2e))
+
+
+
 <a name="9.2.0"></a>
 # [9.2.0](https://github.com/danobot/entity-controller/compare/v9.1.0...v9.2.0) (2020-12-04)
 
