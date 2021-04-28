@@ -105,7 +105,7 @@ from .entity_services import (
 
 
 
-VERSION = '9.2.1'
+VERSION = '9.2.2'
 
 
 _LOGGER = logging.getLogger(__name__)
