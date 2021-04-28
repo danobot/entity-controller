@@ -12,5 +12,6 @@
     "script"
   ],
   "codeowners": ["@danobot"],
-  "homeassistant": "0.117.0"
+  "homeassistant": "0.117.0",
+  "version": "9.2.2"
 }

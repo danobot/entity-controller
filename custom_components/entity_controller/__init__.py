@@ -18,7 +18,7 @@ along with Entity Controller.  If not, see <https://www.gnu.org/licenses/>.
 """
 Entity controller component for Home Assistant.
 Maintainer:       Daniel Mason
-Version:          v9.2.1
+Version:          v9.2.2
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 """
