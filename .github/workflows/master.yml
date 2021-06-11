@@ -28,6 +28,17 @@ jobs:
       uses: ad-m/github-push-action@v0.5.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Git Merge Operation
+      # You may pin to the exact commit or the version.
+      # uses: AlexRogalskiy/github-action-git-operation@f8a5e4e0b4cbf396eb31cda592cbcdee3e82bbc0
+      uses: AlexRogalskiy/github-action-git-operation@V2.0.1
+      with:
+        # Source branch name to merge from
+        sourceBranch: develop
+        # Target branch name to merge to
+        targetBranch: master
+        # Operation mode (merge-fast-forward)
+        mode: merge-fast-forward
     - name: Merge back to develop
       uses: ad-m/github-push-action@v0.5.0
       with:
