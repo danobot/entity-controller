@@ -36,6 +36,7 @@ jobs:
         base: master
         # The head to merge. This can be a branch name or a commit SHA1
         head: develop
+    - uses: actions/checkout@v1
     - name: Push to master
       uses: ad-m/github-push-action@v0.5.0
       with:
