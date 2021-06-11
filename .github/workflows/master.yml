@@ -38,7 +38,7 @@ jobs:
         # Target branch name to merge to
         targetBranch: master
         # Operation mode (merge-fast-forward)
-        mode: merge-fast-forward
+        mode: merge
     - name: Merge back to develop
       uses: ad-m/github-push-action@v0.5.0
       with:
