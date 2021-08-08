@@ -24,6 +24,19 @@ jobs:
       env:
         CI: true
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    
+    - uses: actions/checkout@v1    
+      with:
+        ref: develop
+    - name: action-git-merge
+      uses: zcong1993/action-git-merge@v0.1.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # The name of the base branch that the head will be merged into
+        base: master
+        # The head to merge. This can be a branch name or a commit SHA1
+        head: develop
+    - uses: actions/checkout@v1
     - name: Push to master
       uses: ad-m/github-push-action@v0.5.0
       with:
