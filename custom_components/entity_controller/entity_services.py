@@ -34,6 +34,7 @@ from homeassistant.const import (
 import homeassistant.util.dt as dt_util
 
 from .const import (
+    SERVICE_ACTIVATE,
     SERVICE_CLEAR_BLOCK,
     SERVICE_ENABLE_STAY_MODE,
     SERVICE_DISABLE_STAY_MODE,
@@ -48,6 +49,7 @@ def async_setup_entity_services(component: EntityComponent):
     """ Setup Entity services."""
 
     component.logger.debug("Setting up entity services")
+    component.async_register_entity_service(SERVICE_ACTIVATE, {}, "async_activate")
     component.async_register_entity_service(SERVICE_CLEAR_BLOCK, {}, "async_clear_block")
     component.async_register_entity_service(SERVICE_ENABLE_STAY_MODE, {}, "async_enable_stay_mode")
     component.async_register_entity_service(SERVICE_DISABLE_STAY_MODE, {}, "async_disable_stay_mode")
@@ -57,6 +59,15 @@ def async_setup_entity_services(component: EntityComponent):
         "async_set_night_mode")
 
     return True
+
+def async_entity_service_activate(self):
+    """ Activates the entity controller"""
+
+    if(self.model is None):
+        return
+
+    self.model.log.debug("Activating the Entity Controller")
+    self.model.activate()
 
 def async_entity_service_clear_block(self):
     """ Clear the block property, if set"""

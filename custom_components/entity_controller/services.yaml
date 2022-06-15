@@ -1,3 +1,11 @@
+activate:
+  description: Activates an Entity Controller. Turns on the entity and transitions
+    to the active_timer state. This also clears the blocked state if set.
+  fields:
+    entity_id:
+      description: Name(s) of entities to trigger.
+      example: 'entity_controller.motion_light'
+
 clear_block:
   description: Clears the blocked state of an Entity Controller, if set
   fields:

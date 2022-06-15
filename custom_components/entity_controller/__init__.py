@@ -193,6 +193,15 @@ async def async_setup(hass, config):
         dest="overridden",
     )
 
+    machine.add_transition(
+        trigger="activate",
+        source=["idle", "blocked"],
+        dest="active",
+    )
+    machine.add_transition(
+        trigger="activate", source="active_timer", dest=None, after="_reset_timer"
+    )
+
     # Idle
     # machine.add_transition(trigger='sensor_off',           source='idle',              dest=None)
     machine.add_transition(
@@ -356,6 +365,7 @@ async def async_setup(hass, config):
 
 class EntityController(entity.Entity):
     from .entity_services import (
+        async_entity_service_activate as async_activate,
         async_entity_service_clear_block as async_clear_block,
         async_entity_service_enable_stay_mode as async_enable_stay_mode,
         async_entity_service_disable_stay_mode as async_disable_stay_mode,
