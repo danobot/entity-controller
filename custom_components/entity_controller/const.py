@@ -21,6 +21,7 @@ DOMAIN = "entity_controller"
 DOMAIN_SHORT = "ec"
 
 # services
+SERVICE_ACTIVATE = "activate"
 SERVICE_CLEAR_BLOCK = "clear_block"
 SERVICE_ENABLE_STAY_MODE = "enable_stay_mode"
 SERVICE_DISABLE_STAY_MODE = "disable_stay_mode"
