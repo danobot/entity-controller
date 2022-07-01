@@ -11,6 +11,14 @@ Entity Controller (EC) is an implementation of "When This, Then That for x amoun
 
 [Entity Controller Documentation](https://danobot.github.io/ec-docs/)
 
+## Installation
+EC is available in HACS store. Once installed, add the the following to your `configuration.yaml`, replacing the values for `sensor` and `entity` with one of your own. Reboot your Home Assistant server and you should have a motion controlled light that turns off after 5 seconds.
+```
+motion_light:
+  sensor: binary_sensor.living_room_motion
+  entity: light.tv_led
+  delay: 5
+```
 ## :clapper: Video Demo
 I created the following video to give a high-level overview of all EC features, how they work and how you can configure them for your use cases.
 
