@@ -13,5 +13,5 @@
   ],
   "codeowners": ["@danobot"],
   "homeassistant": "0.117.0",
-  "version": "9.2.10"
+  "version": "9.4.0"
 }
