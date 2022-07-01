@@ -18,6 +18,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        git config --global --add safe.directory /github/workspace
         npm install
         npm run release
         echo ::set-env name=PACKAGE_VERSION::$(node -p -e "require('./package.json').version")  
