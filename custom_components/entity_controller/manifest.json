@@ -1,17 +1,18 @@
 {
-  "domain": "entity_controller",
-  "name": "Entity Controller",
-  "documentation": "https://github.com/danobot/entity-controller/blob/master/README.md",
-  "requirements": [
-    "transitions==0.8.8"
-  ],
-  "dependencies": [
-  ],
-  "after_dependencies": [
-    "light",
-    "script"
-  ],
-  "codeowners": ["@danobot"],
-  "homeassistant": "0.117.0",
-  "version": "9.4.0"
+	"domain": "entity_controller",
+	"name": "Entity Controller",
+	"documentation": "https://github.com/danobot/entity-controller/blob/master/README.md",
+	"requirements": [
+		"transitions==0.8.8"
+	],
+	"dependencies": [],
+	"after_dependencies": [
+		"light",
+		"script"
+	],
+	"codeowners": [
+		"@danobot"
+	],
+	"homeassistant": "2022.7.4",
+	"version": "9.5.0"
 }

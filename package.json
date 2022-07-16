@@ -1,6 +1,6 @@
 {
   "name": "entity-controller",
-  "version": "9.4.0",
+  "version": "9.5.0",
   "description": "Entity Controller (EC) is an implementation of 'When This, Then That' using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home.",
   "main": "index.js",
   "directories": {
@@ -17,13 +17,14 @@
   "author": "Daniel Mason",
   "license": "GNU General Public License v3.0",
   "devDependencies": {
+    "replace-in-file": "^3.4.3",
     "semantic-release": "^15.13.3",
     "standard-version": "^4.4.0",
-    "replace-in-file": "^3.4.3"
+    "update-json-file": "^1.1.1"
   },
   "standard-version": {
     "scripts": {
-      "precommit": "node postbump.js; git add custom_components/entity_controller/__init__.py; git add package.json "
+      "precommit": "node postbump.js; git add custom_components/entity_controller/__init__.py; git add custom_components/entity_controller/manifest.json; git add package.json "
     }
   }
 }
