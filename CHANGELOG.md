@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.5.2"></a>
+## [9.5.2](https://github.com/danobot/entity-controller/compare/v9.5.1...v9.5.2) (2022-07-16)
+
+
+
 <a name="9.2.9"></a>
 ## [9.2.9](https://github.com/danobot/entity-controller/compare/v9.2.8...v9.2.9) (2021-06-11)
 
