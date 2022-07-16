@@ -39,11 +39,11 @@ jobs:
         head: develop
     - uses: actions/checkout@v1
     - name: Push to master
-      uses: ad-m/github-push-action@v0.5.0
+      uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Merge back to develop
-      uses: ad-m/github-push-action@v0.5.0
+      uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: develop
