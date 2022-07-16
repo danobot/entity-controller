@@ -26,16 +26,16 @@ jobs:
         CI: true
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     
-    - uses: actions/checkout@v1    
-      with:
-        ref: develop
-    - name: action-git-merge
-      uses: zcong1993/action-git-merge@v0.1.0
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        base: master
-        head: develop
-    - uses: actions/checkout@v1
+    # - uses: actions/checkout@v1     
+    #   with:
+    #     ref: develop
+    # - name: action-git-merge
+    #   uses: zcong1993/action-git-merge@v0.1.0
+    #   with:
+    #     token: ${{ secrets.GITHUB_TOKEN }}
+    #     base: master
+    #     head: develop
+    # - uses: actions/checkout@v1
     - name: Push to master
       uses: ad-m/github-push-action@master
       with:
