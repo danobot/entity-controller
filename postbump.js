@@ -1,5 +1,7 @@
 var v = require('./package.json').version
 const replace = require('replace-in-file');
+const updateJsonFile = require('update-json-file')
+
 const regex = new RegExp('VERSION = .*', 'i');
 const options = {
     files: 'custom_components/entity_controller/__init__.py',
@@ -20,4 +22,15 @@ const header_version = {
 };
 changes = replace.sync(header_version)
 
+
+
+const filePath = 'custom_components/entity_controller/manifest.json'
+
+updateJsonFile(filePath, (data) => {
+  data.version = v
+  return data
+})
+
 console.log("chore(release): " + v)
+
+

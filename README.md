@@ -7,7 +7,7 @@
 # :wave: Introduction
 Entity Controller (EC) is an implementation of "When This, Then That for x amount of time" using a finite state machine that ensures basic automations do not interfere with the rest of your home automation setup. This component encapsulates common automation scenarios into a neat package that can be configured easily and reused throughout your home. Traditional automations would need to be duplicated _for each instance_ in your config. The use cases for this component are endless because you can use any entity as input and outputs (there is no restriction to motion sensors and lights).
 
-**Latest stable version is `v9.2.10` tested on Home Assistant `2022.6.7`.**
+**Latest stable version is `v9.4.0` tested on Home Assistant `2022.7.4`.**
 
 [Entity Controller Documentation](https://danobot.github.io/ec-docs/)
 

@@ -33,9 +33,7 @@ jobs:
       uses: zcong1993/action-git-merge@v0.1.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        # The name of the base branch that the head will be merged into
         base: master
-        # The head to merge. This can be a branch name or a commit SHA1
         head: develop
     - uses: actions/checkout@v1
     - name: Push to master
