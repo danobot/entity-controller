@@ -328,6 +328,9 @@ async def async_setup(hass, config):
     # When block is disabled, "control" will reset the active timer
     machine.add_transition(trigger="control", source="active_timer",
                            dest=None, after="_reset_timer", conditions=["is_state_entities_on"], unless="is_block_enabled")
+    # Manually enable blocked state
+    machine.add_transition(trigger="block_enable", source="active_timer",
+                           dest="blocked", conditions=["is_state_entities_on", "is_block_enabled"])
 
     # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     # machine.add_transition(trigger="timer_expires", source="active_stay_on", dest=None)
@@ -378,6 +381,7 @@ class EntityController(entity.Entity):
     from .entity_services import (
         async_entity_service_activate as async_activate,
         async_entity_service_clear_block as async_clear_block,
+        async_entity_service_enable_block as async_enable_block,
         async_entity_service_enable_stay_mode as async_enable_stay_mode,
         async_entity_service_disable_stay_mode as async_disable_stay_mode,
         async_entity_service_set_night_mode as async_set_night_mode,
