@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.6.0"></a>
+# [9.6.0](https://github.com/danobot/entity-controller/compare/v9.5.2...v9.6.0) (2022-11-08)
+
+
+### Features
+
+* Add possibility to manually enable blocked state ([6c6d827](https://github.com/danobot/entity-controller/commit/6c6d827))
+
+
+
 <a name="9.5.2"></a>
 ## [9.5.2](https://github.com/danobot/entity-controller/compare/v9.5.1...v9.5.2) (2022-07-16)
 
