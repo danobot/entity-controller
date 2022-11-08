@@ -36,6 +36,7 @@ import homeassistant.util.dt as dt_util
 from .const import (
     SERVICE_ACTIVATE,
     SERVICE_CLEAR_BLOCK,
+    SERVICE_ENABLE_BLOCK,
     SERVICE_ENABLE_STAY_MODE,
     SERVICE_DISABLE_STAY_MODE,
     SERVICE_SET_NIGHT_MODE,
@@ -51,6 +52,7 @@ def async_setup_entity_services(component: EntityComponent):
     component.logger.debug("Setting up entity services")
     component.async_register_entity_service(SERVICE_ACTIVATE, {}, "async_activate")
     component.async_register_entity_service(SERVICE_CLEAR_BLOCK, {}, "async_clear_block")
+    component.async_register_entity_service(SERVICE_ENABLE_BLOCK, {}, "async_enable_block")
     component.async_register_entity_service(SERVICE_ENABLE_STAY_MODE, {}, "async_enable_stay_mode")
     component.async_register_entity_service(SERVICE_DISABLE_STAY_MODE, {}, "async_disable_stay_mode")
     component.async_register_entity_service(
@@ -77,6 +79,15 @@ def async_entity_service_clear_block(self):
 
     self.model.log.debug("Clearing Blocked state")
     self.model.block_timer_expires()
+
+def async_entity_service_enable_block(self):
+    """ Enable the block property, if timer is active"""
+
+    if(self.model is None or self.model.state != 'active_timer'):
+        return
+
+    self.model.log.debug("Enabling Blocked state")
+    self.model.block_enable()
 
 def async_entity_service_enable_stay_mode(self):
     self.model.log.debug("Enable stay mode - Control entities will remain on until manually turned off")
