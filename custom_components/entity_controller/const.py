@@ -81,7 +81,7 @@ MODE_DAY = 'day'
 MODE_NIGHT = 'night'
 CONSTRAIN_START = 1
 CONSTRAIN_END = 2
-STATES = ['idle', 'overridden', 'constrained', 'blocked',
+STATES = ['pending', 'idle', 'overridden', 'constrained', 'blocked',
           {'name': 'active', 'children': ['timer', 'stay_on'],
            'initial': False}]
 CONF_IGNORE_STATE_CHANGES_UNTIL = "grace_period"

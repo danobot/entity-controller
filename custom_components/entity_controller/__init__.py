@@ -184,17 +184,22 @@ async def async_setup(hass, config):
 
     machine = Machine(
         states=STATES,
-        initial="idle",
+        initial="pending",
         # title=self.name+" State Diagram",
         # show_conditions=True
         # show_auto_transitions = True,
         finalize_event="finalize",
     )
+    machine.add_transition(
+        trigger="start_monitoring",
+        source="pending",
+        dest="idle",
+    )
 
     machine.add_transition(trigger="constrain", source="*", dest="constrained")
     machine.add_transition(
         trigger="override",
-        source=["idle", "active_timer", "blocked"],
+        source=["pending", "idle", "active_timer", "blocked"],
         dest="overridden",
     )
 
@@ -536,6 +541,11 @@ class Model:
         machine.add_model(
             self
         )  # add here because machine generated methods are being used in methods below.
+
+        event.async_call_later(self.hass, STARTUP_DELAY, self.startup_delay_callback)
+
+    def startup_delay_callback(self, evt):
+        config = self.config
         self.config_static_strings(config)
         self.config_control_entities(config)
         self.config_state_entities(
@@ -554,6 +564,12 @@ class Model:
         self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
+
+        if len(self.overrideEntities) > 0 and self.is_override_state_on():
+            self.override()
+            self.update(overridden_at=str(datetime.now()))
+        else:
+            self.start_monitoring()
 
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
@@ -586,11 +602,6 @@ class Model:
             self.log.debug("sensor_state_change :: old NoneType")
             pass
 
-        # Ignore state changes while entity states are being initialized (e.g. after HA restart)
-        if (datetime.now() - self.ec_startup_time).total_seconds() < STARTUP_DELAY:
-            self.log.debug("sensor_state_change :: Ignoring state change for %s seconds after starting" % STARTUP_DELAY)
-            return
-
         if self.matches(new.state, self.SENSOR_ON_STATE) and (
             self.is_idle() or self.is_active_timer() or self.is_blocked()
         ):
@@ -622,7 +633,12 @@ class Model:
     def override_state_change(self, entity, old, new):
         """ State change callback for override entities """
         self.log.debug("override_state_change :: Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
-        if self.matches(new.state, self.OVERRIDE_ON_STATE) and self.can_override():
+        if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
+            self.is_active()
+            or self.is_active_timer()
+            or self.is_idle()
+            or self.is_blocked()
+        ):
             self.set_context(new.context)
             self.update(overridden_by=entity)
             self.override()
@@ -647,11 +663,6 @@ class Model:
         )
         if self.is_ignored_context(new.context):
             self.log.debug("state_entity_state_change :: Ignoring this state change because it came from %s" % (new.context.id))
-            return
-
-        # Ignore state changes while entity states are being initialized (e.g. after HA restart)
-        if (datetime.now() - self.ec_startup_time).total_seconds() < STARTUP_DELAY:
-            self.log.debug("state_entity_state_change :: Ignoring state change for %s seconds after starting" % STARTUP_DELAY)
             return
 
         #  If the state changed, we definitely want to handle the transition. If only attributes changed, we'll check if the new attributes are significant (i.e., not being ignored).
@@ -774,9 +785,6 @@ class Model:
 
     def is_override_state_on(self):
         return self._override_entity_state() is not None
-
-    def can_override(self):
-        return self.is_active() or self.is_active_timer() or self.is_idle() or self.is_blocked()
 
     def _sensor_entity_state(self):
         for e in self.sensorEntities:
@@ -1150,17 +1158,6 @@ class Model:
             event.async_track_state_change(
                 self.hass, self.overrideEntities, self.override_state_change
             )
-            # Check if controller needs to be overridden after delay (after entity states finished initializing)
-            check_override_time = datetime.now() + timedelta(seconds=(STARTUP_DELAY - 5))
-            self.log.debug("Scheduling check_override_callback for %s", check_override_time)
-            self.check_override_event_hook = event.async_track_point_in_time(
-                self.hass, self.check_override_callback, check_override_time
-            )
-
-    def check_override_callback(self, evt):
-        if self.is_override_state_on() and self.can_override():
-            self.override()
-            self.update(overridden_at=str(datetime.now()))
 
     def config_other(self, config):
         self.do_draw = config.get("draw", False)
