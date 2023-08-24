@@ -111,6 +111,9 @@ VERSION = '9.6.1'
 
 _LOGGER = logging.getLogger(__name__)
 
+# Configure delay before starting to monitor state change events
+STARTUP_DELAY = 70
+
 devices = []
 MODE_SCHEMA = vol.Schema(
     {
@@ -181,17 +184,22 @@ async def async_setup(hass, config):
 
     machine = Machine(
         states=STATES,
-        initial="idle",
+        initial="pending",
         # title=self.name+" State Diagram",
         # show_conditions=True
         # show_auto_transitions = True,
         finalize_event="finalize",
     )
+    machine.add_transition(
+        trigger="start_monitoring",
+        source="pending",
+        dest="idle",
+    )
 
     machine.add_transition(trigger="constrain", source="*", dest="constrained")
     machine.add_transition(
         trigger="override",
-        source=["idle", "active_timer", "blocked"],
+        source=["pending", "idle", "active_timer", "blocked"],
         dest="overridden",
     )
 
@@ -485,6 +493,8 @@ class Model:
     """ Represents the transitions state machine model """
 
     def __init__(self, hass, config, machine, entity):
+        self.ec_startup_time = datetime.now()
+
         self.hass = hass  # backwards reference to hass object
         self.entity = entity  # backwards reference to entity containing this model
 
@@ -531,6 +541,11 @@ class Model:
         machine.add_model(
             self
         )  # add here because machine generated methods are being used in methods below.
+
+        event.async_call_later(self.hass, STARTUP_DELAY, self.startup_delay_callback)
+
+    def startup_delay_callback(self, evt):
+        config = self.config
         self.config_static_strings(config)
         self.config_control_entities(config)
         self.config_state_entities(
@@ -549,6 +564,12 @@ class Model:
         self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
+
+        if len(self.overrideEntities) > 0 and self.is_override_state_on():
+            self.override()
+            self.update(overridden_at=str(datetime.now()))
+        else:
+            self.start_monitoring()
 
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
