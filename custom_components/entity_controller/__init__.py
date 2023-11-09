@@ -173,6 +173,11 @@ PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 async def async_setup(hass, config):
     """Load graph configurations."""
 
+    if(((datetime.now()).astimezone()).tzinfo != dt.as_local(dt.now()).tzinfo):
+        _LOGGER.error("Timezones do not Match")
+        _LOGGER.error("DateTime: %s", ((datetime.now()).astimezone()).tzinfo )
+        _LOGGER.error("HA DT: %s", dt.as_local(dt.now()).tzinfo )
+
     component = EntityComponent(_LOGGER, DOMAIN, hass)
 
     _LOGGER.info(
