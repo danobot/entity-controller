@@ -1579,15 +1579,13 @@ class Model:
         """
         # Unique name per EC instance, but short enough to fit within id length
         name_hash = hashlib.sha1(self.name.encode("UTF-8")).hexdigest()[:6]
-        self.debug("set_context :: name_hash: %s", name_hash)
+        self.log.debug("set_context :: name_hash: %s", name_hash)
         unique_id = uuid_util.random_uuid_hex()
 
         # Restrict id length to database field size
         context_id = f"{DOMAIN_SHORT}_{name_hash}_{unique_id}"[:CONTEXT_ID_CHARACTER_LIMIT]
-        self.debug("set_context :: context_id: %s", context_id)
+        self.log.debug("set_context :: context_id: %s", context_id)
         self.context_id = context_id
-        if len(self.context_id) != CONTEXT_ID_CHARACTER_LIMIT:
-            raise Exception("Context id is not 26 charactesr")
         # parent_id only exists for a non-None parent
         parent_id = parent.id if parent else None
         self.context = Context(parent_id=parent_id, id=context_id)
