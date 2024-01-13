@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.7.1"></a>
+## [9.7.1](https://github.com/danobot/entity-controller/compare/v9.7.0...v9.7.1) (2024-01-13)
+
+
+### Bug Fixes
+
+* resolve defect [#316](https://github.com/danobot/entity-controller/issues/316) ([#317](https://github.com/danobot/entity-controller/issues/317)) ([b532262](https://github.com/danobot/entity-controller/commit/b532262))
+
+
+
 <a name="9.7.0"></a>
 # [9.7.0](https://github.com/danobot/entity-controller/compare/v9.6.1...v9.7.0) (2023-08-24)
 
