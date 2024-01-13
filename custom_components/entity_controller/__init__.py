@@ -39,6 +39,7 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt
+import homeassistant.util.yaml.objects as YamlObjects
 import homeassistant.util.uuid as uuid_util
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
@@ -399,6 +400,7 @@ class EntityController(entity.Entity):
         self.attributes = {}
         self.may_update = False
         self.model = None
+        self.context_id = None
         self.friendly_name = config.get(CONF_NAME, "Motion Light")
         if "friendly_name" in config:
             self.friendly_name = config.get("friendly_name")
@@ -1577,10 +1579,13 @@ class Model:
         """
         # Unique name per EC instance, but short enough to fit within id length
         name_hash = hashlib.sha1(self.name.encode("UTF-8")).hexdigest()[:6]
+        self.log.debug("set_context :: name_hash: %s", name_hash)
         unique_id = uuid_util.random_uuid_hex()
-        context_id = f"{DOMAIN_SHORT}_{name_hash}_{unique_id}"
+
         # Restrict id length to database field size
-        context_id = context_id[:CONTEXT_ID_CHARACTER_LIMIT]
+        context_id = f"{DOMAIN_SHORT}_{name_hash}_{unique_id}"[:CONTEXT_ID_CHARACTER_LIMIT]
+        self.log.debug("set_context :: context_id: %s", context_id)
+        self.context_id = context_id
         # parent_id only exists for a non-None parent
         parent_id = parent.id if parent else None
         self.context = Context(parent_id=parent_id, id=context_id)
@@ -1633,21 +1638,32 @@ class Model:
             self.add(self.controlEntities, config, CONF_CONTROL_ENTITIES)
 
         """
-        if config is not None:
-            v = []
-            if key is not None:
-                if key in config:  # must be in separate if statement
-                    v = config[key]
-            else:
-                v = config
-            if type(v) == str:
-
-                list.append(v)
-            else:
-                list.extend(v)
-        else:
+        self.log.debug("add :: Adding config key `%s` to the config list", key)
+        if config is None:
             self.log.debug("Tried to configure %s but supplied config was None" % (key))
-        return len(v) > 0
+            return False
+
+        v = None
+        if key is not None:
+            if key in config:  # must be in separate if statement
+                v = config[key]
+        else:
+            v = config
+
+        if type(v) is YamlObjects.NodeStrClass:
+            self.log.debug("Found string value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+            list.append(v)
+            return len(v) > 0
+        elif type(v) is YamlObjects.NodeListClass:
+            self.log.debug("Found list value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+            list.extend(v)
+            return len(v) > 0
+        elif v == None:
+            self.log.debug(f'Config key {key} not provided by user. Skipping.')
+            return False
+        else:
+            self.log.error(f'Cannot determine type of provided config value. Key: {key}, Type: {type(v)}, Value: {str(v)}')
+            return False
 
     def futurize(self, timet):
         """ Returns tomorrows time if time is in the past.
