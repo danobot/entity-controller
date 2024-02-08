@@ -28,7 +28,7 @@ import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
 import pprint
-from typing import Optional
+from typing import Optional, List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -1650,12 +1650,12 @@ class Model:
         else:
             v = config
 
-        if type(v) is YamlObjects.NodeStrClass:
-            self.log.debug("Found string value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+        if isinstance(v,str):
+            self.log.debug("Found string value %s for key %s, now adding to existing list %s. (Type: %s)", v, key, list, type(v))
             list.append(v)
             return len(v) > 0
-        elif type(v) is YamlObjects.NodeListClass:
-            self.log.debug("Found list value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+        elif isinstance(v, List):
+            self.log.debug("Found list value %s for key %s, now adding to existing list %s. (Type: %s)", v, key, list, type(v))
             list.extend(v)
             return len(v) > 0
         elif v == None:
