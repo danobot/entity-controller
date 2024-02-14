@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.7.2"></a>
+## [9.7.2](https://github.com/danobot/entity-controller/compare/v9.7.1...v9.7.2) (2024-02-14)
+
+
+### Bug Fixes
+
+* parsing config files broke with HA 2024.2.0 release. Closes [#320](https://github.com/danobot/entity-controller/issues/320) ([06cfe55](https://github.com/danobot/entity-controller/commit/06cfe55))
+
+
+
 <a name="9.7.1"></a>
 ## [9.7.1](https://github.com/danobot/entity-controller/compare/v9.7.0...v9.7.1) (2024-01-13)
 
