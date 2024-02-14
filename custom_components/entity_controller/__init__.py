@@ -28,7 +28,7 @@ import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
 import pprint
-from typing import Optional
+from typing import Optional, List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -1117,10 +1117,10 @@ class Model:
             # parsed_start = datetime.now() + timedelta(seconds=5)
             # parsed_end = datetime.now() + timedelta(seconds=10)
             # FOR OPTIONAL DEBUGGING: subsequently use normal delay
-            sparts = re.search("^(now\s*[+-]\s*\d+)", config.get(CONF_START_TIME))
+            sparts = re.search(r"^(now\s*[+-]\s*\d+)", config.get(CONF_START_TIME))
             if sparts is not None:
                 self._start_time_private = sparts.group(1)
-            eparts = re.search("^(now\s*[+-]\s*\d+)", config.get(CONF_END_TIME))
+            eparts = re.search(r"^(now\s*[+-]\s*\d+)", config.get(CONF_END_TIME))
             if eparts is not None:
                 self._end_time_private = eparts.group(1)
 
@@ -1364,7 +1364,7 @@ class Model:
         parsed_time = None
         sun = None
         offset = 0
-        parts = re.search("^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$", str(time_str))
+        parts = re.search(r"^(\d+)-(\d+)-(\d+)\s+(\d+):(\d+):(\d+)$", str(time_str))
         if parts:
             this_time = datetime(
                 int(parts.group(1)),
@@ -1377,7 +1377,7 @@ class Model:
             )
             parsed_time = dt.as_local(this_time)
         else:
-            parts = re.search("^(\d+):(\d+):(\d+)$", str(time_str))
+            parts = re.search(r"^(\d+):(\d+):(\d+)$", str(time_str))
             if parts:
                 today = dt.as_local(dt.now())
                 time_temp = time(
@@ -1401,7 +1401,7 @@ class Model:
                     offset = 0
                 else:
                     parts = re.search(
-                        "^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$", str(time_str)
+                        r"^sunrise\s*([+-])\s*(\d+):(\d+):(\d+)$", str(time_str)
                     )
                     if parts:
 
@@ -1424,7 +1424,7 @@ class Model:
                             parsed_time = self.sunrise(True) - td
                     else:
                         parts = re.search(
-                            "^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$", str(time_str)
+                            r"^sunset\s*([+-])\s*(\d+):(\d+):(\d+)$", str(time_str)
                         )
                         if parts:
                             sun = "sunset"
@@ -1650,12 +1650,12 @@ class Model:
         else:
             v = config
 
-        if type(v) is YamlObjects.NodeStrClass:
-            self.log.debug("Found string value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+        if isinstance(v,str):
+            self.log.debug("Found string value %s for key %s, now adding to existing list %s. (Type: %s)", v, key, list, type(v))
             list.append(v)
             return len(v) > 0
-        elif type(v) is YamlObjects.NodeListClass:
-            self.log.debug("Found list value %s for key %s, now adding to exiting list %s. (Type: %s)", v, key, list, type(v))
+        elif isinstance(v, List):
+            self.log.debug("Found list value %s for key %s, now adding to existing list %s. (Type: %s)", v, key, list, type(v))
             list.extend(v)
             return len(v) > 0
         elif v == None:
@@ -1714,7 +1714,7 @@ class Model:
             See config_times.
         """
         s = timet
-        parts = re.search("^now\s*([+-])\s*(\d+)\s*\(?(\d+)?\)?$", timet)
+        parts = re.search(r"^now\s*([+-])\s*(\d+)\s*\(?(\d+)?\)?$", timet)
         if parts:
             sign = parts.group(1)
             first_delay = parts.group(3)
