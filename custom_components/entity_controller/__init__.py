@@ -173,6 +173,11 @@ PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 async def async_setup(hass, config):
     """Load graph configurations."""
 
+    if(str(((datetime.now()).astimezone()).tzinfo) != str(dt.as_local(dt.now()).tzname())):
+        _LOGGER.error("Timezones do not Match. Mismatched timezones may cause unintended behaviours.")
+        _LOGGER.error("System DateTime: %s", ((datetime.now()).astimezone()).tzinfo )
+        _LOGGER.error("Home Assistant DateTime: %s", dt.as_local(dt.now()).tzname())
+
     component = EntityComponent(_LOGGER, DOMAIN, hass)
 
     _LOGGER.info(
@@ -769,7 +774,8 @@ class Model:
                         e, ex
                     )
                 )
-                return None
+                
+                continue
 
             if self.matches(state, self.OVERRIDE_ON_STATE):
                 self.log.debug("Override entities are ON. [%s]", e)
@@ -799,7 +805,8 @@ class Model:
                         e, ex
                     )
                 )
-                return None
+                
+                continue
 
             if self.matches(state, self.SENSOR_ON_STATE):
                 self.log.debug("Sensor entities are ON. [%s]", e)
@@ -825,8 +832,8 @@ class Model:
                         e, ex
                     )
                 )
-                state = 'off'
-                return None
+                
+                continue
 
             if self.matches(state, self.STATE_ON_STATE):
                 self.log.debug("State entities are ON. [%s]", e)
