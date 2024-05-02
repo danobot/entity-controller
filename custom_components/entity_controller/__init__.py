@@ -596,8 +596,11 @@ class Model:
     # =====================================================
 
     @callback
-    def sensor_state_change(self, entity, old, new):
+    def sensor_state_change(self, event):
         """ State change callback for sensor entities """
+        entity = event.data["entity_id"]
+        old = event.data["old_state"]
+        new = event.data["new_state"]
         self.log.debug("sensor_state_change :: %10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
         self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
@@ -637,8 +640,11 @@ class Model:
                 self.log.debug("sensor_state_change :: CONF_SENSOR_RESETS_TIMER - normal")
 
     @callback
-    def override_state_change(self, entity, old, new):
+    def override_state_change(self, event):
         """ State change callback for override entities """
+        entity = event.data["entity_id"]
+        old = event.data["old_state"]
+        new = event.data["new_state"]
         self.log.debug("override_state_change :: Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
         if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
             self.is_active()
@@ -659,7 +665,10 @@ class Model:
             self.enable()
 
     @callback
-    def state_entity_state_change(self, entity, old, new):
+    def state_entity_state_change(self, event):
+        entity = event.data["entity_id"]
+        old = event.data["old_state"]
+        new = event.data["new_state"]
         """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
             "state_entity_state_change :: [ Entity: %s, Context: %s ]\n\tOld state: %s\n\tNew State: %s",
@@ -982,7 +991,7 @@ class Model:
             self.log.info(
                 "State Entities (explicitly defined - I hope you know what you are doing): " + str(self.stateEntities)
             )
-            event.async_track_state_change(
+            event.async_track_state_change_event(
                 self.hass, self.stateEntities, self.state_entity_state_change
             )
 
@@ -992,7 +1001,7 @@ class Model:
             self.log.debug(
                 "Added Control Entities as state entities (default): " + str(self.stateEntities)
             )
-            event.async_track_state_change(
+            event.async_track_state_change_event(
                 self.hass, self.stateEntities, self.state_entity_state_change
             )
 
@@ -1021,7 +1030,7 @@ class Model:
 
         self.log.debug("Sensor Entities: " +  pprint.pformat(self.sensorEntities))
 
-        event.async_track_state_change(
+        event.async_track_state_change_event(
             self.hass, self.sensorEntities, self.sensor_state_change
         )
 
@@ -1164,7 +1173,7 @@ class Model:
 
         if len(self.overrideEntities) > 0:
             self.log.debug("Override Entities: " +  pprint.pformat(self.overrideEntities))
-            event.async_track_state_change(
+            event.async_track_state_change_event(
                 self.hass, self.overrideEntities, self.override_state_change
             )
 
