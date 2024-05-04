@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.7.4"></a>
+## [9.7.4](https://github.com/danobot/entity-controller/compare/v9.7.3...v9.7.4) (2024-05-04)
+
+
+### Bug Fixes
+
+* async track events ([4421ed2](https://github.com/danobot/entity-controller/commit/4421ed2))
+
+
+
 <a name="9.7.3"></a>
 ## [9.7.3](https://github.com/danobot/entity-controller/compare/v9.7.2...v9.7.3) (2024-03-19)
 
