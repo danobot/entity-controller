@@ -480,7 +480,7 @@ class EntityController(entity.Entity):
         """ Schedules an entity state update with HASS """
         # _LOGGER.debug("Scheduled update with HASS")
         if self.may_update:
-            self.async_schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
 
     def set_attr(self, k, v):
         if k == CONF_DELAY:
