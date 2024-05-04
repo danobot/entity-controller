@@ -22,6 +22,7 @@ Version:          v9.7.4
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 """
+import asyncio
 import hashlib
 import logging
 import re
@@ -1582,8 +1583,9 @@ class Model:
             params = service_data
 
         params["entity_id"] = entity
-        self.hass.async_create_task(
-            self.hass.services.async_call(domain, service, service_data, context=self.context)
+        asyncio.run_coroutine_threadsafe(
+            self.hass.services.async_call(domain, service, service_data, context=self.context),
+            self.hass.loop
         )
         self.update(service_data=service_data)
 
