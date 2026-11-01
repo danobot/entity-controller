@@ -394,21 +394,21 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_add_controllers(hass, component, machine, config):
+async def async_add_controllers(hass, component, machine, domain_config):
     """Create an entity for each controller in the configuration."""
     devices = []
-    for myconfig in config.get(DOMAIN, []):
+    for myconfig in domain_config.get(DOMAIN, []):
         _LOGGER.info("Domain Configuration: " + str(myconfig))
-        for key, controller_config in myconfig.items():
-            if not controller_config:
-                controller_config = {}
+        for key, config in myconfig.items():
+            if not config:
+                config = {}
 
-            # _LOGGER.info("Config Item %s: %s", str(key), str(controller_config))
-            controller_config["name"] = key
+            # _LOGGER.info("Config Item %s: %s", str(key), str(config))
+            config["name"] = key
             m = None
-            m = EntityController(hass, controller_config, machine)
+            m = EntityController(hass, config, machine)
             # machine.add_model(m.model)
-            # m.model.after_model(controller_config)
+            # m.model.after_model(config)
             devices.append(m)
 
     await component.async_add_entities(devices)
