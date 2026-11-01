@@ -33,7 +33,12 @@ from typing import Optional, List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
+from homeassistant.const import (
+    CONF_NAME,
+    SERVICE_RELOAD,
+    SUN_EVENT_SUNRISE,
+    SUN_EVENT_SUNSET,
+)
 from homeassistant.core import callback, Context
 from homeassistant.helpers import entity, event, service
 from homeassistant.helpers.template import Template
@@ -116,7 +121,6 @@ _LOGGER = logging.getLogger(__name__)
 # Configure delay before starting to monitor state change events
 STARTUP_DELAY = 70
 
-devices = []
 MODE_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
@@ -371,25 +375,43 @@ async def async_setup(hass, config):
     # Enter blocked state when component is enabled and entity is on
     machine.add_transition(trigger="blocked", source="constrained", dest="blocked", conditions=["is_block_enabled"])
 
-    for myconfig in config[DOMAIN]:
-        _LOGGER.info("Domain Configuration: " + str(myconfig))
-        for key, config in myconfig.items():
-            if not config:
-                config = {}
+    async def async_reload(call):
+        """Replace all controllers with the ones in the current YAML configuration."""
+        conf = await component.async_prepare_reload()
+        # Older Home Assistant versions return None on invalid configuration
+        if conf is None:
+            return
+        await async_add_controllers(hass, component, machine, conf)
 
-            # _LOGGER.info("Config Item %s: %s", str(key), str(config))
-            config["name"] = key
-            m = None
-            m = EntityController(hass, config, machine)
-            # machine.add_model(m.model)
-            # m.model.after_model(config)
-            devices.append(m)
+    service.async_register_admin_service(
+        hass, DOMAIN, SERVICE_RELOAD, async_reload, schema=vol.Schema({})
+    )
 
-    await component.async_add_entities(devices)
+    await async_add_controllers(hass, component, machine, config)
 
     _LOGGER.info("The %s component is ready!", DOMAIN)
 
     return True
+
+
+async def async_add_controllers(hass, component, machine, config):
+    """Create an entity for each controller in the configuration."""
+    devices = []
+    for myconfig in config.get(DOMAIN, []):
+        _LOGGER.info("Domain Configuration: " + str(myconfig))
+        for key, controller_config in myconfig.items():
+            if not controller_config:
+                controller_config = {}
+
+            # _LOGGER.info("Config Item %s: %s", str(key), str(controller_config))
+            controller_config["name"] = key
+            m = None
+            m = EntityController(hass, controller_config, machine)
+            # machine.add_model(m.model)
+            # m.model.after_model(controller_config)
+            devices.append(m)
+
+    await component.async_add_entities(devices)
 
 
 class EntityController(entity.Entity):
@@ -403,6 +425,7 @@ class EntityController(entity.Entity):
     )
 
     def __init__(self, hass, config, machine):
+        self.machine = machine
         self.attributes = {}
         self.may_update = False
         self.model = None
@@ -491,6 +514,13 @@ class EntityController(entity.Entity):
     async def async_added_to_hass(self):
         """Register update dispatcher."""
         self.may_update = True
+        self.model.begin()
+
+    async def async_will_remove_from_hass(self):
+        """Stop the controller, the entity is being reloaded."""
+        self.may_update = False
+        self.model.shutdown()
+        self.machine.remove_model(self.model)
 
     @property
     def should_poll(self) -> bool:
@@ -518,6 +548,10 @@ class Model:
         self.triggerOnActivate = []
         self.timer_handle = None
         self.block_timer_handle = None
+        self.start_time_event_hook = None
+        self.end_time_event_hook = None
+        self.unsubscribers = []
+        self.skip_idle_behaviour = False
         self.sensor_type = None
         self.night_mode = None
         self.state_attributes_ignore = []
@@ -550,7 +584,30 @@ class Model:
             self
         )  # add here because machine generated methods are being used in methods below.
 
-        event.async_call_later(self.hass, STARTUP_DELAY, self.startup_delay_callback)
+    def begin(self):
+        """Start the controller once its entity is added."""
+        running = self.hass.is_running
+        # A reload must not switch control entities a user may be relying on
+        self.skip_idle_behaviour = running
+        # Other entities are only still loading during Home Assistant startup
+        delay = 0 if running else STARTUP_DELAY
+        self.unsubscribers.append(
+            event.async_call_later(self.hass, delay, self.startup_delay_callback)
+        )
+
+    def shutdown(self):
+        """Stop listening for events and cancel timers."""
+        for unsubscribe in self.unsubscribers:
+            unsubscribe()
+        self.unsubscribers.clear()
+
+        for hook in (self.start_time_event_hook, self.end_time_event_hook):
+            if hook:
+                hook()
+
+        for timer in (self.timer_handle, self.block_timer_handle):
+            if timer:
+                timer.cancel()
 
     def startup_delay_callback(self, evt):
         config = self.config
@@ -578,6 +635,7 @@ class Model:
             self.update(overridden_at=str(datetime.now()))
         else:
             self.start_monitoring()
+        self.skip_idle_behaviour = False
 
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
@@ -892,7 +950,8 @@ class Model:
         self.log.debug("Entering idle")
         # Entering idle due to no events, set a new context with no parent
         self.set_context(None)
-        self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
+        if not self.skip_idle_behaviour:
+            self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
         self.entity.reset_state()
 
     def on_exit_idle(self):
@@ -992,8 +1051,10 @@ class Model:
             self.log.info(
                 "State Entities (explicitly defined - I hope you know what you are doing): " + str(self.stateEntities)
             )
-            event.async_track_state_change_event(
-                self.hass, self.stateEntities, self.state_entity_state_change
+            self.unsubscribers.append(
+                event.async_track_state_change_event(
+                    self.hass, self.stateEntities, self.state_entity_state_change
+                )
             )
 
         if len(self.stateEntities) == 0:
@@ -1002,8 +1063,10 @@ class Model:
             self.log.debug(
                 "Added Control Entities as state entities (default): " + str(self.stateEntities)
             )
-            event.async_track_state_change_event(
-                self.hass, self.stateEntities, self.state_entity_state_change
+            self.unsubscribers.append(
+                event.async_track_state_change_event(
+                    self.hass, self.stateEntities, self.state_entity_state_change
+                )
             )
 
     def config_off_entities(self, config):
@@ -1031,8 +1094,10 @@ class Model:
 
         self.log.debug("Sensor Entities: " +  pprint.pformat(self.sensorEntities))
 
-        event.async_track_state_change_event(
-            self.hass, self.sensorEntities, self.sensor_state_change
+        self.unsubscribers.append(
+            event.async_track_state_change_event(
+                self.hass, self.sensorEntities, self.sensor_state_change
+            )
         )
 
     def config_static_strings(self, config):
@@ -1160,7 +1225,9 @@ class Model:
                 self.log.debug(
                     "Constrain period active. Scheduling transition to 'constrained'"
                 )
-                event.async_call_later(self.hass, 1, self.constrain_entity)
+                self.unsubscribers.append(
+                    event.async_call_later(self.hass, 1, self.constrain_entity)
+                )
 
         self.log_config()
 
@@ -1174,8 +1241,10 @@ class Model:
 
         if len(self.overrideEntities) > 0:
             self.log.debug("Override Entities: " +  pprint.pformat(self.overrideEntities))
-            event.async_track_state_change_event(
-                self.hass, self.overrideEntities, self.override_state_change
+            self.unsubscribers.append(
+                event.async_track_state_change_event(
+                    self.hass, self.overrideEntities, self.override_state_change
+                )
             )
 
     def config_other(self, config):
