@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.8.0"></a>
+# [9.8.0](https://github.com/danobot/entity-controller/compare/v9.7.6...v9.8.0) (2026-11-10)
+
+
+### Features
+
+* add unique id to entities ([1b356fc](https://github.com/danobot/entity-controller/commit/1b356fc))
+
+
+
 <a name="9.7.6"></a>
 ## [9.7.6](https://github.com/danobot/entity-controller/compare/v9.7.5...v9.7.6) (2024-05-04)
 
