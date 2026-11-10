@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="9.9.0"></a>
+# [9.9.0](https://github.com/danobot/entity-controller/compare/v9.8.0...v9.9.0) (2026-11-10)
+
+
+### Features
+
+* add reload service ([8048473](https://github.com/danobot/entity-controller/commit/8048473))
+
+
+
 <a name="9.8.0"></a>
 # [9.8.0](https://github.com/danobot/entity-controller/compare/v9.7.6...v9.8.0) (2026-11-10)
 
