@@ -48,3 +48,6 @@ set_night_mode:
     end_time:
       description: new end time to set night mode to.
       example: sunset + 03:00:00 or '21:30:00' or now or constraint (set same as day end)
+
+reload:
+  description: Reloads Entity Controllers from the YAML configuration. Running timers are cancelled and controllers restart from their initial state, leaving control entities as they are.
