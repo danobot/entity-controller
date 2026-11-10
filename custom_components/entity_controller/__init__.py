@@ -1691,12 +1691,24 @@ class Model:
 
         # self.log.debug("-------------------- futurize ------------------------")
         # self.log.debug("Input (naive) %s ", timet)
-        today = date.today()
+        # Compare in HA-local wall time, NOT the process timezone: parse_time()
+        # returns naive times in the HA-configured timezone, while
+        # datetime.now()/date.today() follow the OS timezone. When the two
+        # differ (e.g. host on UTC, HA on Europe/Prague), a just-fired callback
+        # rescheduled itself to a time that is "future" in OS terms but already
+        # past in HA-local terms — async_track_point_in_time then fires it
+        # again immediately, in an endless loop (2026-07-09 incident: sunrise
+        # end_time callbacks re-fired for exactly the UTC-offset window,
+        # flooding MQTT with turn_off commands).
+        now_local = dt.as_local(dt.now()).replace(tzinfo=None)
+        today = now_local.date()
         try:
             t = datetime.combine(today, timet)
         except TypeError as e:
             t = timet
-        x = datetime.now()
+        if t.tzinfo is not None:
+            t = dt.as_local(t).replace(tzinfo=None)
+        x = now_local
         # self.log.debug("input time: " + str(t))
 
         # self.log.debug("current time: " + str(x))
