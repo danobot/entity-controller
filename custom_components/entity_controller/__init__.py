@@ -407,6 +407,7 @@ class EntityController(entity.Entity):
         self.may_update = False
         self.model = None
         self.context_id = None
+        self._attr_unique_id = config[CONF_NAME]
         self.friendly_name = config.get(CONF_NAME, "Motion Light")
         if "friendly_name" in config:
             self.friendly_name = config.get("friendly_name")
