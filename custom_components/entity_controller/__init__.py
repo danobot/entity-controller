@@ -334,6 +334,18 @@ async def async_setup(hass, config):
         dest="idle",
         conditions=["is_state_entities_on", "is_duration_sensor", "is_sensor_off"],
     )
+    # Catch-all: block_timer_expires -> idle for every case the conditional
+    # transitions above do not handle. Without it the controller stays stuck in
+    # `blocked` past its block_timeout when the timer fires and state entities
+    # are still reported as on (e.g. slow cloud/gateway feedback from
+    # integrations like Overkiz/Tahoma) while the trigger sensor is already off,
+    # or when state entities are off but no earlier transition matches. Added
+    # last so the conditional "go to active" rules are evaluated first.
+    machine.add_transition(
+        trigger="block_timer_expires",
+        source="blocked",
+        dest="idle",
+    )
 
     # Active Timer
     machine.add_transition(
