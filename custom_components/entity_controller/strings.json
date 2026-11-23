@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Entity Controller",
+        "description": "Add and edit individual controllers from this integration’s page."
+      }
+    },
+    "abort": {
+      "already_configured": "Entity Controller is already set up.",
+      "already_in_progress": "Entity Controller setup is already in progress."
+    }
+  },
+  "selector": {
+    "sensor_type": {
+      "options": {
+        "event": "Event pulse",
+        "duration": "Sustained presence"
+      }
+    },
+    "behaviour": {
+      "options": {
+        "ignore": "Leave as is",
+        "on": "Turn on",
+        "off": "Turn off"
+      }
+    }
+  },
+  "config_subentries": {
+    "controller": {
+      "entry_type": "Controller",
+      "initiate_flow": {
+        "user": "Add controller",
+        "reconfigure": "Reconfigure controller"
+      },
+      "step": {
+        "user": {
+          "title": "Add a controller",
+          "data": {
+            "name": "Name",
+            "sensors": "Sensors",
+            "entities": "Controlled entities",
+            "delay": "Turn-off delay",
+            "sensor_type": "Sensor behaviour"
+          },
+          "data_description": {
+            "sensor_type": "An event pulse starts a timer immediately. With sustained presence, the controller waits if any sensor is still active when the timer expires."
+          }
+        },
+        "reconfigure": {
+          "title": "Reconfigure controller · {controller_name}",
+          "description": "**Saved configuration** · **Enabled** {enabled}\n\n**Sensors** {sensor_count} · **Controlled entities** {target_count} · **Monitored** {monitored_count}\n\n**Delay** {delay} · **Sustained presence** {duration_mode} · **Restart when a sensor clears** {reset_on_clear}\n\n**Active hours** {active_hours} · **Override entities** {override_count}",
+          "submit": "Save",
+          "sections": {
+            "general": {
+              "name": "General, sensors and entities",
+              "data": {
+                "name": "Name",
+                "enabled": "Controller enabled",
+                "sensors": "Sensors",
+                "entities": "Controlled entities",
+                "state_entities": "Entities monitored for manual changes"
+              },
+              "data_description": {
+                "enabled": "Turn off automatic control and keep the saved settings.",
+                "state_entities": "Leave empty to monitor all controlled entities."
+              }
+            },
+            "schedule": {
+              "name": "Timer and active hours",
+              "description": "Use HH:MM, sunrise or sunset, optionally with an offset such as sunset - 00:30:00. Leave both times blank for continuous operation.",
+              "data": {
+                "sensor_type": "Sensor behaviour",
+                "delay": "Turn-off delay",
+                "sensor_resets_timer": "Restart the timer when a sensor clears",
+                "start_time": "Start of active hours",
+                "end_time": "End of active hours",
+                "on_enter_constrained": "Action at the end of active hours",
+                "sensor_states_on": "Active sensor states",
+                "sensor_states_off": "Inactive sensor states"
+              },
+              "data_description": {
+                "sensor_resets_timer": "For sustained presence sensors, use a full delay after the last sensor clears.",
+                "sensor_states_on": "Enter comma-separated states or leave blank to use the defaults.",
+                "sensor_states_off": "Enter comma-separated states or leave blank to use the defaults.",
+                "sensor_type": "An event pulse starts a timer immediately. With sustained presence, the controller waits if any sensor is still active when the timer expires."
+              }
+            },
+            "manual": {
+              "name": "Override and manual blocking",
+              "data": {
+                "overrides": "Override entities",
+                "on_enter_overridden": "Action when override starts",
+                "on_exit_overridden": "Action when override ends",
+                "disable_block": "Disable manual blocking",
+                "block_timeout": "Manual block timeout"
+              },
+              "data_description": {
+                "overrides": "An active override entity suspends automatic control.",
+                "block_timeout": "Use zero to keep the block until a monitored entity changes or the block is cleared."
+              }
+            },
+            "lights": {
+              "name": "Brightness and transitions",
+              "data": {
+                "service_data": "Additional turn-on parameters",
+                "service_data_off": "Additional turn-off parameters",
+                "brightness_pct": "Brightness (%)",
+                "transition": "Turn-on transition (s)",
+                "off_transition": "Turn-off transition (s)"
+              },
+              "data_description": {
+                "service_data": "For lights that support it, you can add parameters such as {color_name: red}."
+              }
+            },
+            "night": {
+              "name": "Night mode",
+              "description": "Use HH:MM, sunrise or sunset with an optional offset. Leave both times blank to disable night mode.",
+              "data": {
+                "start_time": "Night mode start",
+                "end_time": "Night mode end",
+                "delay": "Night-time turn-off delay",
+                "service_data": "Additional turn-on parameters",
+                "service_data_off": "Additional turn-off parameters",
+                "brightness_pct": "Brightness (%)",
+                "transition": "Turn-on transition (s)",
+                "off_transition": "Turn-off transition (s)"
+              },
+              "data_description": {
+                "delay": "Leave blank to use the regular delay.",
+                "service_data": "Leave blank to use the regular turn-on parameters.",
+                "service_data_off": "Leave blank to use the regular turn-off parameters."
+              }
+            }
+          }
+        }
+      },
+      "error": {
+        "entities_required": "Select at least one entity.",
+        "invalid_time": "Enter a time or a valid sunrise or sunset expression.",
+        "time_pair_required": "Enter both times or leave both blank.",
+        "invalid_service_data": "Enter a mapping of parameter names to values.",
+        "invalid_duration": "Enter a non-negative duration in whole seconds.",
+        "invalid_name": "Enter a name containing letters or numbers.",
+        "duplicate_name": "A controller with this name already exists.",
+        "sensors_required": "Select at least one sensor.",
+        "targets_required": "Select at least one entity to control.",
+        "night_times_required": "Enter the start and end times to apply night mode settings."
+      },
+      "abort": {
+        "already_configured": "A controller with this identifier already exists.",
+        "reconfigure_successful": "Controller updated.",
+        "controller_removed": "This controller has been removed."
+      }
+    }
+  }
+}

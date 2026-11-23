@@ -1,4 +1,14 @@
-To run test suite, run the following command from root of repository:
+## Config flow tests
+
+With Home Assistant, the integration's manifest requirements, `pytest` and `pytest-asyncio` installed, run this from the repository root.
+
+```sh
+python -m pytest -o addopts='' tests/test_config_flow.py
+```
+
+## Legacy tests
+
+Run the following command from the repository root:
 
 ```
 

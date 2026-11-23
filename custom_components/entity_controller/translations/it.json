@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura Entity Controller",
+        "description": "Dalla pagina di questa integrazione potrai aggiungere e modificare i singoli controller."
+      }
+    },
+    "abort": {
+      "already_configured": "Entity Controller è già configurato.",
+      "already_in_progress": "La configurazione di Entity Controller è già in corso."
+    }
+  },
+  "selector": {
+    "sensor_type": {
+      "options": {
+        "event": "Impulso",
+        "duration": "Presenza mantenuta"
+      }
+    },
+    "behaviour": {
+      "options": {
+        "ignore": "Lascia lo stato attuale",
+        "on": "Accendi",
+        "off": "Spegni"
+      }
+    }
+  },
+  "config_subentries": {
+    "controller": {
+      "entry_type": "Controller",
+      "initiate_flow": {
+        "user": "Aggiungi controller",
+        "reconfigure": "Riconfigura controller"
+      },
+      "step": {
+        "user": {
+          "title": "Aggiungi un controller",
+          "data": {
+            "name": "Nome",
+            "sensors": "Sensori",
+            "entities": "Entità comandate",
+            "delay": "Ritardo di spegnimento",
+            "sensor_type": "Comportamento dei sensori"
+          },
+          "data_description": {
+            "sensor_type": "Con un impulso il timer parte subito. Con presenza mantenuta il controller aspetta se alla scadenza del timer c’è ancora un sensore attivo."
+          }
+        },
+        "reconfigure": {
+          "title": "Riconfigura controller · {controller_name}",
+          "description": "**Configurazione salvata** · **Abilitato** {enabled}\n\n**Sensori** {sensor_count} · **Entità comandate** {target_count} · **Osservate** {monitored_count}\n\n**Ritardo** {delay} · **Presenza mantenuta** {duration_mode} · **Riavvio a sensore inattivo** {reset_on_clear}\n\n**Fascia oraria** {active_hours} · **Entità di sospensione** {override_count}",
+          "submit": "Salva",
+          "sections": {
+            "general": {
+              "name": "Generale, sensori ed entità",
+              "data": {
+                "name": "Nome",
+                "enabled": "Controller attivo",
+                "sensors": "Sensori",
+                "entities": "Entità comandate",
+                "state_entities": "Entità osservate per rilevare modifiche manuali"
+              },
+              "data_description": {
+                "enabled": "Disattiva il controllo automatico e conserva la configurazione.",
+                "state_entities": "Lascia vuoto per osservare tutte le entità comandate."
+              }
+            },
+            "schedule": {
+              "name": "Timer e fascia oraria",
+              "description": "Usa HH:MM, sunrise o sunset, anche con un offset come sunset - 00:30:00. Lascia vuoti entrambi gli orari per il funzionamento continuo.",
+              "data": {
+                "sensor_type": "Comportamento dei sensori",
+                "delay": "Ritardo di spegnimento",
+                "sensor_resets_timer": "Riavvia il timer quando un sensore si disattiva",
+                "start_time": "Inizio della fascia attiva",
+                "end_time": "Fine della fascia attiva",
+                "on_enter_constrained": "Azione alla fine della fascia attiva",
+                "sensor_states_on": "Stati attivi dei sensori",
+                "sensor_states_off": "Stati inattivi dei sensori"
+              },
+              "data_description": {
+                "sensor_resets_timer": "Con presenza mantenuta, conta l’intero ritardo da quando si disattiva l’ultimo sensore.",
+                "sensor_states_on": "Inserisci gli stati separati da virgole oppure lascia vuoto per usare i valori predefiniti.",
+                "sensor_states_off": "Inserisci gli stati separati da virgole oppure lascia vuoto per usare i valori predefiniti.",
+                "sensor_type": "Con un impulso il timer parte subito. Con presenza mantenuta il controller aspetta se alla scadenza del timer c’è ancora un sensore attivo."
+              }
+            },
+            "manual": {
+              "name": "Sospensione e blocco manuale",
+              "data": {
+                "overrides": "Entità di sospensione",
+                "on_enter_overridden": "Azione all’inizio della sospensione",
+                "on_exit_overridden": "Azione alla fine della sospensione",
+                "disable_block": "Disabilita il blocco manuale",
+                "block_timeout": "Durata massima del blocco manuale"
+              },
+              "data_description": {
+                "overrides": "Un’entità di sospensione attiva interrompe il controllo automatico.",
+                "block_timeout": "Usa zero per mantenere il blocco finché cambia un’entità osservata o lo rimuovi con l’azione di sblocco."
+              }
+            },
+            "lights": {
+              "name": "Luminosità e transizioni",
+              "data": {
+                "service_data": "Parametri di accensione aggiuntivi",
+                "service_data_off": "Parametri di spegnimento aggiuntivi",
+                "brightness_pct": "Luminosità (%)",
+                "transition": "Transizione in accensione (s)",
+                "off_transition": "Transizione in spegnimento (s)"
+              },
+              "data_description": {
+                "service_data": "Per le luci compatibili, puoi aggiungere parametri come {color_name: red}."
+              }
+            },
+            "night": {
+              "name": "Modalità notte",
+              "description": "Usa HH:MM, sunrise o sunset, anche con un offset. Lascia vuoti entrambi gli orari per disattivare la modalità notte.",
+              "data": {
+                "start_time": "Inizio della modalità notte",
+                "end_time": "Fine della modalità notte",
+                "delay": "Ritardo di spegnimento notturno",
+                "service_data": "Parametri di accensione aggiuntivi",
+                "service_data_off": "Parametri di spegnimento aggiuntivi",
+                "brightness_pct": "Luminosità (%)",
+                "transition": "Transizione in accensione (s)",
+                "off_transition": "Transizione in spegnimento (s)"
+              },
+              "data_description": {
+                "delay": "Lascia vuoto per usare il ritardo normale.",
+                "service_data": "Lascia vuoto per usare i parametri di accensione normali.",
+                "service_data_off": "Lascia vuoto per usare i parametri di spegnimento normali."
+              }
+            }
+          }
+        }
+      },
+      "error": {
+        "entities_required": "Seleziona almeno un’entità.",
+        "invalid_time": "Inserisci un orario o un’espressione valida per alba o tramonto.",
+        "time_pair_required": "Inserisci entrambi gli orari oppure lasciali entrambi vuoti.",
+        "invalid_service_data": "Inserisci un insieme di nomi di parametri e dei rispettivi valori.",
+        "invalid_duration": "Inserisci una durata in secondi interi, pari o superiore a zero.",
+        "invalid_name": "Inserisci un nome che contenga lettere o numeri.",
+        "duplicate_name": "Esiste già un controller con questo nome.",
+        "sensors_required": "Seleziona almeno un sensore.",
+        "targets_required": "Seleziona almeno un’entità da comandare.",
+        "night_times_required": "Per applicare le impostazioni notturne, inserisci l’orario di inizio e quello di fine."
+      },
+      "abort": {
+        "already_configured": "Esiste già un controller con questo identificativo.",
+        "reconfigure_successful": "Controller aggiornato.",
+        "controller_removed": "Questo controller è stato rimosso."
+      }
+    }
+  }
+}

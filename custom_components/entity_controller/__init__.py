@@ -22,12 +22,12 @@ Version:          v9.9.0
 Project Page:     https://danielbkr.net/projects/entity-controller/
 Documentation:    https://github.com/danobot/entity-controller
 """
-import asyncio
+from asyncio import Lock
+from collections import deque
 import hashlib
 import logging
 import re
-from datetime import date, datetime, time, timedelta
-from threading import Timer
+from datetime import datetime, time, timedelta
 import pprint
 from typing import Optional, List
 
@@ -41,20 +41,19 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback, Context
 from homeassistant.helpers import entity, event, service
-from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
+from homeassistant.helpers.reload import async_integration_yaml_config
 from homeassistant.helpers.sun import get_astral_event_date
+from homeassistant.setup import async_when_setup
 from homeassistant.util import dt
-import homeassistant.util.yaml.objects as YamlObjects
 import homeassistant.util.uuid as uuid_util
-from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
-from homeassistant.helpers.service import async_call_from_config
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
 from .const import (
     DOMAIN,
     DOMAIN_SHORT,
+    INTEGRATION_UNIQUE_ID,
     STATES,
 
     CONF_START_TIME,
@@ -81,13 +80,15 @@ from .const import (
     MODE_DAY,
     MODE_NIGHT,
     DEFAULT_DELAY,
-    DEFAULT_BRIGHTNESS,
-    DEFAULT_NAME,
     CONF_CONTROL_ENTITIES,
     CONF_CONTROL_ENTITY,
     CONF_TRIGGER_ON_ACTIVATE,
     CONF_TRIGGER_ON_DEACTIVATE,
     CONF_SENSOR,
+    CONF_SENSOR_STATES_ON,
+    CONF_SENSOR_STATES_OFF,
+    CONF_OVERRIDE,
+    CONF_OVERRIDES,
     CONF_SENSORS,
     CONF_SERVICE_DATA,
     CONF_SERVICE_DATA_OFF,
@@ -101,15 +102,12 @@ from .const import (
     CONF_NIGHT_MODE,
     CONF_STATE_ATTRIBUTES_IGNORE,
     CONF_IGNORED_EVENT_SOURCES,
-    CONSTRAIN_START,
-    CONSTRAIN_END,
 
     CONTEXT_ID_CHARACTER_LIMIT
 )
 
-from .entity_services import (
-    async_setup_entity_services,
-)
+from .entity_services import async_setup_entity_services
+from .migration import async_import_controllers
 
 
 
@@ -121,78 +119,61 @@ _LOGGER = logging.getLogger(__name__)
 # Configure delay before starting to monitor state change events
 STARTUP_DELAY = 70
 
-MODE_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
-            dict
-        ),  # Default must be none because we differentiate between set and unset
-        vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict),
-        vol.Required(CONF_START_TIME): cv.string,
-        vol.Required(CONF_END_TIME): cv.string,
-        vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
-    }
+CONFIG_SCHEMA = vol.Schema(
+    {vol.Optional(DOMAIN): vol.Any(None, {cv.slug: dict})},
+    extra=vol.ALLOW_EXTRA,
 )
-
-ENTITY_SCHEMA = vol.Schema(
-    cv.has_at_least_one_key(
-        CONF_CONTROL_ENTITIES, CONF_CONTROL_ENTITY, CONF_TRIGGER_ON_ACTIVATE
-    ),
-    {
-        # vol.Required(CONF_NAME): cv.string,
-        vol.Optional(CONF_DELAY, default=DEFAULT_DELAY): cv.positive_int,
-        vol.Optional(CONF_START_TIME): cv.string,
-        vol.Optional(CONF_END_TIME): cv.string,
-        vol.Optional(CONF_SENSOR_TYPE_DURATION, default=False): cv.boolean,
-        vol.Optional(CONF_SENSOR_TYPE, default=SENSOR_TYPE_EVENT): vol.All(
-            vol.Lower, vol.Any(SENSOR_TYPE_EVENT, SENSOR_TYPE_DURATION)
-        ),
-        vol.Optional(CONF_SENSOR_RESETS_TIMER, default=False): cv.boolean,
-        vol.Optional(CONF_SENSOR, default=[]): cv.entity_ids,
-        vol.Optional(CONF_SENSORS, default=[]): cv.entity_ids,
-        vol.Optional(CONF_CONTROL_ENTITIES, default=[]): cv.entity_ids,
-        vol.Optional(CONF_CONTROL_ENTITY, default=[]): cv.entity_ids,
-        vol.Optional(CONF_TRIGGER_ON_ACTIVATE, default=None): cv.entity_ids,
-        vol.Optional(CONF_TRIGGER_ON_DEACTIVATE, default=None): cv.entity_ids,
-        vol.Optional(CONF_STATE_ENTITIES, default=[]): cv.entity_ids,
-        vol.Optional(CONF_BLOCK_TIMEOUT, default=None): cv.positive_int,
-        vol.Optional(CONF_DISABLE_BLOCK, default=False): cv.boolean,
-        # vol.Optional(CONF_IGNORE_STATE_CHANGES_UNTIL, default=None): cv.positive_int,
-        vol.Optional(CONF_NIGHT_MODE, default=None): MODE_SCHEMA,
-        vol.Optional(CONF_STATE_ATTRIBUTES_IGNORE, default=[]): cv.ensure_list,
-        vol.Optional(CONF_IGNORED_EVENT_SOURCES, default=[]): cv.ensure_list,
-        vol.Optional(CONF_SERVICE_DATA, default=None): vol.Coerce(
-            dict
-        ),
-        vol.Optional(CONF_BEHAVIOURS, default=None): vol.Coerce(
-            dict
-        ),
-        # Default must be none because we differentiate between set and unset
-        vol.Optional(CONF_SERVICE_DATA_OFF, default=None): vol.Coerce(dict),
-    },
-    # extra=vol.ALLOW_EXTRA,
-)
-
-PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 
 
 async def async_setup(hass, config):
-    """Load graph configurations."""
-
-    if(str(((datetime.now()).astimezone()).tzinfo) != str(dt.as_local(dt.now()).tzname())):
-        _LOGGER.error("Timezones do not Match. Mismatched timezones may cause unintended behaviours.")
-        _LOGGER.error("System DateTime: %s", ((datetime.now()).astimezone()).tzinfo )
-        _LOGGER.error("Home Assistant DateTime: %s", dt.as_local(dt.now()).tzname())
-
+    """Register shared services and arrange the import after core setup."""
     component = EntityComponent(_LOGGER, DOMAIN, hass)
-
-    _LOGGER.info(
-        "If you have ANY issues with EntityController (v"
-        + VERSION
-        + "), please enable DEBUG logging under the logger component and kindly report the issue on Github. https://github.com/danobot/entity-controller/issues"
-    )
-
+    hass.data[DOMAIN] = {"component": component, "import_lock": Lock()}
+    await component.async_setup({})
     async_setup_entity_services(component)
 
+    async def async_reload(call):
+        """Import new YAML controllers without overwriting saved entries."""
+        yaml_config = await async_integration_yaml_config(hass, DOMAIN)
+        if yaml_config is not None:
+            await async_import_controllers(hass, yaml_config)
+
+    async def import_after_setup(hass, _domain):
+        await async_import_controllers(hass, config)
+
+    service.async_register_admin_service(hass, DOMAIN, SERVICE_RELOAD, async_reload)
+    async_when_setup(hass, DOMAIN, import_after_setup)
+    return True
+
+
+async def async_migrate_entry(hass, entry):
+    """Allow legacy entries to load until their settings are moved into subentries."""
+    return entry.version == 1
+
+
+async def async_setup_entry(hass, entry):
+    """Load the shared entity platform when setting up the parent entry."""
+    if entry.unique_id != INTEGRATION_UNIQUE_ID:
+        return True
+    return await hass.data[DOMAIN]["component"].async_setup_entry(entry)
+
+
+async def async_unload_entry(hass, entry):
+    """Unload all controllers when Home Assistant unloads the parent entry."""
+    if entry.unique_id != INTEGRATION_UNIQUE_ID:
+        return True
+
+    component = hass.data[DOMAIN]["component"]
+    async with entry.runtime_data.lock:
+        entry.runtime_data.active = False
+        unloaded = await component.async_unload_entry(entry)
+        if not unloaded:
+            entry.runtime_data.active = True
+        return unloaded
+
+
+def create_machine():
+    """Build the state machine used by a controller."""
     machine = Machine(
         states=STATES,
         initial="pending",
@@ -375,43 +356,7 @@ async def async_setup(hass, config):
     # Enter blocked state when component is enabled and entity is on
     machine.add_transition(trigger="blocked", source="constrained", dest="blocked", conditions=["is_block_enabled"])
 
-    async def async_reload(call):
-        """Replace all controllers with the ones in the current YAML configuration."""
-        conf = await component.async_prepare_reload()
-        # Older Home Assistant versions return None on invalid configuration
-        if conf is None:
-            return
-        await async_add_controllers(hass, component, machine, conf)
-
-    service.async_register_admin_service(
-        hass, DOMAIN, SERVICE_RELOAD, async_reload, schema=vol.Schema({})
-    )
-
-    await async_add_controllers(hass, component, machine, config)
-
-    _LOGGER.info("The %s component is ready!", DOMAIN)
-
-    return True
-
-
-async def async_add_controllers(hass, component, machine, domain_config):
-    """Create an entity for each controller in the configuration."""
-    devices = []
-    for myconfig in domain_config.get(DOMAIN, []):
-        _LOGGER.info("Domain Configuration: " + str(myconfig))
-        for key, config in myconfig.items():
-            if not config:
-                config = {}
-
-            # _LOGGER.info("Config Item %s: %s", str(key), str(config))
-            config["name"] = key
-            m = None
-            m = EntityController(hass, config, machine)
-            # machine.add_model(m.model)
-            # m.model.after_model(config)
-            devices.append(m)
-
-    await component.async_add_entities(devices)
+    return machine
 
 
 class EntityController(entity.Entity):
@@ -424,23 +369,16 @@ class EntityController(entity.Entity):
         async_entity_service_set_night_mode as async_set_night_mode,
     )
 
-    def __init__(self, hass, config, machine):
+    def __init__(self, hass, config, machine, *, name, imported=False):
         self.machine = machine
         self.attributes = {}
+        self.transitions = deque(maxlen=25)
         self.may_update = False
-        self.model = None
         self.context_id = None
         self._attr_unique_id = config[CONF_NAME]
-        self.friendly_name = config.get(CONF_NAME, "Motion Light")
-        if "friendly_name" in config:
-            self.friendly_name = config.get("friendly_name")
-        try:
-            self.model = Model(hass, config, machine, self)
-        except AttributeError as e:
-            _LOGGER.error(
-                "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities." + e
-            )
-        event.async_call_later(hass, 1, self.do_update)
+        self.friendly_name = name
+        self.imported = imported
+        self.model = Model(hass, config, machine, self)
 
     @property
     def state(self):
@@ -470,7 +408,7 @@ class EntityController(entity.Entity):
         return "mdi:eye"
 
     @property
-    def state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state of the entity."""
         return self.attributes.copy()
 
@@ -482,6 +420,8 @@ class EntityController(entity.Entity):
         PERSISTED_STATE_ATTRIBUTES = [
             "last_triggered_by",
             "last_triggered_at",
+            "last_transition",
+            "transition_reason",
             CONF_STATE_ENTITIES,
             "control_entities",
             "sensor_entities",
@@ -504,7 +444,7 @@ class EntityController(entity.Entity):
         """ Schedules an entity state update with HASS """
         # _LOGGER.debug("Scheduled update with HASS")
         if self.may_update:
-            self.schedule_update_ha_state(True)
+            self.async_write_ha_state()
 
     def set_attr(self, k, v):
         if k == CONF_DELAY:
@@ -515,13 +455,42 @@ class EntityController(entity.Entity):
     async def async_added_to_hass(self):
         """Register update dispatcher."""
         self.may_update = True
-        self.model.begin()
+        self.model.begin(silent=not self.imported or self.hass.is_running)
 
     async def async_will_remove_from_hass(self):
         """Stop the controller, the entity is being reloaded."""
         self.may_update = False
         self.model.shutdown()
         self.machine.remove_model(self.model)
+
+    @callback
+    def apply_options(self, config):
+        """Replace listeners while keeping the existing controller state and deadlines."""
+        old = self.model
+        if not self.may_update or old.config == config:
+            return
+        self.may_update = False
+        previous_attributes = self.attributes
+        self.attributes = {
+            key: previous_attributes[key]
+            for key in ("last_transition", "transition_reason", "last_triggered_at", "last_triggered_by")
+            if key in previous_attributes
+        }
+        replacement = Model(self.hass, config, self.machine, self)
+        self.model = replacement
+        try:
+            replacement.begin(silent=True, previous=old)
+        except Exception:
+            replacement.shutdown()
+            self.machine.remove_model(replacement)
+            self.model = old
+            self.attributes = previous_attributes
+            raise
+        finally:
+            self.may_update = True
+        old.shutdown()
+        self.machine.remove_model(old)
+        self.do_update()
 
     @property
     def should_poll(self) -> bool:
@@ -536,6 +505,7 @@ class Model:
 
         self.hass = hass  # backwards reference to hass object
         self.entity = entity  # backwards reference to entity containing this model
+        self.machine = machine
 
         self.config = (
             {}
@@ -549,10 +519,13 @@ class Model:
         self.triggerOnActivate = []
         self.timer_handle = None
         self.block_timer_handle = None
+        self.timer_deadline = None
+        self.block_deadline = None
         self.start_time_event_hook = None
         self.end_time_event_hook = None
         self.unsubscribers = []
-        self.skip_idle_behaviour = False
+        self.transition_reason = None
+        self.last_state = "pending"
         self.sensor_type = None
         self.night_mode = None
         self.state_attributes_ignore = []
@@ -585,16 +558,26 @@ class Model:
             self
         )  # add here because machine generated methods are being used in methods below.
 
-    def begin(self):
+    def begin(self, *, silent, previous=None):
         """Start the controller once its entity is added."""
-        running = self.hass.is_running
-        # A reload must not switch control entities a user may be relying on
-        self.skip_idle_behaviour = running
-        # Other entities are only still loading during Home Assistant startup
-        delay = 0 if running else STARTUP_DELAY
+        if previous is not None and not previous.is_pending():
+            self.startup_delay_callback(None, silent=True, previous=previous)
+            return
+        delay = 0 if self.hass.is_running else STARTUP_DELAY
         self.unsubscribers.append(
-            event.async_call_later(self.hass, delay, self.startup_delay_callback)
+            event.async_call_later(
+                self.hass, delay,
+                self._start_silently if silent else self.startup_delay_callback,
+            )
         )
+
+    @callback
+    def _start_silently(self, now):
+        self.startup_delay_callback(now, silent=True)
+
+    @callback
+    def _constrain_after_start(self, now):
+        self.transition("constrain", reason="outside_active_hours")
 
     def shutdown(self):
         """Stop listening for events and cancel timers."""
@@ -605,12 +588,14 @@ class Model:
         for hook in (self.start_time_event_hook, self.end_time_event_hook):
             if hook:
                 hook()
+        self.start_time_event_hook = None
+        self.end_time_event_hook = None
 
-        for timer in (self.timer_handle, self.block_timer_handle):
-            if timer:
-                timer.cancel()
+        self._cancel_timer()
+        self._cancel_block_timer()
 
-    def startup_delay_callback(self, evt):
+    @callback
+    def startup_delay_callback(self, evt, *, silent=False, previous=None):
         config = self.config
         self.config_static_strings(config)
         self.config_control_entities(config)
@@ -627,16 +612,66 @@ class Model:
             config
         )  # must come after normal_mode (uses normal mode parameters if not set)
         self.config_state_attributes_ignore(config)
-        self.config_times(config)
+        constrained = self.config_times(config)
         self.config_other(config)
         self.prepare_service_data()
 
-        if len(self.overrideEntities) > 0 and self.is_override_state_on():
-            self.override()
-            self.update(overridden_at=str(datetime.now()))
+        if silent:
+            self.restore_state(constrained, previous)
         else:
-            self.start_monitoring()
-        self.skip_idle_behaviour = False
+            if constrained:
+                self.unsubscribers.append(
+                    event.async_call_later(self.hass, 1, self._constrain_after_start)
+                )
+            if self.is_override_state_on():
+                self.transition("override")
+                self.update(overridden_at=str(datetime.now()))
+            else:
+                self.transition("start_monitoring")
+
+    def restore_state(self, constrained, previous):
+        """Re-evaluate availability and restore control without transition actions."""
+        self.set_context(previous.context if previous else None)
+        state = "idle"
+        if constrained:
+            state = "constrained"
+        elif self.is_override_state_on():
+            state = "overridden"
+        elif previous and (
+            self.controlEntities == previous.controlEntities
+            and self.triggerOnActivate == previous.triggerOnActivate
+            and self.triggerOnDeactivate == previous.triggerOnDeactivate
+        ) and (previous.is_active_timer() or previous.is_active_stay_on()):
+            state = previous.state
+        elif (
+            previous and not previous.is_idle()
+            and self.is_block_enabled() and self.is_state_entities_on()
+        ):
+            state = "blocked"
+
+        self.machine.set_state(state, model=self)
+        if previous is not None:
+            self.last_state = previous.state
+            self.stay = previous.stay
+        if state == "active_timer":
+            if previous.timer_deadline is not None:
+                self._schedule_timer(max(0, previous.timer_deadline - self.hass.loop.time()))
+                self.previous_delay = previous.previous_delay
+                self.backoff_count = previous.backoff_count
+            elif self.is_duration_sensor() and self.is_sensor_on():
+                self.update(expires_at="pending sensor")
+            else:
+                self._start_timer()
+        elif state == "blocked":
+            self.update(blocked_by=self._state_entity_state(), blocked_at=datetime.now())
+            if self.block_timeout:
+                remaining = self.block_timeout
+                if previous and previous.block_deadline is not None:
+                    remaining = max(0, previous.block_deadline - self.hass.loop.time())
+                self._schedule_block_timer(remaining)
+        self.transition_reason = "options_updated" if previous else "start_monitoring"
+        self.finalize()
+        self.transition_reason = None
 
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
@@ -649,7 +684,26 @@ class Model:
             self.entity.do_update()
 
     def finalize(self):
+        if self.state != self.last_state:
+            transition = {
+                "from": self.last_state,
+                "to": self.state,
+                "reason": self.transition_reason,
+                "at": dt.utcnow().isoformat(),
+            }
+            self.entity.transitions.append(transition)
+            self.entity.set_attr("transition_reason", transition["reason"])
+            self.entity.set_attr("last_transition", transition["at"])
+            self.last_state = self.state
         self.entity.do_update()
+
+    def transition(self, trigger, *, reason=None):
+        """Run an external trigger and record its reason if the state changes."""
+        self.transition_reason = reason or trigger
+        try:
+            return getattr(self, trigger)()
+        finally:
+            self.transition_reason = None
 
     # =====================================================
     # S T A T E   C H A N G E   C A L L B A C K S
@@ -661,6 +715,8 @@ class Model:
         entity = event.data["entity_id"]
         old = event.data["old_state"]
         new = event.data["new_state"]
+        if new is None:
+            return
         self.log.debug("sensor_state_change :: %10s Sensor state change to: %s" % ( pprint.pformat(entity), new.state))
         self.log.debug("sensor_state_change :: state: " +  pprint.pformat(self.state))
 
@@ -677,7 +733,7 @@ class Model:
         ):
             self.set_context(new.context)
             self.update(last_triggered_by=entity)
-            self.sensor_on()
+            self.transition("sensor_on")
 
         if (
             self.matches(new.state, self.SENSOR_OFF_STATE)
@@ -696,7 +752,7 @@ class Model:
                 self._reset_timer()
             else:
                 # We only care about sensor off state changes when the sensor is a duration sensor and we are in active_timer state.
-                self.sensor_off_duration()
+                self.transition("sensor_off_duration")
                 self.log.debug("sensor_state_change :: CONF_SENSOR_RESETS_TIMER - normal")
 
     @callback
@@ -705,6 +761,8 @@ class Model:
         entity = event.data["entity_id"]
         old = event.data["old_state"]
         new = event.data["new_state"]
+        if new is None:
+            return
         self.log.debug("override_state_change :: Override state change entity=%s, old=%s, new=%s" % ( entity, old, new))
         if self.matches(new.state, self.OVERRIDE_ON_STATE) and (
             self.is_active()
@@ -714,7 +772,7 @@ class Model:
         ):
             self.set_context(new.context)
             self.update(overridden_by=entity)
-            self.override()
+            self.transition("override")
             self.update(overridden_at=str(datetime.now()))
         if (
             self.matches(new.state, self.OVERRIDE_OFF_STATE)
@@ -722,13 +780,15 @@ class Model:
             and self.is_overridden()
         ):
             self.set_context(new.context)
-            self.enable()
+            self.transition("enable", reason="override_cleared")
 
     @callback
     def state_entity_state_change(self, event):
         entity = event.data["entity_id"]
         old = event.data["old_state"]
         new = event.data["new_state"]
+        if new is None:
+            return
         """ State change callback for state entities. This can be called with either a state change or an attribute change. """
         self.log.debug(
             "state_entity_state_change :: [ Entity: %s, Context: %s ]\n\tOld state: %s\n\tNew State: %s",
@@ -771,10 +831,10 @@ class Model:
         self.set_context(new.context)
         if self.is_active_timer():
             self.log.debug("state_entity_state_change :: We are in active timer and the state of observed state entities changed.")
-            self.control()
+            self.transition("control")
 
         if self.is_blocked() or self.is_active_stay_on(): # if statement required to avoid MachineErrors, cleaner than adding transitions to all possible states.
-            self.enable()
+            self.transition("enable", reason="manual_change")
 
     def _start_timer(self):
         self.log.info("_start_timer :: Light params: " + str(self.lightParams))
@@ -794,17 +854,18 @@ class Model:
                 self.previous_delay = self.backoff_max
             self.update(delay=self.previous_delay)
 
-        expiry_time = datetime.now() + timedelta(seconds=self.previous_delay)
+        self._schedule_timer(self.previous_delay)
 
-        # not able to use async_call_later because no known way to check whether timer is active.
-        # self.timer_handle = event.async_call_later(self.hass, self.previous_delay, self.timer_expire)
-        self.timer_handle = Timer(self.previous_delay, self.timer_expire)
-        self.timer_handle.start()
-        self.update(expires_at=expiry_time)
+    def _schedule_timer(self, delay):
+        self.timer_deadline = self.hass.loop.time() + delay
+        self.timer_handle = event.async_call_later(self.hass, delay, self.timer_expire)
+        self.update(expires_at=dt.now() + timedelta(seconds=delay))
 
     def _cancel_timer(self):
-        if self.timer_handle.is_alive():
-            self.timer_handle.cancel()
+        if self.timer_handle is not None:
+            self.timer_handle()
+            self.timer_handle = None
+            self.timer_deadline = None
 
     def _reset_timer(self):
         self.log.debug("_reset_timer :: Resetting timer: " + str(self.backoff))
@@ -817,17 +878,30 @@ class Model:
 
         return True
 
-    def timer_expire(self):
+    @callback
+    def timer_expire(self, now):
+        self.timer_handle = None
+        self.timer_deadline = None
+        if not self.is_active_timer():
+            return
         self.log.debug("timer_expire :: Timer expired")
         if self.is_duration_sensor() and self.is_sensor_on():  # Ignore timer expiry because duration sensor overwrites timer
             self.update(expires_at="pending sensor")
         else:
             self.log.debug("timer_expire :: Trigger timer_expires event")
-            self.timer_expires()
+            self.transition("timer_expires")
 
-    def block_timer_expire(self):
+    def _schedule_block_timer(self, delay):
+        self.block_deadline = self.hass.loop.time() + delay
+        self.block_timer_handle = event.async_call_later(self.hass, delay, self.block_timer_expire)
+        self.update(block_timeout=self.block_timeout)
+
+    @callback
+    def block_timer_expire(self, now):
+        self.block_timer_handle = None
+        self.block_deadline = None
         self.log.debug("block_timer_expire :: Blocked Timer expired")
-        self.block_timer_expires()
+        self.transition("block_timer_expires")
 
     # =====================================================
     # S T A T E   M A C H I N E   C O N D I T I O N S
@@ -938,8 +1012,7 @@ class Model:
         return self.sensor_type == SENSOR_TYPE_DURATION
 
     def is_timer_expired(self):
-        expired = self.timer_handle.is_alive() == False
-        return expired
+        return self.timer_handle is None
 
     def does_sensor_reset_timer(self):
         return self.config[CONF_SENSOR_RESETS_TIMER]
@@ -951,8 +1024,7 @@ class Model:
         self.log.debug("Entering idle")
         # Entering idle due to no events, set a new context with no parent
         self.set_context(None)
-        if not self.skip_idle_behaviour:
-            self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
+        self.do_transition_behaviour(CONF_ON_ENTER_IDLE)
         self.entity.reset_state()
 
     def on_exit_idle(self):
@@ -995,15 +1067,18 @@ class Model:
 
         self.do_transition_behaviour(CONF_ON_ENTER_BLOCKED)
         if self.block_timeout:
-            self.block_timer_handle = Timer(self.block_timeout, self.block_timer_expire)
-            self.block_timer_handle.start()
-            self.update(block_timeout=self.block_timeout)
+            self._schedule_block_timer(self.block_timeout)
 
     def on_exit_blocked(self):
         self.log.debug("Exiting blocked")
         self.do_transition_behaviour(CONF_ON_EXIT_BLOCKED)
-        if self.block_timer_handle and self.block_timer_handle.is_alive():
-            self.block_timer_handle.cancel()
+        self._cancel_block_timer()
+
+    def _cancel_block_timer(self):
+        if self.block_timer_handle is not None:
+            self.block_timer_handle()
+            self.block_timer_handle = None
+            self.block_deadline = None
 
     def on_enter_constrained(self):
         self.log.debug("Entering constrained")
@@ -1030,8 +1105,7 @@ class Model:
             CONF_ON_EXIT_BLOCKED: CONF_TRANSITION_BEHAVIOUR_IGNORE,
         }
 
-        if CONF_BEHAVIOURS in config:
-            self.transition_behaviours = {**self.transition_behaviours, **config[CONF_BEHAVIOURS]}
+        self.transition_behaviours.update(config.get(CONF_BEHAVIOURS) or {})
 
         self.log.debug("config_transition_behaviours :: Transition Behaviours: " +  pprint.pformat(self.transition_behaviours))
 
@@ -1106,8 +1180,8 @@ class Model:
         DEFAULT_OFF = ["off", "idle", "paused", "away", "False"]
         self.CONTROL_ON_STATE = config.get("control_states_on", DEFAULT_ON)
         self.CONTROL_OFF_STATE = config.get("control_states_off", DEFAULT_OFF)
-        self.SENSOR_ON_STATE = config.get("sensor_states_on", DEFAULT_ON)
-        self.SENSOR_OFF_STATE = config.get("sensor_states_off", DEFAULT_OFF)
+        self.SENSOR_ON_STATE = list(config.get(CONF_SENSOR_STATES_ON) or DEFAULT_ON)
+        self.SENSOR_OFF_STATE = list(config.get(CONF_SENSOR_STATES_OFF) or DEFAULT_OFF)
         self.OVERRIDE_ON_STATE = config.get("override_states_on", DEFAULT_ON)
         self.OVERRIDE_OFF_STATE = config.get("override_states_off", DEFAULT_OFF)
         self.STATE_ON_STATE = config.get("state_states_on", DEFAULT_ON)
@@ -1134,7 +1208,7 @@ class Model:
             parameters are given, the day mode parameters are used instead.
             If those do not exist, the
         """
-        if "night_mode" in config:
+        if config.get(CONF_NIGHT_MODE):
             self.night_mode = config[CONF_NIGHT_MODE]
             night_mode = config[CONF_NIGHT_MODE]
             self.light_params_night[CONF_DELAY] = night_mode.get(
@@ -1186,7 +1260,8 @@ class Model:
     def config_times(self, config):
         self._start_time_private = None
         self._end_time_private = None
-        if CONF_START_TIME in config and CONF_END_TIME in config:
+        constrained = False
+        if config.get(CONF_START_TIME) and config.get(CONF_END_TIME):
             # FOR OPTIONAL DEBUGGING: for initial setup use the raw input value
             self._start_time_private = config.get(CONF_START_TIME)
             self._end_time_private = config.get(CONF_END_TIME)
@@ -1222,25 +1297,21 @@ class Model:
                 self.hass, self.end_time_callback, parsed_end
             )
 
-            if not self.now_is_between(self.start_time, self.end_time):
-                self.log.debug(
-                    "Constrain period active. Scheduling transition to 'constrained'"
-                )
-                self.unsubscribers.append(
-                    event.async_call_later(self.hass, 1, self.constrain_entity)
-                )
+            constrained = not self.now_is_between(self.start_time, self.end_time)
 
-        self.log_config()
+        if self.log.isEnabledFor(logging.DEBUG):
+            self.log_config()
+        return constrained
 
 
 
 
     def config_override_entities(self, config):
         self.overrideEntities = []
-        self.add(self.overrideEntities, config, "override")
-        self.add(self.overrideEntities, config, "overrides")
+        self.add(self.overrideEntities, config, CONF_OVERRIDE)
+        self.add(self.overrideEntities, config, CONF_OVERRIDES)
 
-        if len(self.overrideEntities) > 0:
+        if self.overrideEntities:
             self.log.debug("Override Entities: " +  pprint.pformat(self.overrideEntities))
             self.unsubscribers.append(
                 event.async_track_state_change_event(
@@ -1282,13 +1353,6 @@ class Model:
     # =====================================================
 
     @callback
-    def constrain_entity(self, evt):
-        """
-            Event callback used on component setup if current time requires entity to start in constrained state.
-        """
-        self.constrain()
-
-    @callback
     def end_time_callback(self, evt):
         """
             Called when `end_time` is reached, will change state to `constrained` and schedule `start_time` callback.
@@ -1306,7 +1370,7 @@ class Model:
 
         # must be down here to make sure new callback is set regardless of exceptions
         self.do_transition_behaviour(CONF_ON_ENTER_CONSTRAINED)
-        self.constrain()
+        self.transition("constrain", reason="active_hours_ended")
 
     @callback
     def start_time_callback(self, evt):
@@ -1332,11 +1396,11 @@ class Model:
         self.update(start_time=parsed_start)
 
         if self.is_state_entities_on() and self.is_block_enabled():
-            self.blocked()
+            self.transition("blocked", reason="active_hours_started")
         else:
             # If the entity is on and block is disabled, we just transition from constrained
             # to idle and leave the entity on. (Don't start a timer to turn it off.)
-            self.enable()
+            self.transition("enable", reason="active_hours_started")
         self.do_transition_behaviour(CONF_ON_EXIT_CONSTRAINED)
 
     # =====================================================
@@ -1554,7 +1618,7 @@ class Model:
 
     def sunset(self, aware):
         t = get_astral_event_date(
-            self.hass, SUN_EVENT_SUNSET, datetime.now().replace(hour=0)
+            self.hass, SUN_EVENT_SUNSET, dt.now().date()
         )
         if aware is True:
             return dt.as_local(t)
@@ -1563,7 +1627,7 @@ class Model:
 
     def sunrise(self, aware):
         t = get_astral_event_date(
-            self.hass, SUN_EVENT_SUNRISE, datetime.now().replace(hour=0)
+            self.hass, SUN_EVENT_SUNRISE, dt.now().date()
         )
         if aware is True:
             return dt.as_local(t)
@@ -1653,9 +1717,8 @@ class Model:
             params = service_data
 
         params["entity_id"] = entity
-        asyncio.run_coroutine_threadsafe(
-            self.hass.services.async_call(domain, service, service_data, context=self.context),
-            self.hass.loop
+        self.hass.async_create_task(
+            self.hass.services.async_call(domain, service, service_data, context=self.context)
         )
         self.update(service_data=service_data)
 
@@ -1760,12 +1823,13 @@ class Model:
 
         # self.log.debug("-------------------- futurize ------------------------")
         # self.log.debug("Input (naive) %s ", timet)
-        today = date.today()
+        local_now = dt.now().replace(tzinfo=None)
+        today = local_now.date()
         try:
             t = datetime.combine(today, timet)
         except TypeError as e:
             t = timet
-        x = datetime.now()
+        x = local_now
         # self.log.debug("input time: " + str(t))
 
         # self.log.debug("current time: " + str(x))

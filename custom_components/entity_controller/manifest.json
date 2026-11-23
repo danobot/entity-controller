@@ -1,6 +1,7 @@
 {
 	"domain": "entity_controller",
 	"name": "Entity Controller",
+	"config_flow": true,
 	"documentation": "https://github.com/danobot/entity-controller/blob/master/README.md",
 	"requirements": [
 		"transitions==0.8.8"
@@ -13,6 +14,6 @@
 	"codeowners": [
 		"@danobot"
 	],
-	"homeassistant": "2022.7.4",
+	"homeassistant": "2025.3.0",
 	"version": "9.9.0"
 }
