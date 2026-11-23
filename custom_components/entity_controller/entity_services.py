@@ -26,11 +26,6 @@ from homeassistant.helpers.config_validation import (  # noqa: F401
 
 from homeassistant.helpers.entity_component import EntityComponent
 
-from homeassistant.const import (
-    STATE_OFF,
-    STATE_ON,
-)
-
 import homeassistant.util.dt as dt_util
 
 from .const import (
@@ -62,45 +57,45 @@ def async_setup_entity_services(component: EntityComponent):
 
     return True
 
-def async_entity_service_activate(self):
+async def async_entity_service_activate(self):
     """ Activates the entity controller"""
 
-    if(self.model is None):
+    if self.model.is_pending() or self.model.state not in ("idle", "blocked", "active_timer"):
         return
 
     self.model.log.debug("Activating the Entity Controller")
-    self.model.activate()
+    self.model.transition("activate")
 
-def async_entity_service_clear_block(self):
+async def async_entity_service_clear_block(self):
     """ Clear the block property, if set"""
 
-    if(self.model is None or self.model.state != 'blocked'):
+    if not self.model.is_blocked():
         return
 
     self.model.log.debug("Clearing Blocked state")
-    self.model.block_timer_expires()
+    self.model.transition("block_timer_expires")
 
-def async_entity_service_enable_block(self):
+async def async_entity_service_enable_block(self):
     """ Enable the block property, if timer is active"""
 
-    if(self.model is None or self.model.state != 'active_timer'):
+    if not self.model.is_active_timer():
         return
 
     self.model.log.debug("Enabling Blocked state")
-    self.model.block_enable()
+    self.model.transition("block_enable")
 
-def async_entity_service_enable_stay_mode(self):
+async def async_entity_service_enable_stay_mode(self):
     self.model.log.debug("Enable stay mode - Control entities will remain on until manually turned off")
     self.model.stay = True
 
-def async_entity_service_disable_stay_mode(self):
+async def async_entity_service_disable_stay_mode(self):
     self.model.log.debug("Disable stay mode - Control entities will be managed by EC")
     self.model.stay = False
 
-def async_entity_service_set_night_mode(self, start_time=None, end_time=None):
+async def async_entity_service_set_night_mode(self, start_time=None, end_time=None):
     """ Changes the night mode start and/or end times """
 
-    if(self.model is None or self.model.night_mode is None):
+    if self.model.night_mode is None:
         return
 
     now = None

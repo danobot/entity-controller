@@ -19,6 +19,11 @@ along with Entity Controller.  If not, see <https://www.gnu.org/licenses/>.
 
 DOMAIN = "entity_controller"
 DOMAIN_SHORT = "ec"
+INTEGRATION_NAME = "Entity Controller"
+INTEGRATION_UNIQUE_ID = f"{DOMAIN}:root"
+SUBENTRY_CONTROLLER = "controller"
+CONF_ENABLED = "enabled"
+CONF_IMPORTED_FROM_YAML = "imported_from_yaml"
 
 # services
 SERVICE_ACTIVATE = "activate"
@@ -65,6 +70,10 @@ CONF_TRIGGER_ON_ACTIVATE = "trigger_on_activate"
 CONF_TRIGGER_ON_DEACTIVATE = "trigger_on_deactivate"
 CONF_SENSOR = "sensor"
 CONF_SENSORS = "sensors"
+CONF_OVERRIDE = "override"
+CONF_OVERRIDES = "overrides"
+CONF_SENSOR_STATES_ON = "sensor_states_on"
+CONF_SENSOR_STATES_OFF = "sensor_states_off"
 CONF_SERVICE_DATA = "service_data"
 CONF_SERVICE_DATA_OFF = "service_data_off"
 CONF_STATE_ENTITIES = "state_entities"
